@@ -2,13 +2,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
-  const sheetName = params.get('sheet');
+  const gid = params.get('gid');
   const store = getStore(storeKey);
   if (!store) return;
   try {
-    const wb = await fetchWorkbook(store.url);
-    const ws = wb.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
+    const { data } = await fetchWorkbook(store.url, gid);
     const year = data[1] && data[1][0];
     const startMonth = data[3] && data[3][14];
     const endMonth = ('0' + (((parseInt(startMonth, 10) || 0) % 12) + 1)).slice(-2);
