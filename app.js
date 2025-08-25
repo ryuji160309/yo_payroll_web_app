@@ -53,13 +53,25 @@ function updateStore(key, values) {
   saveStores(stores);
 }
 
+
+function extractFileId(url) {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+  return match ? match[1] : null;
+}
+
+function toXlsxExportUrl(url) {
+  const fileId = extractFileId(url);
+  return fileId ? `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx` : null;
+}
+
 function toExportUrl(url, gidOverride) {
-  const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if (!idMatch) return null;
+  const fileId = extractFileId(url);
+  if (!fileId) return null;
   const gidMatch = url.match(/gid=([0-9]+)/);
   const gid = gidOverride || (gidMatch ? gidMatch[1] : '0');
-  return `https://docs.google.com/spreadsheets/d/${idMatch[1]}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  return `https://docs.google.com/spreadsheets/d/${fileId}/gviz/tq?tqx=out:csv&gid=${gid}`;
 }
+
 
 async function fetchWorkbook(url, gidOverride) {
   const exportUrl = toExportUrl(url, gidOverride);
