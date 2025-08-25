@@ -1,0 +1,37 @@
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+}
+.back-btn {
+  font-size: 1.2rem;
+  background: none;
+  border: none;
+}
+#store-list button, #sheet-list button {
+  display: block;
+  width: 90%;
+  margin: 0.5rem auto;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 0.25rem;
+  text-align: center;
+}
+#download {
+  margin: 1rem;
+  padding: 0.5rem 1rem;
+}

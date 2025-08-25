@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>給与計算</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="payroll.js"></script>
+</head>
+<body>
+  <header>
+    <button class="back-btn" onclick="history.back()">&lt;</button>
+    <span id="version"></span>
+  </header>
+  <h1 id="period" style="text-align:center"></h1>
+  <h2 id="store-name" style="text-align:center"></h2>
+  <p id="total-salary" style="text-align:center"></p>
+  <table id="employees">
+    <thead>
+      <tr><th>従業員名</th><th>基本時給</th><th>勤務時間</th><th>出勤日数</th><th>給与</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button id="download">CSVダウンロード</button>
+  <p id="error" style="color:red;text-align:center"></p>
+</body>
+</html>

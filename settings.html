@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>設定</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="settings.js"></script>
+</head>
+<body>
+  <header>
+    <button class="back-btn" onclick="history.back()">&lt;</button>
+    <span id="version"></span>
+  </header>
+  <h1 style="text-align:center">設定</h1>
+  <div style="padding:1rem;">
+    <label>店舗<select id="store-select"></select></label><br><br>
+    <label>シートURL<input id="url" style="width:100%"></label><br><br>
+    <label>基本時給<input id="baseWage" type="number"></label><br><br>
+    <label>時間外倍率<input id="overtime" type="number" step="0.01"></label><br><br>
+    <button id="save">保存</button>
+    <button id="reset">デフォルトに戻す</button>
+  </div>
+</body>
+</html>

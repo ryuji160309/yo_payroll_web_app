@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>シート選択</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="sheets.js"></script>
+</head>
+<body>
+  <header>
+    <button class="back-btn" onclick="history.back()">&lt;</button>
+    <span id="version"></span>
+  </header>
+  <h1 style="text-align:center">計算する月を選択してください。</h1>
+  <div id="sheet-list"></div>
+</body>
+</html>
