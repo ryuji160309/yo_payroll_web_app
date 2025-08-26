@@ -53,6 +53,16 @@ function updateStore(key, values) {
   saveStores(stores);
 }
 
+function startLoading(el, text) {
+  if (!el) return;
+  el.textContent = text;
+}
+
+function stopLoading(el) {
+  if (!el) return;
+  el.textContent = '';
+}
+
 
 function extractFileId(url) {
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
