@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
 
