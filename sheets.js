@@ -1,3 +1,17 @@
+function formatSheetName(name) {
+  const withYear = name.match(/^(\d{2})\.(\d{1,2})16-(\d{1,2})15$/);
+  if (withYear) {
+    const [, yy, sm, em] = withYear;
+    return `20${yy}年${parseInt(sm)}月16日～${parseInt(em)}月15日`;
+  }
+  const withoutYear = name.match(/^(\d{1,2})16-(\d{1,2})15$/);
+  if (withoutYear) {
+    const [, sm, em] = withoutYear;
+    return `${parseInt(sm)}月16日～${parseInt(em)}月15日`;
+  }
+  return name;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
@@ -12,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     sheets.forEach(({ name, index }) => {
       const btn = document.createElement('button');
-      btn.textContent = name;
+      btn.textContent = formatSheetName(name);
       btn.addEventListener('click', () => {
         window.location.href = `payroll.html?store=${storeKey}&sheet=${index}`;
 
