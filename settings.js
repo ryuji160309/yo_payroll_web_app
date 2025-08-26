@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('url').value = store.url;
     document.getElementById('baseWage').value = store.baseWage;
     document.getElementById('overtime').value = store.overtime;
+    document.getElementById('excludeWords').value = (store.excludeWords || []).join(',');
   }
 
   select.addEventListener('change', () => load(select.value));
@@ -23,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStore(select.value, {
       url: document.getElementById('url').value,
       baseWage: parseFloat(document.getElementById('baseWage').value),
-      overtime: parseFloat(document.getElementById('overtime').value)
+      overtime: parseFloat(document.getElementById('overtime').value),
+      excludeWords: document.getElementById('excludeWords').value.split(',').map(s => s.trim()).filter(s => s)
     });
     alert('保存しました');
   });

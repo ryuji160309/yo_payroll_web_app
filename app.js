@@ -4,38 +4,47 @@ const DEFAULT_STORES = {
   night: {
     name: '夜勤',
     url: 'https://docs.google.com/spreadsheets/d/1gCGyxiXXxOOhgHG2tk3BlzMpXuaWQULacySlIhhoWRY/edit?gid=601593061#gid=601593061',
-    baseWage: 1000,
-    overtime: 1.25
+    baseWage: 1225,
+    overtime: 1.25,
+    excludeWords: ['月', '日', '曜日', '空き', '予定', '.']
   },
   sagamihara_higashi: {
     name: '相模原東大沼店',
     url: 'https://docs.google.com/spreadsheets/d/1fEMEasqSGU30DuvCx6O6D0nJ5j6m6WrMkGTAaSQuqBY/edit?gid=358413717#gid=358413717',
-    baseWage: 1000,
-    overtime: 1.25
+    baseWage: 1225,
+    overtime: 1.25,
+    excludeWords: ['月', '日', '曜日', '空き', '予定', '.']
   },
   kobuchi: {
     name: '古淵駅前店',
     url: 'https://docs.google.com/spreadsheets/d/1hSD3sdIQftusWcNegZnGbCtJmByZhzpAvLJegDoJckQ/edit?gid=946573079#gid=946573079',
-    baseWage: 1000,
-    overtime: 1.25
+    baseWage: 1225,
+    overtime: 1.25,
+    excludeWords: ['月', '日', '曜日', '空き', '予定', '.']
   },
   hashimoto: {
     name: '相模原橋本五丁目店',
     url: 'https://docs.google.com/spreadsheets/d/1YYvWZaF9Li_RHDLevvOm2ND8ASJ3864uHRkDAiWBEDc/edit?gid=2000770170#gid=2000770170',
-    baseWage: 1000,
-    overtime: 1.25
+    baseWage: 1225,
+    overtime: 1.25,
+    excludeWords: ['月', '日', '曜日', '空き', '予定', '.']
   },
   isehara: {
     name: '伊勢原高森七丁目店',
     url: 'https://docs.google.com/spreadsheets/d/1PfEQRnvHcKS5hJ6gkpJQc0VFjDoJUBhHl7JTTyJheZc/edit?gid=34390331#gid=34390331',
-    baseWage: 1000,
-    overtime: 1.25
+    baseWage: 1225,
+    overtime: 1.25,
+    excludeWords: ['月', '日', '曜日', '空き', '予定', '.']
   }
 };
 
 function loadStores() {
   const stored = JSON.parse(localStorage.getItem('stores') || '{}');
-  return { ...DEFAULT_STORES, ...stored };
+  const merged = { ...stored };
+  Object.keys(DEFAULT_STORES).forEach(key => {
+    merged[key] = { ...DEFAULT_STORES[key], ...(stored[key] || {}) };
+  });
+  return merged;
 }
 
 function saveStores(stores) {
@@ -102,13 +111,13 @@ async function fetchSheetList(url) {
 
 }
 
-function calculatePayroll(data, baseWage, overtime) {
+function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
   const header = data[2];
   const names = [];
   const schedules = [];
   for (let col = 3; col < header.length; col++) {
     const name = header[col];
-    if (name && !['月', '日', '曜日', '空き', '予定', '.'].includes(name)) {
+    if (name && !excludeWords.some(word => name.includes(word))) {
       names.push(name);
       schedules.push(data.slice(3).map(row => row[col]));
     }
