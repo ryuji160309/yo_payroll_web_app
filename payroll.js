@@ -72,6 +72,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     stopLoading(statusEl);
 
+    const baseWageInput = document.getElementById('base-wage-input');
+    baseWageInput.value = store.baseWage;
+    document.getElementById('set-base-wage').addEventListener('click', () => {
+      const wage = Number(baseWageInput.value);
+      document.querySelectorAll('.wage-input').forEach(input => {
+        input.value = wage;
+      });
+      document.getElementById('recalc').click();
+    });
+
     document.getElementById('recalc').addEventListener('click', () => {
       const inputs = document.querySelectorAll('.wage-input');
       let total = 0;
@@ -100,6 +110,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function downloadResults(storeName, period, results) {
   const aoa = [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与'], ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary])];
+  const total = results.reduce((sum, r) => sum + r.salary, 0);
+  aoa.push(['合計支払い給与', '', '', '', total]);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '結果');
