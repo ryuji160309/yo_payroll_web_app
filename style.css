@@ -30,3 +30,7 @@ th, td {
   margin: 1rem;
   padding: 0.5rem 1rem;
 }
+
+.wage-input {
+  width: 33%;
+}
