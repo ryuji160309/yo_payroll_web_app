@@ -119,7 +119,8 @@ function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
     const name = header[col];
     if (name && !excludeWords.some(word => name.includes(word))) {
       names.push(name);
-      schedules.push(data.slice(3).map(row => row[col]));
+      // rows 4-34 contain daily schedules
+      schedules.push(data.slice(3, 34).map(row => row[col]));
     }
   }
 
@@ -129,16 +130,21 @@ function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
     let salary = 0;
     schedules[idx].forEach(cell => {
       if (!cell) return;
-      workdays++;
       const segments = cell.toString().split(',');
       let dayHours = 0;
+      let hasValid = false;
       segments.forEach(seg => {
-        const [s, e] = seg.split('-').map(Number);
-        if (!isNaN(s) && !isNaN(e)) {
-          let h = e >= s ? e - s : 24 - s + e;
-          dayHours += h;
-        }
+        const m = seg.trim().match(/^(\d{1,2})-(\d{1,2})$/);
+        if (!m) return;
+        const s = parseInt(m[1], 10);
+        const e = parseInt(m[2], 10);
+        if (s < 0 || s > 24 || e < 0 || e > 24) return;
+        hasValid = true;
+        const h = e >= s ? e - s : 24 - s + e;
+        dayHours += h;
       });
+      if (!hasValid || dayHours <= 0) return;
+      workdays++;
       if (dayHours >= 8) dayHours -= 1;
       else if (dayHours >= 7) dayHours -= 0.75;
       else if (dayHours >= 6) dayHours -= 0.5;
