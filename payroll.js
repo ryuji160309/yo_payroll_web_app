@@ -10,12 +10,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const { data } = await fetchWorkbook(store.url, sheetIndex);
     stopLoading(statusEl);
-    const year = data[1] && data[1][0];
-    const startMonth = data[3] && data[3][14];
+    const year = data[1] && data[1][2];
+    const startMonth = data[1] && data[1][4];
     const endMonth = ('0' + (((parseInt(startMonth, 10) || 0) % 12) + 1)).slice(-2);
     document.getElementById('period').textContent = `${year}年${startMonth}月16日～${endMonth}月15日`;
     const nameRow = data[36] || [];
-    const storeName = nameRow.slice(14, 25).find(v => v) || store.name;
+    const storeName = nameRow[14] || store.name;
     document.getElementById('store-name').textContent = storeName;
     startLoading(statusEl, '計算中・・・');
 

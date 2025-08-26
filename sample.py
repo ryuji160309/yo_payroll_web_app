@@ -192,11 +192,11 @@ def load_sheet(file_path):
     for row in sheet.iter_rows(values_only=True):
         data.append(list(row))
     
-    # 年・月とO37の値を取得
+    # 年・月と店舗名を取得 (O37)
     year = sheet['C2'].value
     month = sheet['E2'].value
-    cell_o37 = sheet['O37'].value
-    return data, year, month, cell_o37
+    store_name = sheet['O37'].value
+    return data, year, month, store_name
 
 # 時間計算
 def calculate_hours(time_str):
@@ -271,13 +271,13 @@ def save_results():
         messagebox.showerror("エラー", "年と月のデータが読み込まれていません")
         return
     
-    file_name = f"{cell_o37}_{year}年{month}月16日～{month+1}月15日.csv".replace(".0", "")
+    file_name = f"{store_name}_{year}年{month}月16日～{month+1}月15日.csv".replace(".0", "")
     file_path = filedialog.asksaveasfilename(defaultextension=".csv", initialfile=file_name)
     
     if file_path:
         with open(file_path, 'w', encoding='utf-8-sig', newline='') as f:  # UTF-8 with BOM
             writer = csv.writer(f)
-            writer.writerow([cell_o37])
+            writer.writerow([store_name])
             writer.writerow([f"{year}年", f"{month}月16日", "～", f"{month+1}月15日"])
             writer.writerow(["基本時給：", f"{base_wage_entry.get()}円", "倍率：", f"{overtime_multiplier_entry.get()}倍"])
             writer.writerow([])
@@ -387,12 +387,12 @@ file_path = filedialog.askopenfilename(title="シフト表ファイルを選択"
 if not file_path:
     sys.exit()
 
-data, year, month, cell_o37 = load_sheet(file_path)
+data, year, month, store_name = load_sheet(file_path)
 if data is None:
     sys.exit()
 
 # ファイル情報の表示
-file_info = f"{year}年{month}月16日～{month+1}月15日, {cell_o37}".replace(".0", "")
+file_info = f"{year}年{month}月16日～{month+1}月15日, {store_name}".replace(".0", "")
 tk.Label(root, text=file_info, font=("",12,"bold")).grid(row=0, column=0, columnspan=7)
 
 # 名前とシフトデータの抽出
