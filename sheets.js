@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     sheets.forEach(({ name, index }) => {
       const btn = document.createElement('button');
-      btn.textContent = formatSheetName(name);
+      btn.textContent = name;
       btn.addEventListener('click', () => {
         window.location.href = `payroll.html?store=${storeKey}&sheet=${index}`;
 
