@@ -41,7 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           const dd = d.getDate();
           lines.push(`${mm}/${dd} ${segments.join(', ')}`);
         });
-        alert(lines.length ? lines.join('\n') : '出勤記録がありません');
+        const message = lines.length ? `${r.name}\n${lines.join('\n')}` : `${r.name}\n出勤記録がありません`;
+        alert(message);
       });
 
       const wageTd = document.createElement('td');
