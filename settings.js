@@ -10,10 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function load(key) {
     const store = getStore(key);
+    const def = DEFAULT_STORES[key];
     document.getElementById('url').value = store.url;
-    document.getElementById('baseWage').value = store.baseWage;
-    document.getElementById('overtime').value = store.overtime;
-    document.getElementById('excludeWords').value = (store.excludeWords || []).join(',');
+    document.getElementById('baseWage').value = Number.isFinite(store.baseWage) ? store.baseWage : def.baseWage;
+    document.getElementById('overtime').value = Number.isFinite(store.overtime) ? store.overtime : def.overtime;
+    const words = Array.isArray(store.excludeWords) ? store.excludeWords : def.excludeWords;
+    document.getElementById('excludeWords').value = (words || []).join(',');
   }
 
   select.addEventListener('change', () => load(select.value));
@@ -21,10 +23,16 @@ document.addEventListener('DOMContentLoaded', () => {
   load(select.value);
 
   document.getElementById('save').addEventListener('click', () => {
+    const baseWage = Number(document.getElementById('baseWage').value);
+    const overtime = Number(document.getElementById('overtime').value);
+    if (!Number.isFinite(baseWage) || !Number.isFinite(overtime)) {
+      alert('数値を入力してください');
+      return;
+    }
     updateStore(select.value, {
       url: document.getElementById('url').value,
-      baseWage: parseFloat(document.getElementById('baseWage').value),
-      overtime: parseFloat(document.getElementById('overtime').value),
+      baseWage,
+      overtime,
       excludeWords: document.getElementById('excludeWords').value.split(',').map(s => s.trim()).filter(s => s)
     });
     alert('保存しました');

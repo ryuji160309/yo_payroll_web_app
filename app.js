@@ -39,10 +39,20 @@ const DEFAULT_STORES = {
 };
 
 function loadStores() {
-  const stored = JSON.parse(localStorage.getItem('stores') || '{}');
-  const merged = { ...stored };
+  let stored = {};
+  try {
+    stored = JSON.parse(localStorage.getItem('stores') || '{}');
+  } catch (e) {
+    stored = {};
+  }
+  const merged = {};
   Object.keys(DEFAULT_STORES).forEach(key => {
-    merged[key] = { ...DEFAULT_STORES[key], ...(stored[key] || {}) };
+    const base = DEFAULT_STORES[key];
+    const custom = stored[key] || {};
+    const baseWage = Number.isFinite(custom.baseWage) ? custom.baseWage : base.baseWage;
+    const overtime = Number.isFinite(custom.overtime) ? custom.overtime : base.overtime;
+    const excludeWords = Array.isArray(custom.excludeWords) ? custom.excludeWords : base.excludeWords;
+    merged[key] = { ...base, ...custom, baseWage, overtime, excludeWords };
   });
   return merged;
 }
@@ -111,6 +121,38 @@ async function fetchSheetList(url) {
 
 }
 
+function calculateEmployee(schedule, baseWage, overtime) {
+  let total = 0;
+  let workdays = 0;
+  let salary = 0;
+  schedule.forEach(cell => {
+    if (!cell) return;
+    const segments = cell.toString().split(',');
+    let dayHours = 0;
+    let hasValid = false;
+    segments.forEach(seg => {
+      const m = seg.trim().match(/^(\d{1,2})-(\d{1,2})$/);
+      if (!m) return;
+      const s = parseInt(m[1], 10);
+      const e = parseInt(m[2], 10);
+      if (s < 0 || s > 24 || e < 0 || e > 24) return;
+      hasValid = true;
+      const h = e >= s ? e - s : 24 - s + e;
+      dayHours += h;
+    });
+    if (!hasValid || dayHours <= 0) return;
+    workdays++;
+    if (dayHours >= 8) dayHours -= 1;
+    else if (dayHours >= 7) dayHours -= 0.75;
+    else if (dayHours >= 6) dayHours -= 0.5;
+    total += dayHours;
+    const regular = Math.min(dayHours, 8);
+    const over = Math.max(dayHours - 8, 0);
+    salary += regular * baseWage + over * baseWage * overtime;
+  });
+  return { hours: total, days: workdays, salary: Math.floor(salary) };
+}
+
 function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
   const header = data[2];
   const names = [];
@@ -125,43 +167,11 @@ function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
   }
 
   const results = names.map((name, idx) => {
-    let total = 0;
-    let workdays = 0;
-    let salary = 0;
-    schedules[idx].forEach(cell => {
-      if (!cell) return;
-      const segments = cell.toString().split(',');
-      let dayHours = 0;
-      let hasValid = false;
-      segments.forEach(seg => {
-        const m = seg.trim().match(/^(\d{1,2})-(\d{1,2})$/);
-        if (!m) return;
-        const s = parseInt(m[1], 10);
-        const e = parseInt(m[2], 10);
-        if (s < 0 || s > 24 || e < 0 || e > 24) return;
-        hasValid = true;
-        const h = e >= s ? e - s : 24 - s + e;
-        dayHours += h;
-      });
-      if (!hasValid || dayHours <= 0) return;
-      workdays++;
-      if (dayHours >= 8) dayHours -= 1;
-      else if (dayHours >= 7) dayHours -= 0.75;
-      else if (dayHours >= 6) dayHours -= 0.5;
-      total += dayHours;
-      const regular = Math.min(dayHours, 8);
-      const over = Math.max(dayHours - 8, 0);
-      salary += regular * baseWage + over * baseWage * overtime;
-    });
-    return {
-      name,
-      hours: total,
-      days: workdays,
-      salary: Math.floor(salary)
-    };
+    const r = calculateEmployee(schedules[idx], baseWage, overtime);
+    return { name, baseWage, hours: r.hours, days: r.days, salary: r.salary };
   });
 
   const totalSalary = results.reduce((sum, r) => sum + r.salary, 0);
-  return { results, totalSalary };
+  return { results, totalSalary, schedules };
 }
 
