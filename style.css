@@ -10,10 +10,11 @@ header {
   padding: 0.5rem 1rem;
   background: #f0f0f0;
 }
-.back-btn {
+.home-btn {
   font-size: 1.2rem;
   background: none;
   border: none;
+  text-decoration: none;
 }
 
 .home-btn {
