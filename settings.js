@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const select = document.getElementById('store-select');
   const stores = loadStores();
   Object.keys(DEFAULT_STORES).forEach(key => {
