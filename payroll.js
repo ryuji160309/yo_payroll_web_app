@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('store-name').textContent = storeName;
     startLoading(statusEl, '計算中・・・');
 
-    const { results, totalSalary } = calculatePayroll(data, store.baseWage, store.overtime);
+    const { results, totalSalary } = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
     document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
     const tbody = document.querySelector('#employees tbody');
     results.forEach(r => {
