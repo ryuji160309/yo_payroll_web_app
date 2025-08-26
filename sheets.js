@@ -5,13 +5,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const store = getStore(storeKey);
   if (!store) return;
   try {
-    const wb = await fetchWorkbook(store.url);
+    const sheets = await fetchSheetList(store.url);
     const list = document.getElementById('sheet-list');
-    wb.SheetNames.forEach(name => {
+    sheets.forEach(({ name, index }) => {
       const btn = document.createElement('button');
       btn.textContent = name;
       btn.addEventListener('click', () => {
-        window.location.href = `payroll.html?store=${storeKey}&sheet=${encodeURIComponent(name)}`;
+        window.location.href = `payroll.html?store=${storeKey}&sheet=${index}`;
       });
       list.appendChild(btn);
     });

@@ -53,17 +53,38 @@ function updateStore(key, values) {
   saveStores(stores);
 }
 
-function toExportUrl(url) {
-  const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if (!match) return null;
-  return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=xlsx`;
+function extractFileId(url) {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+  return match ? match[1] : null;
 }
 
-async function fetchWorkbook(url) {
-  const exportUrl = toExportUrl(url);
+function toXlsxExportUrl(url) {
+  const fileId = extractFileId(url);
+  return fileId ? `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx` : null;
+}
+
+async function fetchWorkbook(url, sheetIndex = 0) {
+  const exportUrl = toXlsxExportUrl(url);
   const res = await fetch(exportUrl);
-  const buf = await res.arrayBuffer();
-  return XLSX.read(buf, { type: 'array' });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const buffer = await res.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const sheetName = wb.SheetNames[sheetIndex] || wb.SheetNames[0];
+  const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
+  return { sheetName, data };
+}
+
+async function fetchSheetList(url) {
+  const exportUrl = toXlsxExportUrl(url);
+  const res = await fetch(exportUrl);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const buffer = await res.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+  return wb.SheetNames.map((name, index) => ({ name, index }));
 }
 
 function calculatePayroll(data, baseWage, overtime) {
