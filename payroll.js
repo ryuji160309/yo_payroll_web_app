@@ -5,9 +5,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sheetIndex = parseInt(params.get('sheet'), 10) || 0;
   const store = getStore(storeKey);
   if (!store) return;
+  const statusEl = document.getElementById('status');
+  startLoading(statusEl, '読込中');
   try {
     const { data } = await fetchWorkbook(store.url, sheetIndex);
-
+    stopLoading(statusEl);
     const year = data[1] && data[1][0];
     const startMonth = data[3] && data[3][14];
     const endMonth = ('0' + (((parseInt(startMonth, 10) || 0) % 12) + 1)).slice(-2);
@@ -15,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nameRow = data[36] || [];
     const storeName = nameRow.slice(14, 25).find(v => v) || store.name;
     document.getElementById('store-name').textContent = storeName;
+    startLoading(statusEl, '計算中');
 
     const { results, totalSalary } = calculatePayroll(data, store.baseWage, store.overtime);
     document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
@@ -25,9 +28,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       tr.addEventListener('click', () => alert('日毎の勤務時間表示は未実装です'));
       tbody.appendChild(tr);
     });
+    stopLoading(statusEl);
 
     document.getElementById('download').addEventListener('click', () => downloadResults(storeName, `${year}${startMonth}`, store, results));
   } catch (e) {
+    stopLoading(statusEl);
     document.getElementById('error').textContent = 'URLが変更された可能性があります。設定からURL変更をお試しください。';
   }
 });
