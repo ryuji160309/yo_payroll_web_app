@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const startMonth = parseInt(startMonthRaw, 10);
     const endMonth = (startMonth % 12) + 1;
     document.getElementById('period').textContent = `${year}年${startMonth}月16日～${endMonth}月15日`;
+    const startDate = new Date(year, startMonth - 1, 16);
     const nameRow = data[36] || [];
     const storeName = nameRow[14] || store.name;
     document.getElementById('store-name').textContent = storeName;
@@ -25,8 +26,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tbody = document.querySelector('#employees tbody');
     results.forEach((r, idx) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.name}</td><td><input type="number" value="${r.baseWage}" class="wage-input" data-idx="${idx}"></td><td>${r.hours.toFixed(2)}</td><td>${r.days}</td><td class="salary-cell">${r.salary.toLocaleString()}</td>`;
-      tr.addEventListener('click', () => alert('日毎の勤務時間表示は未実装です'));
+
+      const nameTd = document.createElement('td');
+      nameTd.textContent = r.name;
+      nameTd.addEventListener('click', () => {
+        const lines = [];
+        schedules[idx].forEach((cell, dayIdx) => {
+          if (!cell) return;
+          const segments = cell.toString().split(',').map(s => s.trim()).filter(seg => /^(\d{1,2})-(\d{1,2})$/.test(seg));
+          if (segments.length === 0) return;
+          const d = new Date(startDate);
+          d.setDate(startDate.getDate() + dayIdx);
+          const mm = d.getMonth() + 1;
+          const dd = d.getDate();
+          lines.push(`${mm}/${dd} ${segments.join(', ')}`);
+        });
+        alert(lines.length ? lines.join('\n') : '出勤記録がありません');
+      });
+
+      const wageTd = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.value = r.baseWage;
+      input.className = 'wage-input';
+      input.dataset.idx = idx;
+      wageTd.appendChild(input);
+
+      const hoursTd = document.createElement('td');
+      hoursTd.textContent = r.hours.toFixed(2);
+
+      const daysTd = document.createElement('td');
+      daysTd.textContent = r.days;
+
+      const salaryTd = document.createElement('td');
+      salaryTd.className = 'salary-cell';
+      salaryTd.textContent = r.salary.toLocaleString();
+
+      tr.appendChild(nameTd);
+      tr.appendChild(wageTd);
+      tr.appendChild(hoursTd);
+      tr.appendChild(daysTd);
+      tr.appendChild(salaryTd);
       tbody.appendChild(tr);
     });
     stopLoading(statusEl);
