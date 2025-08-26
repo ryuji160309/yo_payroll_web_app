@@ -26,6 +26,12 @@ th, td {
   padding: 0.25rem;
   text-align: center;
 }
+#actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+#recalc,
 #download {
   margin: 1rem;
   padding: 0.5rem 1rem;
