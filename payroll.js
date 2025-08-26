@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const store = getStore(storeKey);
   if (!store) return;
   const statusEl = document.getElementById('status');
-  startLoading(statusEl, '読込中');
+  startLoading(statusEl, '読込中・・・');
   try {
     const { data } = await fetchWorkbook(store.url, sheetIndex);
     stopLoading(statusEl);
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nameRow = data[36] || [];
     const storeName = nameRow.slice(14, 25).find(v => v) || store.name;
     document.getElementById('store-name').textContent = storeName;
-    startLoading(statusEl, '計算中');
+    startLoading(statusEl, '計算中・・・');
 
     const { results, totalSalary } = calculatePayroll(data, store.baseWage, store.overtime);
     document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
