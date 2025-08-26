@@ -53,48 +53,43 @@ function updateStore(key, values) {
   saveStores(stores);
 }
 
-function toExportUrl(url, gidOverride) {
-  const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if (!idMatch) return null;
-  const gidMatch = url.match(/gid=([0-9]+)/);
-  const gid = gidOverride || (gidMatch ? gidMatch[1] : '0');
-  return `https://docs.google.com/spreadsheets/d/${idMatch[1]}/gviz/tq?tqx=out:csv&gid=${gid}`;
+
+function extractFileId(url) {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+  return match ? match[1] : null;
 }
 
-async function fetchWorkbook(url, gidOverride) {
-  const exportUrl = toExportUrl(url, gidOverride);
+function toXlsxExportUrl(url) {
+  const fileId = extractFileId(url);
+  return fileId ? `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx` : null;
+}
+
+async function fetchWorkbook(url, sheetIndex = 0) {
+  const exportUrl = toXlsxExportUrl(url);
+
   const res = await fetch(exportUrl);
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
-  const csv = await res.text();
-  const wb = XLSX.read(csv, { type: 'string' });
-  const sheetName = wb.SheetNames[0];
+
+  const buffer = await res.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const sheetName = wb.SheetNames[sheetIndex] || wb.SheetNames[0];
+
   const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
   return { sheetName, data };
 }
 
 async function fetchSheetList(url) {
-  const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if (!idMatch) return [];
-  const res = await fetch(`https://spreadsheets.google.com/feeds/worksheets/${idMatch[1]}/public/basic?alt=json`);
+  const exportUrl = toXlsxExportUrl(url);
+  const res = await fetch(exportUrl);
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
-  const json = await res.json();
-  return (json.feed.entry || []).map(entry => {
-    const name = entry.title.$t;
-    const link = entry.link && entry.link.find(l => l.rel === 'alternate');
-    let gid = null;
-    if (link) {
-      try {
-        gid = new URL(link.href).searchParams.get('gid');
-      } catch (e) {
-        gid = null;
-      }
-    }
-    return { name, gid };
-  });
+  const buffer = await res.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+  return wb.SheetNames.map((name, index) => ({ name, index }));
+
 }
 
 function calculatePayroll(data, baseWage, overtime) {
