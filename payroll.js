@@ -11,8 +11,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { data } = await fetchWorkbook(store.url, sheetIndex);
     stopLoading(statusEl);
     const year = data[1] && data[1][2];
-    const startMonth = data[1] && data[1][4];
-    const endMonth = ('0' + (((parseInt(startMonth, 10) || 0) % 12) + 1)).slice(-2);
+    const startMonthRaw = data[1] && data[1][4];
+    const startMonth = parseInt(startMonthRaw, 10);
+    const endMonth = (startMonth % 12) + 1;
     document.getElementById('period').textContent = `${year}年${startMonth}月16日～${endMonth}月15日`;
     const nameRow = data[36] || [];
     const storeName = nameRow[14] || store.name;
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('total-salary').textContent = `合計支払い給与：${total.toLocaleString()}円`;
     });
 
-    document.getElementById('download').addEventListener('click', () => downloadResults(storeName, `${year}${startMonth}`, results));
+    document.getElementById('download').addEventListener('click', () => downloadResults(storeName, `${year}${startMonthRaw}`, results));
   } catch (e) {
     stopLoading(statusEl);
     document.getElementById('error').textContent = 'URLが変更された可能性があります。設定からURL変更をお試しください。';
