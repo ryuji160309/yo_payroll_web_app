@@ -53,6 +53,7 @@ function updateStore(key, values) {
   saveStores(stores);
 }
 
+
 function extractFileId(url) {
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
   return match ? match[1] : null;
@@ -65,13 +66,16 @@ function toXlsxExportUrl(url) {
 
 async function fetchWorkbook(url, sheetIndex = 0) {
   const exportUrl = toXlsxExportUrl(url);
+
   const res = await fetch(exportUrl);
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
+
   const buffer = await res.arrayBuffer();
   const wb = XLSX.read(buffer, { type: 'array' });
   const sheetName = wb.SheetNames[sheetIndex] || wb.SheetNames[0];
+
   const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
   return { sheetName, data };
 }
@@ -85,6 +89,7 @@ async function fetchSheetList(url) {
   const buffer = await res.arrayBuffer();
   const wb = XLSX.read(buffer, { type: 'array' });
   return wb.SheetNames.map((name, index) => ({ name, index }));
+
 }
 
 function calculatePayroll(data, baseWage, overtime) {

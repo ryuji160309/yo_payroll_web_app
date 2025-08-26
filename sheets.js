@@ -7,11 +7,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const sheets = await fetchSheetList(store.url);
     const list = document.getElementById('sheet-list');
+
     sheets.forEach(({ name, index }) => {
       const btn = document.createElement('button');
       btn.textContent = name;
       btn.addEventListener('click', () => {
         window.location.href = `payroll.html?store=${storeKey}&sheet=${index}`;
+
       });
       list.appendChild(btn);
     });
