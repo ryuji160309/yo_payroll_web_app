@@ -3,8 +3,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const storeKey = params.get('store');
   const store = getStore(storeKey);
   if (!store) return;
+  const statusEl = document.getElementById('status');
+  startLoading(statusEl, '読込中・・・');
   try {
     const sheets = await fetchSheetList(store.url);
+    stopLoading(statusEl);
     const list = document.getElementById('sheet-list');
 
     sheets.forEach(({ name, index }) => {
@@ -17,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       list.appendChild(btn);
     });
   } catch (e) {
+    stopLoading(statusEl);
     document.getElementById('sheet-list').textContent = 'URLが変更された可能性があります。設定からURL変更をお試しください。';
   }
 });
