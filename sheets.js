@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const storeKey = params.get('store');
   const store = getStore(storeKey);
   if (!store) return;
+  document.getElementById('store-name').textContent = store.name;
   const statusEl = document.getElementById('status');
   startLoading(statusEl, '読込中・・・');
   try {
