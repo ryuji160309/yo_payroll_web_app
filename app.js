@@ -102,6 +102,20 @@ async function fetchSheetList(url) {
 
 }
 
+function formatSheetName(name) {
+  const m = name.match(/^(?:(\d{1,2})\.)?(\d{3,4})-(\d{3,4})$/);
+  if (!m) return name;
+  const parseMD = str => {
+    const month = parseInt(str.slice(0, -2), 10);
+    const day = parseInt(str.slice(-2), 10);
+    return { month, day };
+  };
+  const start = parseMD(m[2]);
+  const end = parseMD(m[3]);
+  const year = m[1] ? `20${m[1]}年` : '';
+  return `${year}${start.month}月${start.day}日～${end.month}月${end.day}日`;
+}
+
 function calculatePayroll(data, baseWage, overtime) {
   const header = data[2];
   const names = [];
