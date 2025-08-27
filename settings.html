@@ -11,10 +11,8 @@
 </head>
 <body>
   <header>
-
-    <button class="back-btn" onclick="history.back()">&lt;</button>
-
-    <button class="back-btn" onclick="location.href='index.html'">↺</button>
+    <button class="back-btn" onclick="history.back()">&lt;トップ</button>
+    <button class="back-btn" onclick="location.href='index.html'">はじめから↺</button>
   </header>
   <h1 style="text-align:center">設定</h1>
   <div style="padding:1rem;">
@@ -25,6 +23,10 @@
     <label>従業員名除外ワード<input id="excludeWords" style="width:100%" placeholder="カンマ区切りで入力"></label><br><br>
     <button id="save">保存</button>
     <button id="reset">デフォルトに戻す</button>
+    <div class="info-box" style="margin-top:1rem;">
+      シートのURLが変更された場合、変更したい店舗名を選択し、シートURLに変更後のURLを入力してください。<br>
+      従業員名除外ワードには意図しない従業員名が表示された際にカンマ区切り( , )で追加してください。
+    </div>
   </div>
 </body>
 </html>
