@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('download').addEventListener('click', () => downloadResults(storeName, `${year}${startMonthRaw}`, results));
   } catch (e) {
     stopLoading(statusEl);
-    document.getElementById('error').textContent = 'URLが変更された可能性があります。設定からURL変更をお試しください。';
+    document.getElementById('error').innerHTML = 'スプレッドシートを読み込めませんでした。<br>通信状況が悪いか、URLが変更された可能性があります。<br>店舗選択画面の設定からURL変更をお試しください。';
   }
 });
 
