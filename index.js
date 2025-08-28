@@ -11,17 +11,50 @@ document.addEventListener('DOMContentLoaded', () => {
     list.appendChild(btn);
   });
 
-  // Populate announcements from ANNOUNCEMENTS defined in app.js
   const infoBox = document.getElementById('announcements');
-  if (infoBox && Array.isArray(ANNOUNCEMENTS)) {
-    let html = '<div style="text-align:center;font-size:1.2rem;">●お知らせ●</div><div>';
-    ANNOUNCEMENTS.forEach((note, idx) => {
-      html += `ver.${note.version}<br>${note.messages.join('<br>')}`;
-      if (idx !== ANNOUNCEMENTS.length - 1) {
-        html += '<br><br>';
-      }
-    });
-    html += '</div>';
-    infoBox.innerHTML = html;
+  if (infoBox) {
+    fetch('announcements.txt')
+      .then(res => res.text())
+      .then(text => {
+        const blocks = text.trim().split(/\n\s*\n/);
+        const notes = blocks.map(block => {
+          const lines = block.trim().split('\n');
+          const versionLine = lines.shift();
+          const version = versionLine.replace(/^ver\./i, '').trim();
+          const messages = lines.map(l => l.trim()).filter(Boolean);
+          return { version, messages };
+        }).sort((a, b) => {
+          const pa = a.version.split('.').map(Number);
+          const pb = b.version.split('.').map(Number);
+          for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+            const diff = (pb[i] || 0) - (pa[i] || 0);
+            if (diff !== 0) return diff;
+          }
+          return 0;
+        });
+        if (!notes.length) return;
+        infoBox.innerHTML = '<div style="text-align:center;font-size:1.2rem;">●お知らせ●</div>';
+        const select = document.createElement('select');
+        notes.forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = n.version;
+          opt.textContent = `ver.${n.version}`;
+          select.appendChild(opt);
+        });
+        infoBox.appendChild(select);
+        const messageDiv = document.createElement('div');
+        infoBox.appendChild(messageDiv);
+        function render(ver) {
+          const note = notes.find(n => n.version === ver);
+          if (!note) return;
+          messageDiv.innerHTML = note.messages.join('<br>');
+        }
+        select.addEventListener('change', () => render(select.value));
+        select.value = notes[0].version;
+        render(select.value);
+      })
+      .catch(() => {
+        infoBox.textContent = 'お知らせを取得できませんでした。';
+      });
   }
 });
