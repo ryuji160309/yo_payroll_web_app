@@ -62,3 +62,8 @@ th, td {
   width: 90%;
   margin: 1rem auto;
 }
+
+.loading-note {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}

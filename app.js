@@ -1,29 +1,5 @@
 const APP_VERSION = '1.1.1';
 
-// Release notes displayed on the index page.
-const ANNOUNCEMENTS = [
-  {
-    version: '1.0.1',
-    messages: [
-      '各ボタンをわかりやすく調整しました。',
-      'エラーメッセージをわかりやすく調整しました。'
-    ]
-  },
-  {
-    version: '1.1.0',
-    messages: [
-      '今まで計算から除外していた分まで記入された勤務時間も計算できるようにしました。',
-      '各ボタンの表記を調整しました。'
-    ]
-  },
-  {
-    version: '1.1.1',
-    messages: [
-      '設定において基本時給が保存できない、保存された基本時給が計算時に反映されない問題の対策を実施しました。',
-      '(完全な修正は当分難しい見込みです。計算ページの一括設定ボタンで対応してください。)'
-    ]
-  }
-];
 
 const DEFAULT_STORES = {
   night: {
@@ -107,12 +83,42 @@ function updateStore(key, values) {
 
 function startLoading(el, text) {
   if (!el) return;
-  el.textContent = text;
+  stopLoading(el);
+  const baseText = text.replace(/[・.]+$/, '');
+  el.textContent = '';
+  const mainSpan = document.createElement('span');
+  mainSpan.textContent = baseText;
+  const dotSpan = document.createElement('span');
+  mainSpan.appendChild(dotSpan);
+  el.appendChild(mainSpan);
+
+  const note = document.createElement('div');
+  note.className = 'loading-note';
+  note.textContent = '通常よりも読み込みに時間がかかっていますが、正常に動作していますのでそのままお待ち下さい。';
+  note.style.display = 'none';
+  el.appendChild(note);
+
+  let dotCount = 0;
+  function updateDots() {
+    dotCount = (dotCount % 3) + 1;
+    dotSpan.textContent = '・'.repeat(dotCount);
+  }
+  updateDots();
+  const interval = setInterval(updateDots, 500);
+  const timeout = setTimeout(() => {
+    note.style.display = 'block';
+  }, 5000);
+  el._loadingInterval = interval;
+  el._loadingTimeout = timeout;
 }
 
 function stopLoading(el) {
   if (!el) return;
+  clearInterval(el._loadingInterval);
+  clearTimeout(el._loadingTimeout);
   el.textContent = '';
+  delete el._loadingInterval;
+  delete el._loadingTimeout;
 }
 
 
