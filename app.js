@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.1.3';
 
 
 const DEFAULT_STORES = {
@@ -100,8 +100,8 @@ function startLoading(el, text) {
 
   let dotCount = 0;
   function updateDots() {
-    dotCount = (dotCount % 3) + 1;
     dotSpan.textContent = '・'.repeat(dotCount);
+    dotCount = (dotCount + 1) % 4;
   }
   updateDots();
   const interval = setInterval(updateDots, 500);
@@ -132,15 +132,38 @@ function toXlsxExportUrl(url) {
   return fileId ? `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx` : null;
 }
 
-async function fetchWorkbook(url, sheetIndex = 0) {
+function bufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToBuffer(base64) {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function fetchWorkbook(url, sheetIndex = 0, storeKey) {
   const exportUrl = toXlsxExportUrl(url);
 
-  const res = await fetch(exportUrl);
+  const res = await fetch(exportUrl, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
 
   const buffer = await res.arrayBuffer();
+  if (storeKey) {
+    sessionStorage.setItem(`workbook_${storeKey}`, bufferToBase64(buffer));
+  }
   const wb = XLSX.read(buffer, { type: 'array' });
   const sheetName = wb.SheetNames[sheetIndex] || wb.SheetNames[0];
 
@@ -148,14 +171,17 @@ async function fetchWorkbook(url, sheetIndex = 0) {
   return { sheetName, data };
 }
 
-async function fetchSheetList(url) {
+async function fetchSheetList(url, storeKey) {
   const exportUrl = toXlsxExportUrl(url);
-  const res = await fetch(exportUrl);
+  const res = await fetch(exportUrl, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
   const buffer = await res.arrayBuffer();
-  const wb = XLSX.read(buffer, { type: 'array' });
+  if (storeKey) {
+    sessionStorage.setItem(`workbook_${storeKey}`, bufferToBase64(buffer));
+  }
+  const wb = XLSX.read(buffer, { type: 'array', bookSheets: true });
   return wb.SheetNames.map((name, index) => ({ name, index }));
 
 }

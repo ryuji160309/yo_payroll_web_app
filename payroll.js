@@ -8,7 +8,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   startLoading(statusEl, '読込中・・・');
   try {
-    const { data } = await fetchWorkbook(store.url, sheetIndex);
+    const key = `workbook_${storeKey}`;
+    const cached = sessionStorage.getItem(key);
+    let data;
+    if (cached) {
+      const buffer = base64ToBuffer(cached);
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const sheetName = wb.SheetNames[sheetIndex] || wb.SheetNames[0];
+      data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
+    } else {
+      const result = await fetchWorkbook(store.url, sheetIndex, storeKey);
+      data = result.data;
+    }
     stopLoading(statusEl);
     const year = data[1] && data[1][2];
     const startMonthRaw = data[1] && data[1][4];
