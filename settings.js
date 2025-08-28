@@ -29,13 +29,21 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('数値を入力してください');
       return;
     }
-    updateStore(select.value, {
-      url: document.getElementById('url').value,
-      baseWage,
-      overtime,
-      excludeWords: document.getElementById('excludeWords').value.split(',').map(s => s.trim()).filter(s => s)
-    });
-    alert('保存しました');
+    try {
+      updateStore(select.value, {
+        url: document.getElementById('url').value,
+        baseWage,
+        overtime,
+        excludeWords: document.getElementById('excludeWords').value.split(',').map(s => s.trim()).filter(s => s)
+      });
+      const saved = getStore(select.value);
+      if (saved.baseWage !== baseWage || saved.overtime !== overtime) {
+        throw new Error('verify failed');
+      }
+      alert('保存しました');
+    } catch (e) {
+      alert('保存に失敗しました。ブラウザの設定を確認してください。');
+    }
   });
 
   document.getElementById('reset').addEventListener('click', () => {

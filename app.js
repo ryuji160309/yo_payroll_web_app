@@ -58,7 +58,13 @@ function loadStores() {
 }
 
 function saveStores(stores) {
-  localStorage.setItem('stores', JSON.stringify(stores));
+  try {
+    localStorage.setItem('stores', JSON.stringify(stores));
+    return true;
+  } catch (e) {
+    console.error('saveStores failed', e);
+    return false;
+  }
 }
 
 function getStore(key) {
@@ -69,7 +75,9 @@ function getStore(key) {
 function updateStore(key, values) {
   const stores = loadStores();
   stores[key] = { ...stores[key], ...values };
-  saveStores(stores);
+  if (!saveStores(stores)) {
+    throw new Error('Failed to save stores');
+  }
 }
 
 function startLoading(el, text) {
