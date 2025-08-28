@@ -33,7 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const lines = [];
         schedules[idx].forEach((cell, dayIdx) => {
           if (!cell) return;
-          const segments = cell.toString().split(',').map(s => s.trim()).filter(seg => /^(\d{1,2})-(\d{1,2})$/.test(seg));
+          const segments = cell.toString().split(',')
+            .map(s => s.trim())
+            .filter(seg => /^(\d{1,2})(?::\d{2})?-(\d{1,2})(?::\d{2})?$/.test(seg));
           if (segments.length === 0) return;
           const d = new Date(startDate);
           d.setDate(startDate.getDate() + dayIdx);

@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 
 const DEFAULT_STORES = {
   night: {
@@ -131,14 +131,21 @@ function calculateEmployee(schedule, baseWage, overtime) {
     let dayHours = 0;
     let hasValid = false;
     segments.forEach(seg => {
-      const m = seg.trim().match(/^(\d{1,2})-(\d{1,2})$/);
+      const m = seg.trim().match(/^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/);
       if (!m) return;
-      const s = parseInt(m[1], 10);
-      const e = parseInt(m[2], 10);
-      if (s < 0 || s > 24 || e < 0 || e > 24) return;
+      const sh = parseInt(m[1], 10);
+      const sm = m[2] ? parseInt(m[2], 10) : 0;
+      const eh = parseInt(m[3], 10);
+      const em = m[4] ? parseInt(m[4], 10) : 0;
+      if (
+        sh < 0 || sh > 24 || eh < 0 || eh > 24 ||
+        sm < 0 || sm >= 60 || em < 0 || em >= 60
+      ) return;
       hasValid = true;
-      const h = e >= s ? e - s : 24 - s + e;
-      dayHours += h;
+      const start = sh * 60 + sm;
+      const end = eh * 60 + em;
+      const diff = end >= start ? end - start : 24 * 60 - start + end;
+      dayHours += diff / 60;
     });
     if (!hasValid || dayHours <= 0) return;
     workdays++;
