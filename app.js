@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.5';
+const APP_VERSION = '1.1.6';
 
 // Shared regex for time ranges such as "9:00-17:30"
 const TIME_RANGE_REGEX = /^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/;
@@ -69,8 +69,10 @@ function loadStores() {
   Object.keys(DEFAULT_STORES).forEach(key => {
     const base = DEFAULT_STORES[key];
     const custom = stored[key] || {};
-    const baseWage = Number.isFinite(custom.baseWage) ? custom.baseWage : base.baseWage;
-    const overtime = Number.isFinite(custom.overtime) ? custom.overtime : base.overtime;
+    const customBaseWage = Number(custom.baseWage);
+    const baseWage = Number.isFinite(customBaseWage) ? customBaseWage : base.baseWage;
+    const customOvertime = Number(custom.overtime);
+    const overtime = Number.isFinite(customOvertime) ? customOvertime : base.overtime;
     const excludeWords = Array.isArray(custom.excludeWords) ? custom.excludeWords : base.excludeWords;
     merged[key] = { ...base, ...custom, baseWage, overtime, excludeWords };
   });
