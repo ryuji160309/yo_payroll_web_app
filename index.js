@@ -33,7 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
           return 0;
         });
         if (!notes.length) return;
-        infoBox.innerHTML = '<div style="text-align:center;font-size:1.2rem;">●お知らせ●</div>';
+        infoBox.textContent = '';
+        const header = document.createElement('div');
+        header.style.textAlign = 'center';
+        header.style.fontSize = '1.2rem';
+        header.textContent = '●お知らせ●';
+        infoBox.appendChild(header);
         const select = document.createElement('select');
         const latestOpt = document.createElement('option');
         latestOpt.value = '';
@@ -49,16 +54,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageDiv = document.createElement('div');
         infoBox.appendChild(messageDiv);
         const latestNotes = notes.slice(0, 3);
+
+        function buildNoteFragment(note) {
+          const frag = document.createDocumentFragment();
+          const strong = document.createElement('strong');
+          strong.textContent = `ver.${note.version}`;
+          frag.appendChild(strong);
+          note.messages.forEach(msg => {
+            frag.appendChild(document.createElement('br'));
+            const span = document.createElement('span');
+            span.textContent = msg;
+            frag.appendChild(span);
+          });
+          return frag;
+        }
+
         function render(ver) {
+          messageDiv.textContent = '';
           if (!ver) {
-            messageDiv.innerHTML = latestNotes.map(n => {
-              return ['<strong>ver.' + n.version + '</strong>', ...n.messages].join('<br>');
-            }).join('<br><br>');
+            latestNotes.forEach((n, idx) => {
+              messageDiv.appendChild(buildNoteFragment(n));
+              if (idx < latestNotes.length - 1) {
+                messageDiv.appendChild(document.createElement('br'));
+                messageDiv.appendChild(document.createElement('br'));
+              }
+            });
             return;
           }
           const note = notes.find(n => n.version === ver);
           if (!note) return;
-          messageDiv.innerHTML = note.messages.join('<br>');
+          messageDiv.appendChild(buildNoteFragment(note));
         }
         select.addEventListener('change', () => render(select.value));
         select.value = '';

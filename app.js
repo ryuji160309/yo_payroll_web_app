@@ -1,4 +1,17 @@
-const APP_VERSION = '1.1.4';
+const APP_VERSION = '1.1.5';
+
+// Shared regex for time ranges such as "9:00-17:30"
+const TIME_RANGE_REGEX = /^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/;
+
+// Break deduction rules (minHours or more => deduct hours)
+const BREAK_DEDUCTIONS = [
+  { minHours: 8, deduct: 1 },
+  { minHours: 7, deduct: 0.75 },
+  { minHours: 6, deduct: 0.5 }
+];
+
+// Manage loading timers without mutating DOM elements
+const loadingMap = new WeakMap();
 
 
 const DEFAULT_STORES = {
@@ -41,10 +54,16 @@ const DEFAULT_STORES = {
 
 function loadStores() {
   let stored = {};
-  try {
-    stored = JSON.parse(localStorage.getItem('stores') || '{}');
-  } catch (e) {
-    stored = {};
+  const raw = localStorage.getItem('stores');
+  if (raw) {
+    try {
+      stored = JSON.parse(raw);
+    } catch (e) {
+      console.error('loadStores parse failed', e);
+      localStorage.removeItem('stores');
+      alert('保存された店舗データが破損していたため、初期設定に戻しました。');
+      stored = {};
+    }
   }
   const merged = {};
   Object.keys(DEFAULT_STORES).forEach(key => {
@@ -61,10 +80,9 @@ function loadStores() {
 function saveStores(stores) {
   try {
     localStorage.setItem('stores', JSON.stringify(stores));
-    return true;
   } catch (e) {
     console.error('saveStores failed', e);
-    return false;
+    throw e;
   }
 }
 
@@ -76,9 +94,7 @@ function getStore(key) {
 function updateStore(key, values) {
   const stores = loadStores();
   stores[key] = { ...stores[key], ...values };
-  if (!saveStores(stores)) {
-    throw new Error('Failed to save stores');
-  }
+  saveStores(stores);
 }
 
 function startLoading(el, text) {
@@ -108,17 +124,18 @@ function startLoading(el, text) {
   const timeout = setTimeout(() => {
     note.style.display = 'block';
   }, 5000);
-  el._loadingInterval = interval;
-  el._loadingTimeout = timeout;
+  loadingMap.set(el, { interval, timeout });
 }
 
 function stopLoading(el) {
   if (!el) return;
-  clearInterval(el._loadingInterval);
-  clearTimeout(el._loadingTimeout);
+  const timers = loadingMap.get(el);
+  if (timers) {
+    clearInterval(timers.interval);
+    clearTimeout(timers.timeout);
+    loadingMap.delete(el);
+  }
   el.textContent = '';
-  delete el._loadingInterval;
-  delete el._loadingTimeout;
 }
 
 
@@ -196,7 +213,7 @@ function calculateEmployee(schedule, baseWage, overtime) {
     let dayHours = 0;
     let hasValid = false;
     segments.forEach(seg => {
-      const m = seg.trim().match(/^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/);
+      const m = seg.trim().match(TIME_RANGE_REGEX);
       if (!m) return;
       const sh = parseInt(m[1], 10);
       const sm = m[2] ? parseInt(m[2], 10) : 0;
@@ -214,9 +231,12 @@ function calculateEmployee(schedule, baseWage, overtime) {
     });
     if (!hasValid || dayHours <= 0) return;
     workdays++;
-    if (dayHours >= 8) dayHours -= 1;
-    else if (dayHours >= 7) dayHours -= 0.75;
-    else if (dayHours >= 6) dayHours -= 0.5;
+    for (const rule of BREAK_DEDUCTIONS) {
+      if (dayHours >= rule.minHours) {
+        dayHours -= rule.deduct;
+        break;
+      }
+    }
     total += dayHours;
     const regular = Math.min(dayHours, 8);
     const over = Math.max(dayHours - 8, 0);
