@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.3';
+const APP_VERSION = '1.1.4';
 
 
 const DEFAULT_STORES = {

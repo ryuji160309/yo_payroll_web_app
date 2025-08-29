@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const infoBox = document.getElementById('announcements');
   if (infoBox) {
-    fetch('announcements.txt')
+    fetch('announcements.txt', { cache: 'no-store' })
       .then(res => res.text())
       .then(text => {
         const blocks = text.trim().split(/\n\s*\n/);
@@ -35,6 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!notes.length) return;
         infoBox.innerHTML = '<div style="text-align:center;font-size:1.2rem;">●お知らせ●</div>';
         const select = document.createElement('select');
+        const latestOpt = document.createElement('option');
+        latestOpt.value = '';
+        latestOpt.textContent = '最新3件';
+        select.appendChild(latestOpt);
         notes.forEach(n => {
           const opt = document.createElement('option');
           opt.value = n.version;
@@ -44,13 +48,20 @@ document.addEventListener('DOMContentLoaded', () => {
         infoBox.appendChild(select);
         const messageDiv = document.createElement('div');
         infoBox.appendChild(messageDiv);
+        const latestNotes = notes.slice(0, 3);
         function render(ver) {
+          if (!ver) {
+            messageDiv.innerHTML = latestNotes.map(n => {
+              return ['<strong>ver.' + n.version + '</strong>', ...n.messages].join('<br>');
+            }).join('<br><br>');
+            return;
+          }
           const note = notes.find(n => n.version === ver);
           if (!note) return;
           messageDiv.innerHTML = note.messages.join('<br>');
         }
         select.addEventListener('change', () => render(select.value));
-        select.value = notes[0].version;
+        select.value = '';
         render(select.value);
       })
       .catch(() => {
