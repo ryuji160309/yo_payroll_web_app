@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.6';
+const APP_VERSION = '1.2.0';
 
 // Shared regex for time ranges such as "9:00-17:30"
 const TIME_RANGE_REGEX = /^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/;
