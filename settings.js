@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+  initializeHelp('help/settings.txt');
   const select = document.getElementById('store-select');
   const stores = loadStores();
   Object.keys(DEFAULT_STORES).forEach(key => {
