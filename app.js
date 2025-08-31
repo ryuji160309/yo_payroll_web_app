@@ -1,5 +1,100 @@
 const APP_VERSION = '1.2.0';
 
+// Simple password gate to restrict access
+function initPasswordGate() {
+  if (sessionStorage.getItem('pwAuth')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pw-overlay';
+
+  const container = document.createElement('div');
+  container.className = 'pw-container';
+
+  const display = document.createElement('div');
+  display.id = 'pw-display';
+  display.className = 'pw-display';
+  container.appendChild(display);
+
+  const keypad = document.createElement('div');
+  keypad.className = 'pw-keypad';
+  const keys = ['7','8','9','4','5','6','1','2','3','', '0','del'];
+  keys.forEach(k => {
+    if (k === '') {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'pw-empty';
+      keypad.appendChild(placeholder);
+      return;
+    }
+    const btn = document.createElement('button');
+    btn.dataset.key = k;
+    btn.textContent = k === 'del' ? 'del' : k;
+    keypad.appendChild(btn);
+  });
+  container.appendChild(keypad);
+
+  const note = document.createElement('div');
+  note.className = 'pw-note';
+  note.textContent = 'パスワードは売上金入金と同じです。';
+  container.appendChild(note);
+
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+
+  let input = '';
+  function updateDisplay() {
+    display.textContent =
+      (input.split('').join(' ') + ' ' + '＿ '.repeat(4 - input.length)).trim();
+  }
+  function clearInput(msg) {
+    display.textContent = msg;
+    setTimeout(() => {
+      input = '';
+      updateDisplay();
+    }, 1000);
+  }
+  function handleDigit(d) {
+    if (input.length >= 4) return;
+    input += d;
+    updateDisplay();
+    if (input.length === 4) {
+      if (input === '3963') {
+        sessionStorage.setItem('pwAuth', '1');
+        window.removeEventListener('keydown', onKey);
+        overlay.remove();
+      } else {
+        clearInput('パスワードが間違っています');
+      }
+    }
+  }
+  function delDigit() {
+    input = input.slice(0, -1);
+    updateDisplay();
+  }
+  function onKey(e) {
+    if (e.key >= '0' && e.key <= '9') {
+      handleDigit(e.key);
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      delDigit();
+    }
+  }
+  window.addEventListener('keydown', onKey);
+
+  keypad.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const k = btn.dataset.key;
+    if (k === 'del') {
+      delDigit();
+    } else {
+      handleDigit(k);
+    }
+  });
+
+  updateDisplay();
+}
+
+document.addEventListener('DOMContentLoaded', initPasswordGate);
+
 // Shared regex for time ranges such as "9:00-17:30"
 const TIME_RANGE_REGEX = /^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/;
 
