@@ -10,9 +10,22 @@ function initPasswordGate() {
   const container = document.createElement('div');
   container.className = 'pw-container';
 
+  const message = document.createElement('div');
+  message.id = 'pw-message';
+  message.className = 'pw-message';
+  message.textContent = 'パスワードを入力してください。';
+  container.appendChild(message);
+
   const display = document.createElement('div');
   display.id = 'pw-display';
   display.className = 'pw-display';
+  const slots = [];
+  for (let i = 0; i < 4; i++) {
+    const span = document.createElement('span');
+    span.className = 'pw-slot';
+    display.appendChild(span);
+    slots.push(span);
+  }
   container.appendChild(display);
 
   const keypad = document.createElement('div');
@@ -42,15 +55,19 @@ function initPasswordGate() {
 
   let input = '';
   function updateDisplay() {
-    display.textContent =
-      (input.split('').join(' ') + ' ' + '＿ '.repeat(4 - input.length)).trim();
+    slots.forEach((s, i) => {
+      s.textContent = input[i] || '';
+    });
   }
   function clearInput(msg) {
-    display.textContent = msg;
-    setTimeout(() => {
-      input = '';
-      updateDisplay();
-    }, 1000);
+    input = '';
+    updateDisplay();
+    if (msg) {
+      message.textContent = msg;
+      setTimeout(() => {
+        message.textContent = 'パスワードを入力してください。';
+      }, 2000);
+    }
   }
   function handleDigit(d) {
     if (input.length >= 4) return;

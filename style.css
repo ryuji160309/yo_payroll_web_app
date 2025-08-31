@@ -85,10 +85,24 @@ th, td {
   text-align: center;
 }
 
+#pw-overlay .pw-message {
+  margin-bottom: 0.5rem;
+}
+
 #pw-overlay .pw-display {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
   font-size: 2rem;
-  letter-spacing: 0.5rem;
   margin-bottom: 1rem;
+}
+
+#pw-overlay .pw-slot {
+  display: inline-block;
+  width: 1em;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
+  font-family: monospace;
 }
 
 #pw-overlay .pw-keypad {
