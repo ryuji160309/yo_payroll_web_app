@@ -67,3 +67,47 @@ th, td {
   margin-top: 0.5rem;
   font-size: 0.9rem;
 }
+
+#pw-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+#pw-overlay .pw-container {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+#pw-overlay .pw-display {
+  font-size: 2rem;
+  letter-spacing: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#pw-overlay .pw-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 4rem);
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+#pw-overlay .pw-keypad button {
+  padding: 1rem;
+  font-size: 1.5rem;
+}
+
+#pw-overlay .pw-keypad .pw-empty {
+  visibility: hidden;
+}
+
+#pw-overlay .pw-note {
+  color: red;
+  margin-top: 1rem;
+}
