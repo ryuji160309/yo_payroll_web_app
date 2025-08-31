@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  initializeHelp('help/payroll.txt');
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
 

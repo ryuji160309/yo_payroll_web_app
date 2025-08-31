@@ -13,6 +13,7 @@ function formatSheetName(name) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initializeHelp('help/sheets.txt');
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
   const store = getStore(storeKey);

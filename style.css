@@ -122,6 +122,8 @@ th, td {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  border-radius: 50%;
+  -webkit-border-radius: 50%;
 }
 
 #pw-overlay .pw-keypad .pw-empty {
@@ -131,4 +133,39 @@ th, td {
 #pw-overlay .pw-note {
   color: red;
   margin-top: 1rem;
+}
+#help-button {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 900;
+  padding: 0.5rem 1rem;
+}
+
+#help-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 950;
+}
+
+#help-popup {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 90%;
+  max-height: 80%;
+  overflow-y: auto;
+}
+
+#help-content {
+  white-space: pre-wrap;
+}
+
+#help-close {
+  display: block;
+  margin: 1rem auto 0;
 }
