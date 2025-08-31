@@ -79,7 +79,7 @@ function initPasswordGate() {
         window.removeEventListener('keydown', onKey);
         overlay.remove();
       } else {
-        clearInput('パスワードが間違っています');
+        clearInput('パスワードが間違っています。');
       }
     }
   }
