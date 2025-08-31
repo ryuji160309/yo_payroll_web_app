@@ -1,4 +1,4 @@
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 // Simple password gate to restrict access
 function initPasswordGate() {
@@ -47,7 +47,7 @@ function initPasswordGate() {
 
   const note = document.createElement('div');
   note.className = 'pw-note';
-  note.textContent = 'パスワードは売上金入金と同じです。';
+  note.textContent = 'パスワードはローソン銀行ATMの売上金入金と同じです。';
   container.appendChild(note);
 
   overlay.appendChild(container);
