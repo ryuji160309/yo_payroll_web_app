@@ -115,8 +115,13 @@ th, td {
 }
 
 #pw-overlay .pw-keypad button {
-  padding: 1rem;
+  width: 4rem;
+  height: 4rem;
   font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 #pw-overlay .pw-keypad .pw-empty {
