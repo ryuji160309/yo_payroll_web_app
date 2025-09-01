@@ -55,10 +55,6 @@ th, td {
   width: 4rem;
 }
 
-.back-btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 1rem;
-}
 
 .info-box {
   border: 1px solid #ccc;
@@ -144,7 +140,6 @@ th, td {
   bottom: 1rem;
   right: 1rem;
   z-index: 900;
-  padding: 0.25rem 0.5rem;
 }
 
 #help-overlay {
