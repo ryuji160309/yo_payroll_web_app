@@ -10,12 +10,17 @@ header {
   padding: 0.5rem 1rem;
   background: #f0f0f0;
 }
+
+button,
+select {
+  padding: 0.25rem 0.5rem;
+  font-size: 1rem;
+}
+
 #store-list button, #sheet-list button {
   display: block;
   width: 90%;
   margin: 0.5rem auto;
-  padding: 0.75rem;
-  font-size: 1rem;
 }
 #base-wage-control {
   margin: 0.5rem 0;
@@ -44,7 +49,6 @@ th, td {
 #recalc,
 #download {
   margin: 1rem;
-  padding: 0.5rem 1rem;
 }
 
 .wage-input {
@@ -124,6 +128,7 @@ th, td {
   box-sizing: border-box;
   border-radius: 50%;
   -webkit-border-radius: 50%;
+  padding: 0;
 }
 
 #pw-overlay .pw-keypad .pw-empty {
@@ -139,7 +144,7 @@ th, td {
   bottom: 1rem;
   right: 1rem;
   z-index: 900;
-  padding: 0.5rem 1rem;
+  padding: 0.25rem 0.5rem;
 }
 
 #help-overlay {
