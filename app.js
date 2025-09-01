@@ -47,7 +47,7 @@ function initPasswordGate() {
 
   const note = document.createElement('div');
   note.className = 'pw-note';
-  note.textContent = 'パスワードはローソン銀行ATMの売上金入金と同じです。';
+  note.textContent = 'パスワードはATMの売上金入金と同じです。';
   container.appendChild(note);
 
   overlay.appendChild(container);
