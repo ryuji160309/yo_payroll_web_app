@@ -1,7 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await settingsLoadPromise;
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const list = document.getElementById('store-list');
   const stores = loadStores();
+  if (window.settingsError) {
+    const err = document.getElementById('settings-error');
+    if (err) {
+      err.textContent = '設定が読み込めませんでした。\n設定からエラーを確認してください。\nデフォルトの値を使用します。';
+    }
+  }
   Object.keys(stores).forEach(key => {
     const btn = document.createElement('button');
     btn.textContent = stores[key].name;
