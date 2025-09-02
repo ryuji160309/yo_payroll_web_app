@@ -21,17 +21,6 @@ function initPasswordGate() {
   message.textContent = 'パスワードを入力してください。';
   container.appendChild(message);
 
-  let loadingCover;
-  if (!settingsLoaded) {
-    loadingCover = document.createElement('div');
-    loadingCover.className = 'pw-loading';
-    loadingCover.textContent = 'パスワード問い合わせ中・・・';
-    message.appendChild(loadingCover);
-    settingsLoadPromise.finally(() => {
-      loadingCover.remove();
-    });
-  }
-
   const display = document.createElement('div');
   display.id = 'pw-display';
   display.className = 'pw-display';
@@ -43,6 +32,16 @@ function initPasswordGate() {
     slots.push(span);
   }
   container.appendChild(display);
+
+  if (!settingsLoaded) {
+    const loadingCover = document.createElement('div');
+    loadingCover.className = 'pw-loading';
+    loadingCover.textContent = 'パスワード問い合わせ中・・・';
+    display.appendChild(loadingCover);
+    settingsLoadPromise.finally(() => {
+      loadingCover.remove();
+    });
+  }
 
   const keypad = document.createElement('div');
   keypad.className = 'pw-keypad';
