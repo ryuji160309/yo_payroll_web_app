@@ -175,7 +175,7 @@ async function fetchRemoteSettings() {
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet || sheet['B4']?.v !== 'ALL OK') {
+    if (!sheet || sheet['B4']?.v !== 'All_OK') {
       window.settingsError = true;
       return;
     }
