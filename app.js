@@ -2,7 +2,6 @@ const APP_VERSION = '1.4.3';
 
 let PASSWORD = '3963';
 window.settingsError = false;
-window.settingsChecks = [];
 const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=xlsx';
 
 // Simple password gate to restrict access
@@ -52,7 +51,7 @@ function initPasswordGate() {
 
   const note = document.createElement('div');
   note.className = 'pw-note';
-  note.textContent = 'パスワードはATMの売上金入金と同じです。';
+  note.innerHTML = 'デフォルトのパスワードはATMの売上金入金と同じです。<br>パスワードは設定用スプレッドシートから変更できます。';
   container.appendChild(note);
 
   overlay.appendChild(container);
@@ -173,24 +172,15 @@ async function fetchRemoteSettings() {
     const hasOutput = /[?&]output=/.test(SETTINGS_URL);
 
     if (hasOutput) {
-      try {
-        const direct = await fetch(SETTINGS_URL, { cache: 'no-store' });
-        if (direct.ok) {
-          res = direct;
-          window.settingsChecks.push('設定ファイルURL直接 OK');
-        } else {
-          window.settingsChecks.push('設定ファイルURL直接 ERROR');
-        }
-      } catch (e) {
-        window.settingsChecks.push('設定ファイルURL直接 ERROR');
+      const direct = await fetch(SETTINGS_URL, { cache: 'no-store' });
+      if (direct.ok) {
+        res = direct;
       }
     }
 
     if (!res) {
       const exportUrl = toXlsxExportUrl(SETTINGS_URL);
       if (!exportUrl) {
-        window.settingsChecks.push('設定ファイルURL変換 ERROR');
-        window.settingsChecks.push('設定ファイルダウンロード ERROR');
         window.settingsError = true;
         return;
       }
@@ -198,34 +188,38 @@ async function fetchRemoteSettings() {
         const converted = await fetch(exportUrl, { cache: 'no-store' });
         if (converted.ok) {
           res = converted;
-          window.settingsChecks.push('設定ファイルURL変換 OK');
         } else {
-          window.settingsChecks.push('設定ファイルURL変換 ERROR');
-          window.settingsChecks.push('設定ファイルダウンロード ERROR');
           window.settingsError = true;
           return;
         }
       } catch (e) {
-        window.settingsChecks.push('設定ファイルURL変換 ERROR');
-        window.settingsChecks.push('設定ファイルダウンロード ERROR');
         window.settingsError = true;
         return;
       }
     }
 
-    window.settingsChecks.push('設定ファイルダウンロード OK');
 
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet || sheet['B4']?.v !== 'All_OK') {
-
-      window.settingsChecks.push('B4=All_OK ERROR');
-
+    const status = sheet?.['B4']?.v;
+    if (!sheet || status !== 'ALL_OK') {
       window.settingsError = true;
+      const details = [];
+      if (status && status !== 'ALL_OK') details.push(String(status));
+      const cells = [
+        { addr: 'B5', label: 'URL設定' },
+        { addr: 'B6', label: '基本時給設定' },
+        { addr: 'B7', label: '時間外倍率設定' },
+        { addr: 'B8', label: 'パスワード' },
+      ];
+      cells.forEach(c => {
+        const val = sheet?.[c.addr]?.v;
+        if (val && String(val) !== 'OK') details.push(`${c.label}：${val}`);
+      });
+      window.settingsErrorDetails = details;
       return;
     }
-    window.settingsChecks.push('B4=All_OK OK');
 
     const baseWage = Number(sheet['D11']?.v);
     const overtime = Number(sheet['F11']?.v);
@@ -250,19 +244,61 @@ async function fetchRemoteSettings() {
     if (Object.keys(stores).length) {
       DEFAULT_STORES = stores;
       if (password) PASSWORD = password;
-      window.settingsChecks.push('設定反映 OK');
     } else {
-      window.settingsChecks.push('設定反映 ERROR');
       window.settingsError = true;
     }
   } catch (e) {
     console.error('fetchRemoteSettings failed', e);
-    window.settingsChecks.push('設定ファイルダウンロード ERROR');
     window.settingsError = true;
   }
 }
 
-const settingsLoadPromise = fetchRemoteSettings();
+let settingsLoadPromise;
+
+function loadSettingsFromSession() {
+  const raw = sessionStorage.getItem('remoteSettings');
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    if (data.stores) DEFAULT_STORES = data.stores;
+    if (data.password) PASSWORD = data.password;
+    if (data.settingsError) window.settingsError = true;
+    if (data.settingsErrorDetails) window.settingsErrorDetails = data.settingsErrorDetails;
+    return true;
+  } catch (e) {
+    console.error('loadSettingsFromSession parse failed', e);
+    sessionStorage.removeItem('remoteSettings');
+    return false;
+  }
+}
+
+function saveSettingsToSession() {
+  try {
+    sessionStorage.setItem('remoteSettings', JSON.stringify({
+      stores: DEFAULT_STORES,
+      password: PASSWORD,
+      settingsError: window.settingsError || undefined,
+      settingsErrorDetails: window.settingsErrorDetails || undefined,
+    }));
+  } catch (e) {
+    console.error('saveSettingsToSession failed', e);
+  }
+}
+
+function ensureSettingsLoaded() {
+  if (!settingsLoadPromise) {
+    if (loadSettingsFromSession()) {
+      settingsLoadPromise = Promise.resolve();
+    } else {
+      settingsLoadPromise = fetchRemoteSettings().then(() => {
+        saveSettingsToSession();
+      });
+    }
+  }
+  return settingsLoadPromise;
+}
+
+settingsLoadPromise = ensureSettingsLoaded();
 window.settingsLoadPromise = settingsLoadPromise;
 document.addEventListener('DOMContentLoaded', () => {
   settingsLoadPromise.finally(initPasswordGate);

@@ -1,16 +1,13 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  await settingsLoadPromise;
+  await ensureSettingsLoaded();
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const list = document.getElementById('store-list');
   const stores = loadStores();
   const err = document.getElementById('settings-error');
-  if (err && Array.isArray(window.settingsChecks)) {
-    err.textContent = window.settingsChecks.join('\n');
-  }
   if (window.settingsError && err) {
-    err.textContent += (err.textContent ? '\n' : '') +
-      '設定が読み込めませんでした。\n設定からエラーを確認してください。\nデフォルトの値を使用します。';
+    err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
   }
+  initializeHelp('help/top.txt');
   Object.keys(stores).forEach(key => {
     const btn = document.createElement('button');
     btn.textContent = stores[key].name;

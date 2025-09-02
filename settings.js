@@ -1,9 +1,13 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  await settingsLoadPromise;
+  await ensureSettingsLoaded();
   if (window.settingsError) {
     const err = document.getElementById('settings-error');
     if (err) {
-      err.textContent = '設定が読み込めませんでした。\nデフォルトの値を表示しています。';
+      const lines = ['設定が読み込めませんでした。', 'デフォルトの値を表示しています。'];
+      if (Array.isArray(window.settingsErrorDetails)) {
+        lines.push(...window.settingsErrorDetails);
+      }
+      err.textContent = lines.join('\n');
     }
   }
   initializeHelp('help/settings.txt');

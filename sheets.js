@@ -13,7 +13,7 @@ function formatSheetName(name) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await settingsLoadPromise;
+  await ensureSettingsLoaded();
   initializeHelp('help/sheets.txt');
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   } catch (e) {
     stopLoading(statusEl);
-    document.getElementById('sheet-list').textContent = 'URLが変更された可能性があります。設定からURL変更をお試しください。';
+    const listEl = document.getElementById('sheet-list');
+    listEl.style.color = 'red';
+    listEl.style.whiteSpace = 'pre-line';
+    listEl.textContent = 'シート一覽が読み込めませんでした。\nURLが間違っていないか設定から確認ください。';
   }
 });
