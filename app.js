@@ -168,7 +168,9 @@ let DEFAULT_STORES = {
 
 async function fetchRemoteSettings() {
   try {
-    const res = await fetch(SETTINGS_URL, { cache: 'no-store' });
+    const exportUrl = toXlsxExportUrl(SETTINGS_URL);
+    if (!exportUrl) throw new Error('Invalid SETTINGS_URL');
+    const res = await fetch(exportUrl, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
@@ -305,7 +307,7 @@ function stopLoading(el) {
 
 
 function extractFileId(url) {
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+  const match = url.match(/\/d\/(?:e\/)?([a-zA-Z0-9_-]+)(?:\/|$)/);
   return match ? match[1] : null;
 }
 
