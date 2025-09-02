@@ -227,19 +227,28 @@ async function fetchRemoteSettings() {
     const passwordCell = sheet['J11'];
     const password = passwordCell ? String(passwordCell.v) : null;
     const excludeWords = [];
-    for (let r = 11; ; r++) {
+    for (let r = 11, count = 0; ; r++) {
       const cell = sheet[`H${r}`];
-      if (!cell || cell.v === undefined || cell.v === '') break;
+      if (!cell || cell.v === undefined || cell.v === '') {
+        if (count > 0) break;
+        continue;
+      }
       excludeWords.push(String(cell.v));
+      count++;
     }
     const stores = {};
+    let idx = 1;
     for (let r = 11; ; r++) {
       const nameCell = sheet[`A${r}`];
       const urlCell = sheet[`B${r}`];
-      if ((!nameCell || nameCell.v === undefined || nameCell.v === '') && (!urlCell || urlCell.v === undefined || urlCell.v === '')) break;
+      if ((!nameCell || nameCell.v === undefined || nameCell.v === '') && (!urlCell || urlCell.v === undefined || urlCell.v === '')) {
+        if (idx > 1) break;
+        continue;
+      }
       if (nameCell && nameCell.v && urlCell && urlCell.v) {
-        const key = `store${r - 10}`;
+        const key = `store${idx}`;
         stores[key] = { name: String(nameCell.v), url: String(urlCell.v), baseWage, overtime, excludeWords };
+        idx++;
       }
     }
     if (Object.keys(stores).length) {
