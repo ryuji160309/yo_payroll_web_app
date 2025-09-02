@@ -202,11 +202,12 @@ async function fetchRemoteSettings() {
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    const status = sheet?.['B4']?.v;
+    const rawStatus = sheet?.['B4']?.v;
+    const status = rawStatus != null ? String(rawStatus).trim().toUpperCase() : null;
     if (!sheet || status !== 'ALL_OK') {
       window.settingsError = true;
       const details = [];
-      if (status && status !== 'ALL_OK') details.push(String(status));
+      if (rawStatus != null && status !== 'ALL_OK') details.push(String(rawStatus));
       const cells = [
         { addr: 'B5', label: 'URL設定' },
         { addr: 'B6', label: '基本時給設定' },
