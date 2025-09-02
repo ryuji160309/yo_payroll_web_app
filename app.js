@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4.3';
+const APP_VERSION = '1.4.4';
 
 let PASSWORD = '3963';
 window.settingsError = false;
