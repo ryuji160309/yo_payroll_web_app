@@ -1,4 +1,5 @@
 const APP_VERSION = '1.4.4';
+const REMOTE_SETTINGS_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 let PASSWORD = '3963';
 window.settingsError = false;
@@ -19,6 +20,17 @@ function initPasswordGate() {
   message.className = 'pw-message';
   message.textContent = 'パスワードを入力してください。';
   container.appendChild(message);
+
+  let loadingCover;
+  if (!settingsLoaded) {
+    loadingCover = document.createElement('div');
+    loadingCover.className = 'pw-loading';
+    loadingCover.textContent = 'パスワード問い合わせ中・・・';
+    message.appendChild(loadingCover);
+    settingsLoadPromise.finally(() => {
+      loadingCover.remove();
+    });
+  }
 
   const display = document.createElement('div');
   display.id = 'pw-display';
@@ -78,13 +90,15 @@ function initPasswordGate() {
     input += d;
     updateDisplay();
     if (input.length === 4) {
-      if (input === PASSWORD) {
-        sessionStorage.setItem('pwAuth', '1');
-        window.removeEventListener('keydown', onKey);
-        overlay.remove();
-      } else {
-        clearInput('パスワードが間違っています。');
-      }
+      setTimeout(() => {
+        if (input === PASSWORD) {
+          sessionStorage.setItem('pwAuth', '1');
+          window.removeEventListener('keydown', onKey);
+          overlay.remove();
+        } else {
+          clearInput('パスワードが間違っています。');
+        }
+      }, 150);
     }
   }
   function delDigit() {
@@ -264,12 +278,17 @@ async function fetchRemoteSettings() {
 }
 
 let settingsLoadPromise;
+let settingsLoaded = false;
 
 function loadSettingsFromSession() {
   const raw = sessionStorage.getItem('remoteSettings');
   if (!raw) return false;
   try {
     const data = JSON.parse(raw);
+    if (!data.fetchedAt || Date.now() - data.fetchedAt > REMOTE_SETTINGS_TTL_MS) {
+      sessionStorage.removeItem('remoteSettings');
+      return false;
+    }
     if (data.stores) DEFAULT_STORES = data.stores;
     if (data.password) PASSWORD = data.password;
     if (data.settingsError) window.settingsError = true;
@@ -285,6 +304,7 @@ function loadSettingsFromSession() {
 function saveSettingsToSession() {
   try {
     sessionStorage.setItem('remoteSettings', JSON.stringify({
+      fetchedAt: Date.now(),
       stores: DEFAULT_STORES,
       password: PASSWORD,
       settingsError: window.settingsError || undefined,
@@ -296,23 +316,25 @@ function saveSettingsToSession() {
 }
 
 function ensureSettingsLoaded() {
+  if (loadSettingsFromSession()) {
+    return Promise.resolve();
+  }
   if (!settingsLoadPromise) {
-    if (loadSettingsFromSession()) {
-      settingsLoadPromise = Promise.resolve();
-    } else {
-      settingsLoadPromise = fetchRemoteSettings().then(() => {
-        saveSettingsToSession();
-      });
-    }
+    settingsLoadPromise = fetchRemoteSettings().then(() => {
+      saveSettingsToSession();
+    }).finally(() => {
+      settingsLoadPromise = null;
+    });
   }
   return settingsLoadPromise;
 }
 
 settingsLoadPromise = ensureSettingsLoaded();
-window.settingsLoadPromise = settingsLoadPromise;
-document.addEventListener('DOMContentLoaded', () => {
-  settingsLoadPromise.finally(initPasswordGate);
+settingsLoadPromise.then(() => {
+  settingsLoaded = true;
 });
+window.settingsLoadPromise = settingsLoadPromise;
+document.addEventListener('DOMContentLoaded', initPasswordGate);
 
 function loadStores() {
   let stored = {};
