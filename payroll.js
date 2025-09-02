@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  await settingsLoadPromise;
+  await ensureSettingsLoaded();
   initializeHelp('help/payroll.txt');
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('download').addEventListener('click', () => downloadResults(storeName, `${year}${startMonthRaw}`, results));
   } catch (e) {
     stopLoading(statusEl);
-    document.getElementById('error').innerHTML = 'スプレッドシートを読み込めませんでした。<br>通信状況が悪いか、URLが変更された可能性があります。<br>店舗選択画面の設定からURL変更をお試しください。';
+    document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
   }
 });
 
