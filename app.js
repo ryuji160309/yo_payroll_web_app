@@ -175,7 +175,8 @@ async function fetchRemoteSettings() {
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet || sheet['B4']?.v !== 'ALL OK') {
+
+    if (!sheet || sheet['B4']?.v !== 'All_OK') {
       window.settingsError = true;
       return;
     }
@@ -196,7 +197,9 @@ async function fetchRemoteSettings() {
       if ((!nameCell || nameCell.v === undefined || nameCell.v === '') && (!urlCell || urlCell.v === undefined || urlCell.v === '')) break;
       if (nameCell && nameCell.v && urlCell && urlCell.v) {
         const key = `store${r - 10}`;
-        stores[key] = { name: String(nameCell.v), url: String(urlCell.v), baseWage, overtime, excludeWords };
+        const rawUrl = String(urlCell.v);
+        const url = toXlsxExportUrl(rawUrl) || rawUrl;
+        stores[key] = { name: String(nameCell.v), url, baseWage, overtime, excludeWords };
       }
     }
     if (Object.keys(stores).length) {
