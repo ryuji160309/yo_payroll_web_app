@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 
 let PASSWORD = '3963';
 window.settingsError = false;
@@ -170,6 +170,7 @@ let DEFAULT_STORES = {
 async function fetchRemoteSettings() {
   try {
     const exportUrl = toXlsxExportUrl(SETTINGS_URL);
+
     if (!exportUrl) {
       window.settingsChecks.push('設定ファイルURL解析 ERROR');
       window.settingsError = true;
@@ -185,11 +186,14 @@ async function fetchRemoteSettings() {
     }
     window.settingsChecks.push('設定ファイルダウンロード OK');
 
+
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     if (!sheet || sheet['B4']?.v !== 'All_OK') {
+
       window.settingsChecks.push('B4=All_OK ERROR');
+
       window.settingsError = true;
       return;
     }
