@@ -2,6 +2,7 @@ const APP_VERSION = '1.4.1';
 
 let PASSWORD = '3963';
 window.settingsError = false;
+window.settingsChecks = [];
 const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=xlsx';
 
 // Simple password gate to restrict access
@@ -168,15 +169,32 @@ let DEFAULT_STORES = {
 
 async function fetchRemoteSettings() {
   try {
-    const res = await fetch(SETTINGS_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const buffer = await res.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet || sheet['B4']?.v !== 'ALL OK') {
+    const exportUrl = toXlsxExportUrl(SETTINGS_URL);
+    if (!exportUrl) {
+      window.settingsChecks.push('設定ファイルURL解析 ERROR');
       window.settingsError = true;
       return;
     }
+    window.settingsChecks.push('設定ファイルURL解析 OK');
+
+    const res = await fetch(exportUrl, { cache: 'no-store' });
+    if (!res.ok) {
+      window.settingsChecks.push('設定ファイルダウンロード ERROR');
+      window.settingsError = true;
+      return;
+    }
+    window.settingsChecks.push('設定ファイルダウンロード OK');
+
+    const buffer = await res.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    if (!sheet || sheet['B4']?.v !== 'All_OK') {
+      window.settingsChecks.push('B4=All_OK ERROR');
+      window.settingsError = true;
+      return;
+    }
+    window.settingsChecks.push('B4=All_OK OK');
+
     const baseWage = Number(sheet['D11']?.v);
     const overtime = Number(sheet['F11']?.v);
     const passwordCell = sheet['J11'];
@@ -200,11 +218,14 @@ async function fetchRemoteSettings() {
     if (Object.keys(stores).length) {
       DEFAULT_STORES = stores;
       if (password) PASSWORD = password;
+      window.settingsChecks.push('設定反映 OK');
     } else {
+      window.settingsChecks.push('設定反映 ERROR');
       window.settingsError = true;
     }
   } catch (e) {
     console.error('fetchRemoteSettings failed', e);
+    window.settingsChecks.push('設定ファイルダウンロード ERROR');
     window.settingsError = true;
   }
 }
@@ -305,7 +326,7 @@ function stopLoading(el) {
 
 
 function extractFileId(url) {
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+  const match = url.match(/\/d\/(?:e\/)?([a-zA-Z0-9_-]+)(?:\/|$)/);
   return match ? match[1] : null;
 }
 
