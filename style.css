@@ -87,6 +87,16 @@ th, td {
 
 #pw-overlay .pw-message {
   margin-bottom: 0.5rem;
+  position: relative;
+}
+
+#pw-overlay .pw-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #pw-overlay .pw-display {
