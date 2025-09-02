@@ -1,4 +1,4 @@
-const APP_VERSION = '1.3.5';
+const APP_VERSION = '1.4.0';
 
 let PASSWORD = '3963';
 window.settingsError = false;
@@ -173,6 +173,7 @@ async function fetchRemoteSettings() {
     const text = await res.text();
     const wb = XLSX.read(text, { type: 'string' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
+
     if (!sheet || sheet['B4']?.v !== 'All_OK') {
       window.settingsError = true;
       return;
