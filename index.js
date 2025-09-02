@@ -3,11 +3,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const list = document.getElementById('store-list');
   const stores = loadStores();
-  if (window.settingsError) {
-    const err = document.getElementById('settings-error');
-    if (err) {
-      err.textContent = '設定が読み込めませんでした。\n設定からエラーを確認してください。\nデフォルトの値を使用します。';
-    }
+  const err = document.getElementById('settings-error');
+  if (err && Array.isArray(window.settingsChecks)) {
+    err.textContent = window.settingsChecks.join('\n');
+  }
+  if (window.settingsError && err) {
+    err.textContent += (err.textContent ? '\n' : '') +
+      '設定が読み込めませんでした。\n設定からエラーを確認してください。\nデフォルトの値を使用します。';
   }
   Object.keys(stores).forEach(key => {
     const btn = document.createElement('button');
