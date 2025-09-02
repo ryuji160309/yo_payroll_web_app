@@ -1,5 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
   await settingsLoadPromise;
+  if (window.settingsError) {
+    const err = document.getElementById('settings-error');
+    if (err) {
+      err.textContent = '設定が読み込めませんでした。\nデフォルトの値を表示しています。';
+    }
+  }
   initializeHelp('help/settings.txt');
   const select = document.getElementById('store-select');
   Object.keys(DEFAULT_STORES).forEach(key => {

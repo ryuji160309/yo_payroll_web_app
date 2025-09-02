@@ -1,8 +1,8 @@
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 
 let PASSWORD = '3963';
 window.settingsError = false;
-const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=csv';
+const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=xlsx';
 
 // Simple password gate to restrict access
 function initPasswordGate() {
@@ -170,8 +170,8 @@ async function fetchRemoteSettings() {
   try {
     const res = await fetch(SETTINGS_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    const wb = XLSX.read(text, { type: 'string' });
+    const buffer = await res.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     if (!sheet || sheet['B4']?.v !== 'ALL OK') {
       window.settingsError = true;
