@@ -169,23 +169,51 @@ let DEFAULT_STORES = {
 
 async function fetchRemoteSettings() {
   try {
-    const exportUrl = toXlsxExportUrl(SETTINGS_URL);
+    let res;
+    const hasOutput = /[?&]output=/.test(SETTINGS_URL);
 
-    if (!exportUrl) {
-      window.settingsChecks.push('設定ファイルURL解析 ERROR');
-      window.settingsError = true;
-      return;
+    if (hasOutput) {
+      try {
+        const direct = await fetch(SETTINGS_URL, { cache: 'no-store' });
+        if (direct.ok) {
+          res = direct;
+          window.settingsChecks.push('設定ファイルURL直接 OK');
+        } else {
+          window.settingsChecks.push('設定ファイルURL直接 ERROR');
+        }
+      } catch (e) {
+        window.settingsChecks.push('設定ファイルURL直接 ERROR');
+      }
     }
-    window.settingsChecks.push('設定ファイルURL解析 OK');
 
-    const res = await fetch(exportUrl, { cache: 'no-store' });
-    if (!res.ok) {
-      window.settingsChecks.push('設定ファイルダウンロード ERROR');
-      window.settingsError = true;
-      return;
+    if (!res) {
+      const exportUrl = toXlsxExportUrl(SETTINGS_URL);
+      if (!exportUrl) {
+        window.settingsChecks.push('設定ファイルURL変換 ERROR');
+        window.settingsChecks.push('設定ファイルダウンロード ERROR');
+        window.settingsError = true;
+        return;
+      }
+      try {
+        const converted = await fetch(exportUrl, { cache: 'no-store' });
+        if (converted.ok) {
+          res = converted;
+          window.settingsChecks.push('設定ファイルURL変換 OK');
+        } else {
+          window.settingsChecks.push('設定ファイルURL変換 ERROR');
+          window.settingsChecks.push('設定ファイルダウンロード ERROR');
+          window.settingsError = true;
+          return;
+        }
+      } catch (e) {
+        window.settingsChecks.push('設定ファイルURL変換 ERROR');
+        window.settingsChecks.push('設定ファイルダウンロード ERROR');
+        window.settingsError = true;
+        return;
+      }
     }
+
     window.settingsChecks.push('設定ファイルダウンロード OK');
-
 
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
