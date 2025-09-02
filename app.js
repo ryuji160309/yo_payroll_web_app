@@ -1,4 +1,8 @@
-const APP_VERSION = '1.3.4';
+const APP_VERSION = '1.3.5';
+
+let PASSWORD = '3963';
+window.settingsError = false;
+const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=csv';
 
 // Simple password gate to restrict access
 function initPasswordGate() {
@@ -74,7 +78,7 @@ function initPasswordGate() {
     input += d;
     updateDisplay();
     if (input.length === 4) {
-      if (input === '3963') {
+      if (input === PASSWORD) {
         sessionStorage.setItem('pwAuth', '1');
         window.removeEventListener('keydown', onKey);
         overlay.remove();
@@ -110,8 +114,6 @@ function initPasswordGate() {
   updateDisplay();
 }
 
-document.addEventListener('DOMContentLoaded', initPasswordGate);
-
 // Shared regex for time ranges such as "9:00-17:30"
 const TIME_RANGE_REGEX = /^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/;
 
@@ -126,7 +128,7 @@ const BREAK_DEDUCTIONS = [
 const loadingMap = new WeakMap();
 
 
-const DEFAULT_STORES = {
+let DEFAULT_STORES = {
   night: {
     name: '夜勤',
     url: 'https://docs.google.com/spreadsheets/d/1gCGyxiXXxOOhgHG2tk3BlzMpXuaWQULacySlIhhoWRY/edit?gid=601593061#gid=601593061',
@@ -163,6 +165,57 @@ const DEFAULT_STORES = {
     excludeWords: ['月', '日', '曜日', '空き', '予定', '.']
   }
 };
+
+async function fetchRemoteSettings() {
+  try {
+    const res = await fetch(SETTINGS_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const wb = XLSX.read(text, { type: 'string' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    if (!sheet || sheet['B4']?.v !== 'All_OK') {
+      window.settingsError = true;
+      return;
+    }
+    const baseWage = Number(sheet['D11']?.v);
+    const overtime = Number(sheet['F11']?.v);
+    const passwordCell = sheet['J11'];
+    const password = passwordCell ? String(passwordCell.v) : null;
+    const excludeWords = [];
+    for (let r = 11; ; r++) {
+      const cell = sheet[`H${r}`];
+      if (!cell || cell.v === undefined || cell.v === '') break;
+      excludeWords.push(String(cell.v));
+    }
+    const stores = {};
+    for (let r = 11; ; r++) {
+      const nameCell = sheet[`A${r}`];
+      const urlCell = sheet[`B${r}`];
+      if ((!nameCell || nameCell.v === undefined || nameCell.v === '') && (!urlCell || urlCell.v === undefined || urlCell.v === '')) break;
+      if (nameCell && nameCell.v && urlCell && urlCell.v) {
+        const key = `store${r - 10}`;
+        const rawUrl = String(urlCell.v);
+        const url = toXlsxExportUrl(rawUrl) || rawUrl;
+        stores[key] = { name: String(nameCell.v), url, baseWage, overtime, excludeWords };
+      }
+    }
+    if (Object.keys(stores).length) {
+      DEFAULT_STORES = stores;
+      if (password) PASSWORD = password;
+    } else {
+      window.settingsError = true;
+    }
+  } catch (e) {
+    console.error('fetchRemoteSettings failed', e);
+    window.settingsError = true;
+  }
+}
+
+const settingsLoadPromise = fetchRemoteSettings();
+window.settingsLoadPromise = settingsLoadPromise;
+document.addEventListener('DOMContentLoaded', () => {
+  settingsLoadPromise.finally(initPasswordGate);
+});
 
 function loadStores() {
   let stored = {};
