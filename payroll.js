@@ -202,41 +202,26 @@ async function downloadResults(storeName, period, results, format) {
       const mod = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
       jsPDF = mod.jsPDF;
     }
+    if (!jsPDF.API.autoTable) {
+      await import('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js');
+    }
     const doc = new jsPDF();
-    // Render the table onto a canvas so that browsers can handle
-    // international characters using their installed fonts.
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const fontSize = 12;
-    ctx.font = `${fontSize}px sans-serif`;
-    const padding = 4;
-    const rowHeight = fontSize * 1.6;
-    const colWidths = [];
-    aoa.forEach(row => {
-      row.forEach((cell, i) => {
-        const text = String(cell);
-        const width = ctx.measureText(text).width;
-        colWidths[i] = Math.max(colWidths[i] || 0, width);
-      });
+    try {
+      const fontUrl = 'https://unpkg.com/@fontsource/noto-sans-jp@5.0.3/files/noto-sans-jp-japanese-400-normal.ttf';
+      const fontBuf = await fetch(fontUrl).then(r => r.arrayBuffer());
+      const fontB64 = btoa(String.fromCharCode(...new Uint8Array(fontBuf)));
+      doc.addFileToVFS('NotoSansJP.ttf', fontB64);
+      doc.addFont('NotoSansJP.ttf', 'NotoSansJP', 'normal');
+      doc.setFont('NotoSansJP');
+    } catch (e) {
+      // If the font fails to load, fall back to the default font.
+    }
+    const body = results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary]);
+    body.push(['合計支払い給与', '', '', '', total]);
+    doc.autoTable({
+      head: [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与']],
+      body
     });
-    const totalWidth = colWidths.reduce((sum, w) => sum + w, 0) + padding * (colWidths.length + 1);
-    canvas.width = totalWidth;
-    canvas.height = rowHeight * aoa.length + padding;
-    ctx.font = `${fontSize}px sans-serif`;
-    ctx.textBaseline = 'top';
-    let y = padding;
-    aoa.forEach(row => {
-      let x = padding;
-      row.forEach((cell, i) => {
-        ctx.fillText(String(cell), x, y);
-        x += colWidths[i] + padding;
-      });
-      y += rowHeight;
-    });
-    const imgData = canvas.toDataURL('image/png');
-    const pdfWidth = doc.internal.pageSize.getWidth();
-    const pdfHeight = canvas.height * pdfWidth / canvas.width;
-    doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
     doc.save(`${period}_${storeName}.pdf`);
   } else {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
