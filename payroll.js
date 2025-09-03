@@ -203,9 +203,40 @@ async function downloadResults(storeName, period, results, format) {
       jsPDF = mod.jsPDF;
     }
     const doc = new jsPDF();
-    aoa.forEach((row, idx) => {
-      doc.text(row.join(' '), 10, 10 + idx * 10);
+    // Render the table onto a canvas so that browsers can handle
+    // international characters using their installed fonts.
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const fontSize = 12;
+    ctx.font = `${fontSize}px sans-serif`;
+    const padding = 4;
+    const rowHeight = fontSize * 1.6;
+    const colWidths = [];
+    aoa.forEach(row => {
+      row.forEach((cell, i) => {
+        const text = String(cell);
+        const width = ctx.measureText(text).width;
+        colWidths[i] = Math.max(colWidths[i] || 0, width);
+      });
     });
+    const totalWidth = colWidths.reduce((sum, w) => sum + w, 0) + padding * (colWidths.length + 1);
+    canvas.width = totalWidth;
+    canvas.height = rowHeight * aoa.length + padding;
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textBaseline = 'top';
+    let y = padding;
+    aoa.forEach(row => {
+      let x = padding;
+      row.forEach((cell, i) => {
+        ctx.fillText(String(cell), x, y);
+        x += colWidths[i] + padding;
+      });
+      y += rowHeight;
+    });
+    const imgData = canvas.toDataURL('image/png');
+    const pdfWidth = doc.internal.pageSize.getWidth();
+    const pdfHeight = canvas.height * pdfWidth / canvas.width;
+    doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
     doc.save(`${period}_${storeName}.pdf`);
   } else {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
