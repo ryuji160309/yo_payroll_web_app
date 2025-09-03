@@ -116,20 +116,83 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('total-salary').textContent = `合計支払い給与：${total.toLocaleString()}円`;
     });
 
-    document.getElementById('download').addEventListener('click', () => downloadResults(storeName, `${year}${startMonthRaw}`, results));
+    setupDownload(storeName, `${year}${startMonthRaw}`, results);
   } catch (e) {
     stopLoading(statusEl);
     document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
   }
 });
 
-function downloadResults(storeName, period, results) {
+function setupDownload(storeName, period, results) {
+  const button = document.getElementById('download');
+  const overlay = document.createElement('div');
+  overlay.id = 'download-overlay';
+  const popup = document.createElement('div');
+  popup.id = 'download-popup';
+  const options = document.createElement('div');
+  options.id = 'download-options';
+
+  const txtBtn = document.createElement('button');
+  txtBtn.textContent = 'テキスト形式';
+  const xlsxBtn = document.createElement('button');
+  xlsxBtn.textContent = 'EXCEL形式';
+  const csvBtn = document.createElement('button');
+  csvBtn.textContent = 'CSV形式';
+
+  options.appendChild(txtBtn);
+  options.appendChild(xlsxBtn);
+  options.appendChild(csvBtn);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'download-close';
+  closeBtn.textContent = '閉じる';
+
+  popup.appendChild(options);
+  popup.appendChild(closeBtn);
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+
+  function hide() {
+    overlay.style.display = 'none';
+  }
+
+  button.addEventListener('click', () => {
+    overlay.style.display = 'flex';
+  });
+  closeBtn.addEventListener('click', hide);
+  overlay.addEventListener('click', e => { if (e.target === overlay) hide(); });
+
+  txtBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'txt'); hide(); });
+  xlsxBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'xlsx'); hide(); });
+  csvBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'csv'); hide(); });
+}
+
+function downloadBlob(content, fileName, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+function downloadResults(storeName, period, results, format) {
   const aoa = [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与'], ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary])];
   const total = results.reduce((sum, r) => sum + r.salary, 0);
   aoa.push(['合計支払い給与', '', '', '', total]);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '結果');
-  const fileName = `${period}_${storeName}.xlsx`;
-  XLSX.writeFile(wb, fileName);
+
+  if (format === 'csv') {
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    downloadBlob(csv, `${period}_${storeName}.csv`, 'text/csv');
+  } else if (format === 'txt') {
+    const text = aoa.map(row => row.join('\t')).join('\n');
+    downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain');
+  } else {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '結果');
+    XLSX.writeFile(wb, `${period}_${storeName}.xlsx`);
+  }
 }
