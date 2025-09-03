@@ -11,10 +11,6 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.5.28"
-  },
   "devDependencies": {
     "jest": "^29.7.0"
   }

@@ -138,13 +138,9 @@ function setupDownload(storeName, period, results) {
   xlsxBtn.textContent = 'EXCEL形式';
   const csvBtn = document.createElement('button');
   csvBtn.textContent = 'CSV形式';
-  const pdfBtn = document.createElement('button');
-  pdfBtn.textContent = 'PDF形式';
-
   options.appendChild(txtBtn);
   options.appendChild(xlsxBtn);
   options.appendChild(csvBtn);
-  options.appendChild(pdfBtn);
 
   const closeBtn = document.createElement('button');
   closeBtn.id = 'download-close';
@@ -168,7 +164,6 @@ function setupDownload(storeName, period, results) {
   txtBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'txt'); hide(); });
   xlsxBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'xlsx'); hide(); });
   csvBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'csv'); hide(); });
-  pdfBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'pdf'); hide(); });
 }
 
 function downloadBlob(content, fileName, mimeType) {
@@ -194,44 +189,6 @@ async function downloadResults(storeName, period, results, format) {
   } else if (format === 'txt') {
     const text = aoa.map(row => row.join('\t')).join('\n');
     downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain');
-  } else if (format === 'pdf') {
-
-    const statusEl = document.getElementById('status');
-    startLoading(statusEl, 'ファイル生成中・・・');
-    try {
-      let jsPDF;
-      if (window.jspdf && window.jspdf.jsPDF) {
-        jsPDF = window.jspdf.jsPDF;
-      } else {
-        const mod = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
-        jsPDF = mod.jsPDF;
-      }
-      if (!jsPDF.API.autoTable) {
-        await import('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js');
-      }
-      const doc = new jsPDF();
-      try {
-        const fontUrl = 'https://unpkg.com/@fontsource/noto-sans-jp@5.0.3/files/noto-sans-jp-japanese-400-normal.ttf';
-        const fontBuf = await fetch(fontUrl).then(r => r.arrayBuffer());
-        const fontB64 = bufferToBase64(fontBuf);
-        doc.addFileToVFS('NotoSansJP.ttf', fontB64);
-        doc.addFont('NotoSansJP.ttf', 'NotoSansJP', 'normal');
-        doc.setFont('NotoSansJP');
-      } catch (e) {
-        // If the font fails to load, fall back to the default font.
-      }
-      const body = results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary]);
-      body.push(['合計支払い給与', '', '', '', total]);
-      doc.autoTable({
-        head: [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与']],
-        body,
-        styles: { font: 'NotoSansJP' }
-      });
-      doc.save(`${period}_${storeName}.pdf`);
-    } finally {
-      stopLoading(statusEl);
-    }
-
   } else {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
