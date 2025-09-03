@@ -182,3 +182,31 @@ th, td {
   display: block;
   margin: 1rem auto 0;
 }
+
+#download-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 950;
+}
+
+#download-popup {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 90%;
+}
+
+#download-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#download-close {
+  display: block;
+  margin: 1rem auto 0;
+}
