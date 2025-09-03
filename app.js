@@ -4,6 +4,7 @@ const REMOTE_SETTINGS_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let PASSWORD = '3963';
 window.settingsError = false;
 const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=xlsx';
+const SETTINGS_SHEET_NAME = '給与計算_設定';
 
 // Simple password gate to restrict access
 function initPasswordGate() {
@@ -214,10 +215,15 @@ async function fetchRemoteSettings() {
 
     const buffer = await res.arrayBuffer();
     const wb = XLSX.read(buffer, { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rawStatus = sheet?.['B4']?.v;
+    const sheet = wb.Sheets[SETTINGS_SHEET_NAME];
+    if (!sheet) {
+      window.settingsError = true;
+      window.settingsErrorDetails = [`シート「${SETTINGS_SHEET_NAME}」が見つかりません`];
+      return;
+    }
+    const rawStatus = sheet['B4']?.v;
     const status = rawStatus != null ? String(rawStatus).trim().toUpperCase() : null;
-    if (!sheet || status !== 'ALL_OK') {
+    if (status !== 'ALL_OK') {
       window.settingsError = true;
       const details = [];
       if (rawStatus != null && status !== 'ALL_OK') details.push(String(rawStatus));
@@ -228,7 +234,7 @@ async function fetchRemoteSettings() {
         { addr: 'B8', label: 'パスワード' },
       ];
       cells.forEach(c => {
-        const val = sheet?.[c.addr]?.v;
+        const val = sheet[c.addr]?.v;
         if (val && String(val) !== 'OK') details.push(`${c.label}：${val}`);
       });
       window.settingsErrorDetails = details;
