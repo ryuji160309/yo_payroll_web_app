@@ -195,6 +195,7 @@ async function downloadResults(storeName, period, results, format) {
     const text = aoa.map(row => row.join('\t')).join('\n');
     downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain');
   } else if (format === 'pdf') {
+
     const statusEl = document.getElementById('status');
     startLoading(statusEl, 'ファイル生成中・・・');
     try {
@@ -230,6 +231,7 @@ async function downloadResults(storeName, period, results, format) {
     } finally {
       stopLoading(statusEl);
     }
+
   } else {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
