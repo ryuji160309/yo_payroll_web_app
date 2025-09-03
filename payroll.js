@@ -195,34 +195,43 @@ async function downloadResults(storeName, period, results, format) {
     const text = aoa.map(row => row.join('\t')).join('\n');
     downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain');
   } else if (format === 'pdf') {
-    let jsPDF;
-    if (window.jspdf && window.jspdf.jsPDF) {
-      jsPDF = window.jspdf.jsPDF;
-    } else {
-      const mod = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
-      jsPDF = mod.jsPDF;
-    }
-    if (!jsPDF.API.autoTable) {
-      await import('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js');
-    }
-    const doc = new jsPDF();
+
+    const statusEl = document.getElementById('status');
+    startLoading(statusEl, 'ファイル生成中・・・');
     try {
-      const fontUrl = 'https://unpkg.com/@fontsource/noto-sans-jp@5.0.3/files/noto-sans-jp-japanese-400-normal.ttf';
-      const fontBuf = await fetch(fontUrl).then(r => r.arrayBuffer());
-      const fontB64 = btoa(String.fromCharCode(...new Uint8Array(fontBuf)));
-      doc.addFileToVFS('NotoSansJP.ttf', fontB64);
-      doc.addFont('NotoSansJP.ttf', 'NotoSansJP', 'normal');
-      doc.setFont('NotoSansJP');
-    } catch (e) {
-      // If the font fails to load, fall back to the default font.
+      let jsPDF;
+      if (window.jspdf && window.jspdf.jsPDF) {
+        jsPDF = window.jspdf.jsPDF;
+      } else {
+        const mod = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+        jsPDF = mod.jsPDF;
+      }
+      if (!jsPDF.API.autoTable) {
+        await import('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js');
+      }
+      const doc = new jsPDF();
+      try {
+        const fontUrl = 'https://unpkg.com/@fontsource/noto-sans-jp@5.0.3/files/noto-sans-jp-japanese-400-normal.ttf';
+        const fontBuf = await fetch(fontUrl).then(r => r.arrayBuffer());
+        const fontB64 = bufferToBase64(fontBuf);
+        doc.addFileToVFS('NotoSansJP.ttf', fontB64);
+        doc.addFont('NotoSansJP.ttf', 'NotoSansJP', 'normal');
+        doc.setFont('NotoSansJP');
+      } catch (e) {
+        // If the font fails to load, fall back to the default font.
+      }
+      const body = results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary]);
+      body.push(['合計支払い給与', '', '', '', total]);
+      doc.autoTable({
+        head: [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与']],
+        body,
+        styles: { font: 'NotoSansJP' }
+      });
+      doc.save(`${period}_${storeName}.pdf`);
+    } finally {
+      stopLoading(statusEl);
     }
-    const body = results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary]);
-    body.push(['合計支払い給与', '', '', '', total]);
-    doc.autoTable({
-      head: [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与']],
-      body
-    });
-    doc.save(`${period}_${storeName}.pdf`);
+
   } else {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
