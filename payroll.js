@@ -138,10 +138,13 @@ function setupDownload(storeName, period, results) {
   xlsxBtn.textContent = 'EXCEL形式';
   const csvBtn = document.createElement('button');
   csvBtn.textContent = 'CSV形式';
+  const pdfBtn = document.createElement('button');
+  pdfBtn.textContent = 'PDF形式';
 
   options.appendChild(txtBtn);
   options.appendChild(xlsxBtn);
   options.appendChild(csvBtn);
+  options.appendChild(pdfBtn);
 
   const closeBtn = document.createElement('button');
   closeBtn.id = 'download-close';
@@ -165,6 +168,7 @@ function setupDownload(storeName, period, results) {
   txtBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'txt'); hide(); });
   xlsxBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'xlsx'); hide(); });
   csvBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'csv'); hide(); });
+  pdfBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'pdf'); hide(); });
 }
 
 function downloadBlob(content, fileName, mimeType) {
@@ -178,19 +182,33 @@ function downloadBlob(content, fileName, mimeType) {
   URL.revokeObjectURL(a.href);
 }
 
-function downloadResults(storeName, period, results, format) {
+async function downloadResults(storeName, period, results, format) {
   const aoa = [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与'], ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary])];
   const total = results.reduce((sum, r) => sum + r.salary, 0);
   aoa.push(['合計支払い給与', '', '', '', total]);
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
 
   if (format === 'csv') {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     const csv = XLSX.utils.sheet_to_csv(ws);
     downloadBlob(csv, `${period}_${storeName}.csv`, 'text/csv');
   } else if (format === 'txt') {
     const text = aoa.map(row => row.join('\t')).join('\n');
     downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain');
+  } else if (format === 'pdf') {
+    let jsPDF;
+    if (window.jspdf && window.jspdf.jsPDF) {
+      jsPDF = window.jspdf.jsPDF;
+    } else {
+      const mod = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+      jsPDF = mod.jsPDF;
+    }
+    const doc = new jsPDF();
+    aoa.forEach((row, idx) => {
+      doc.text(row.join(' '), 10, 10 + idx * 10);
+    });
+    doc.save(`${period}_${storeName}.pdf`);
   } else {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '結果');
     XLSX.writeFile(wb, `${period}_${storeName}.xlsx`);
