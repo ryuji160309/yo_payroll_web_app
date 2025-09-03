@@ -168,7 +168,8 @@ function setupDownload(storeName, period, results) {
 }
 
 function downloadBlob(content, fileName, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
+  const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+  const blob = new Blob([bom, content], { type: `${mimeType};charset=utf-8` });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = fileName;
