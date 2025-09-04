@@ -321,15 +321,20 @@ function saveSettingsToSession() {
 }
 
 function ensureSettingsLoaded() {
-  if (loadSettingsFromSession()) {
-    return Promise.resolve();
-  }
+  // Always attempt to load previously fetched settings so that we have a
+  // usable configuration even if the network request fails. However, to make
+  // sure the latest settings are applied on every reload, we do not return
+  // early based on the cached data and instead always fetch the remote
+  // settings.
+  loadSettingsFromSession();
   if (!settingsLoadPromise) {
-    settingsLoadPromise = fetchRemoteSettings().then(() => {
-      saveSettingsToSession();
-    }).finally(() => {
-      settingsLoadPromise = null;
-    });
+    settingsLoadPromise = fetchRemoteSettings()
+      .then(() => {
+        saveSettingsToSession();
+      })
+      .finally(() => {
+        settingsLoadPromise = null;
+      });
   }
   return settingsLoadPromise;
 }
