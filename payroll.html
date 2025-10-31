@@ -20,12 +20,24 @@
   <p id="status" style="text-align:center"></p>
   <p id="total-salary" style="text-align:center"></p>
   <div id="base-wage-control" style="text-align:center">
+    <label for="base-wage-input">時給：</label>
     <input type="number" id="base-wage-input">
     <button id="set-base-wage">一括設定</button>
   </div>
+  <div id="transportation-control" style="text-align:center">
+    <label>
+      <input type="checkbox" id="transportation-toggle">
+      交通費を設定
+    </label>
+    <div id="transportation-bulk" style="display:none">
+      交通費：
+      <input type="number" id="transportation-input">
+      <button id="set-transportation">一括設定</button>
+    </div>
+  </div>
   <table id="employees">
     <thead>
-      <tr><th>従業員名</th><th>基本時給</th><th>勤務時間</th><th>出勤日数</th><th>給与</th></tr>
+      <tr><th>従業員名</th><th>基本時給</th><th>勤務時間</th><th>出勤日数</th><th>交通費</th><th>給与</th></tr>
     </thead>
     <tbody></tbody>
   </table>

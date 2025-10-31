@@ -35,7 +35,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     startLoading(statusEl, '計算中・・・');
 
     const { results, totalSalary, schedules } = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
-    document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
+    const totalSalaryEl = document.getElementById('total-salary');
+    const transportationToggle = document.getElementById('transportation-toggle');
+    const transportationBulk = document.getElementById('transportation-bulk');
+    const transportationInput = document.getElementById('transportation-input');
+    const setTransportationBtn = document.getElementById('set-transportation');
+    transportationInput.value = 0;
+    const transportationEnabled = () => transportationToggle && transportationToggle.checked;
+
+    function getActiveTransportation(amount) {
+      return transportationEnabled() ? amount : 0;
+    }
+
+    function updateSalaryCell(cell, idx) {
+      const transport = getActiveTransportation(results[idx].transportation || 0);
+      cell.textContent = (results[idx].salary + transport).toLocaleString();
+    }
+
+    function updateTotals() {
+      const includeTransportation = transportationEnabled();
+      const total = results.reduce((sum, r) => sum + r.salary + (includeTransportation ? (r.transportation || 0) : 0), 0);
+      totalSalaryEl.textContent = `合計支払い給与：${total.toLocaleString()}円`;
+    }
+
+    totalSalaryEl.textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
     const tbody = document.querySelector('#employees tbody');
     results.forEach((r, idx) => {
       const tr = document.createElement('tr');
@@ -76,12 +99,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const salaryTd = document.createElement('td');
       salaryTd.className = 'salary-cell';
-      salaryTd.textContent = r.salary.toLocaleString();
+      salaryTd.dataset.idx = idx;
+      updateSalaryCell(salaryTd, idx);
+
+      const transportationTd = document.createElement('td');
+      const transportationField = document.createElement('input');
+      transportationField.type = 'number';
+      transportationField.value = r.transportation || 0;
+      transportationField.className = 'transportation-input';
+      transportationField.dataset.idx = idx;
+      transportationField.disabled = !transportationEnabled();
+      transportationField.addEventListener('input', () => {
+        const value = Number(transportationField.value);
+        results[idx].transportation = Number.isFinite(value) ? value : 0;
+        updateSalaryCell(salaryTd, idx);
+        updateTotals();
+      });
+      transportationTd.appendChild(transportationField);
 
       tr.appendChild(nameTd);
       tr.appendChild(wageTd);
       tr.appendChild(hoursTd);
       tr.appendChild(daysTd);
+      tr.appendChild(transportationTd);
       tr.appendChild(salaryTd);
       tbody.appendChild(tr);
     });
@@ -100,30 +140,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('recalc').addEventListener('click', () => {
       const inputs = document.querySelectorAll('.wage-input');
       let total = 0;
+      const includeTransportation = transportationEnabled();
       inputs.forEach(input => {
         const idx = parseInt(input.dataset.idx, 10);
         const wage = Number(input.value);
         if (!Number.isFinite(wage)) {
-          total += results[idx].salary;
+          const transport = includeTransportation ? (results[idx].transportation || 0) : 0;
+          total += results[idx].salary + transport;
           return;
         }
         const r = calculateEmployee(schedules[idx], wage, store.overtime);
         results[idx].baseWage = wage;
         results[idx].salary = r.salary;
-        total += r.salary;
-        input.closest('tr').querySelector('.salary-cell').textContent = r.salary.toLocaleString();
+        const salaryCell = input.closest('tr').querySelector('.salary-cell');
+        const transport = includeTransportation ? (results[idx].transportation || 0) : 0;
+        total += r.salary + transport;
+        salaryCell.textContent = (r.salary + transport).toLocaleString();
       });
-      document.getElementById('total-salary').textContent = `合計支払い給与：${total.toLocaleString()}円`;
+      totalSalaryEl.textContent = `合計支払い給与：${total.toLocaleString()}円`;
     });
 
-    setupDownload(storeName, `${year}${startMonthRaw}`, results);
+    if (transportationToggle) {
+      const setEnabledState = enabled => {
+        transportationBulk.style.display = enabled ? 'inline-block' : 'none';
+        transportationInput.disabled = !enabled;
+        setTransportationBtn.disabled = !enabled;
+        document.querySelectorAll('.transportation-input').forEach(input => {
+          input.disabled = !enabled;
+        });
+        document.querySelectorAll('.salary-cell').forEach(cell => {
+          const idx = parseInt(cell.dataset.idx, 10);
+          updateSalaryCell(cell, idx);
+        });
+        updateTotals();
+      };
+
+      setEnabledState(transportationEnabled());
+
+      transportationToggle.addEventListener('change', () => {
+        setEnabledState(transportationToggle.checked);
+      });
+
+      setTransportationBtn.addEventListener('click', () => {
+        const amount = Number(transportationInput.value);
+        const value = Number.isFinite(amount) ? amount : 0;
+        document.querySelectorAll('.transportation-input').forEach(input => {
+          input.value = value;
+          const idx = parseInt(input.dataset.idx, 10);
+          results[idx].transportation = value;
+          const salaryCell = input.closest('tr').querySelector('.salary-cell');
+          updateSalaryCell(salaryCell, idx);
+        });
+        updateTotals();
+      });
+    }
+
+    updateTotals();
+
+    setupDownload(storeName, `${year}${startMonthRaw}`, results, transportationEnabled);
   } catch (e) {
     stopLoading(statusEl);
     document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
   }
 });
 
-function setupDownload(storeName, period, results) {
+function setupDownload(storeName, period, results, transportationEnabledFn = () => true) {
   const button = document.getElementById('download');
   const overlay = document.createElement('div');
   overlay.id = 'download-overlay';
@@ -161,9 +242,9 @@ function setupDownload(storeName, period, results) {
   closeBtn.addEventListener('click', hide);
   overlay.addEventListener('click', e => { if (e.target === overlay) hide(); });
 
-  txtBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'txt'); hide(); });
-  xlsxBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'xlsx'); hide(); });
-  csvBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'csv'); hide(); });
+  txtBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'txt', transportationEnabledFn()); hide(); });
+  xlsxBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'xlsx', transportationEnabledFn()); hide(); });
+  csvBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'csv', transportationEnabledFn()); hide(); });
 }
 
 function downloadBlob(content, fileName, mimeType) {
@@ -177,10 +258,16 @@ function downloadBlob(content, fileName, mimeType) {
   URL.revokeObjectURL(a.href);
 }
 
-async function downloadResults(storeName, period, results, format) {
-  const aoa = [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与'], ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary])];
-  const total = results.reduce((sum, r) => sum + r.salary, 0);
-  aoa.push(['合計支払い給与', '', '', '', total]);
+async function downloadResults(storeName, period, results, format, includeTransportation = true) {
+  const aoa = [['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'], ...results.map(r => {
+    const transportation = includeTransportation ? (r.transportation || 0) : 0;
+    return [r.name, r.baseWage, r.hours, r.days, transportation, r.salary + transportation];
+  })];
+  const total = results.reduce((sum, r) => {
+    const transportation = includeTransportation ? (r.transportation || 0) : 0;
+    return sum + r.salary + transportation;
+  }, 0);
+  aoa.push(['合計支払い給与', '', '', '', '', total]);
 
   if (format === 'csv') {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
