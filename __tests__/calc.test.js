@@ -27,8 +27,8 @@ describe('calculatePayroll', () => {
     const { results, totalSalary } = calculatePayroll(data, baseWage, overtime);
 
     expect(results).toEqual([
-      { name: 'Alice', baseWage, hours: 12, days: 2, salary: 12000, transportation: 0 },
-      { name: 'Bob', baseWage, hours: 9, days: 1, salary: 9250, transportation: 0 }
+      { name: 'Alice', baseWage, hours: 12, days: 2, salary: 12000 },
+      { name: 'Bob', baseWage, hours: 9, days: 1, salary: 9250 }
     ]);
     expect(totalSalary).toBe(21250);
   });
