@@ -20,17 +20,22 @@
   <p id="status" style="text-align:center"></p>
   <p id="total-salary" style="text-align:center"></p>
   <div id="base-wage-control" style="text-align:center">
+    <span>時給：</span>
     <input type="number" id="base-wage-input">
     <button id="set-base-wage">一括設定</button>
   </div>
+  <div id="transport-control" style="text-align:center">
+    <span>交通費：</span>
+    <input type="number" id="transport-input" value="0">
+    <button id="set-transport">一括設定</button>
+  </div>
   <table id="employees">
     <thead>
-      <tr><th>従業員名</th><th>基本時給</th><th>勤務時間</th><th>出勤日数</th><th>給与</th></tr>
+      <tr><th>従業員名</th><th>基本時給</th><th>勤務時間</th><th>出勤日数</th><th>交通費</th><th>給与</th></tr>
     </thead>
     <tbody></tbody>
   </table>
   <div id="actions">
-    <button id="recalc">再計算</button>
     <button id="download">計算結果ダウンロード</button>
   </div>
   <p id="error" style="color:red;text-align:center"></p>

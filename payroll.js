@@ -37,6 +37,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { results, totalSalary, schedules } = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
     document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
     const tbody = document.querySelector('#employees tbody');
+
+    function recalc() {
+      let total = 0;
+      document.querySelectorAll('.wage-input').forEach(input => {
+        const idx = parseInt(input.dataset.idx, 10);
+        const wage = Number(input.value);
+        if (Number.isFinite(wage)) {
+          const calcResult = calculateEmployee(schedules[idx], wage, store.overtime);
+          results[idx].baseWage = wage;
+          results[idx].baseSalary = calcResult.salary;
+        }
+        const baseSalary = results[idx].baseSalary;
+        const transportInput = document.querySelector(`.transport-input[data-idx="${idx}"]`);
+        const transportRaw = transportInput ? Number(transportInput.value) : 0;
+        const transport = Number.isFinite(transportRaw) ? transportRaw : 0;
+        results[idx].transport = transport;
+        const salary = baseSalary + transport;
+        results[idx].salary = salary;
+        const row = input.closest('tr');
+        if (row) {
+          const salaryCell = row.querySelector('.salary-cell');
+          if (salaryCell) salaryCell.textContent = salary.toLocaleString();
+        }
+        total += salary;
+      });
+      document.getElementById('total-salary').textContent = `合計支払い給与：${total.toLocaleString()}円`;
+    }
+
     results.forEach((r, idx) => {
       const tr = document.createElement('tr');
 
@@ -66,6 +94,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       input.value = r.baseWage;
       input.className = 'wage-input';
       input.dataset.idx = idx;
+      input.addEventListener('input', recalc);
       wageTd.appendChild(input);
 
       const hoursTd = document.createElement('td');
@@ -73,6 +102,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const daysTd = document.createElement('td');
       daysTd.textContent = r.days;
+
+      const transportTd = document.createElement('td');
+      const transportInput = document.createElement('input');
+      transportInput.type = 'number';
+      transportInput.value = r.transport;
+      transportInput.className = 'transport-input';
+      transportInput.dataset.idx = idx;
+      transportInput.addEventListener('input', recalc);
+      transportTd.appendChild(transportInput);
 
       const salaryTd = document.createElement('td');
       salaryTd.className = 'salary-cell';
@@ -82,9 +120,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       tr.appendChild(wageTd);
       tr.appendChild(hoursTd);
       tr.appendChild(daysTd);
+      tr.appendChild(transportTd);
       tr.appendChild(salaryTd);
       tbody.appendChild(tr);
     });
+    recalc();
     stopLoading(statusEl);
 
     const baseWageInput = document.getElementById('base-wage-input');
@@ -94,26 +134,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.querySelectorAll('.wage-input').forEach(input => {
         input.value = wage;
       });
-      document.getElementById('recalc').click();
+      recalc();
     });
 
-    document.getElementById('recalc').addEventListener('click', () => {
-      const inputs = document.querySelectorAll('.wage-input');
-      let total = 0;
-      inputs.forEach(input => {
-        const idx = parseInt(input.dataset.idx, 10);
-        const wage = Number(input.value);
-        if (!Number.isFinite(wage)) {
-          total += results[idx].salary;
-          return;
-        }
-        const r = calculateEmployee(schedules[idx], wage, store.overtime);
-        results[idx].baseWage = wage;
-        results[idx].salary = r.salary;
-        total += r.salary;
-        input.closest('tr').querySelector('.salary-cell').textContent = r.salary.toLocaleString();
+    const transportAllInput = document.getElementById('transport-input');
+    transportAllInput.value = 0;
+    document.getElementById('set-transport').addEventListener('click', () => {
+      const transport = Number(transportAllInput.value);
+      document.querySelectorAll('.transport-input').forEach(input => {
+        input.value = transport;
       });
-      document.getElementById('total-salary').textContent = `合計支払い給与：${total.toLocaleString()}円`;
+      recalc();
     });
 
     setupDownload(storeName, `${year}${startMonthRaw}`, results);
@@ -178,9 +209,12 @@ function downloadBlob(content, fileName, mimeType) {
 }
 
 async function downloadResults(storeName, period, results, format) {
-  const aoa = [['従業員名', '基本時給', '勤務時間', '出勤日数', '給与'], ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.salary])];
+  const aoa = [
+    ['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'],
+    ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.transport, r.salary])
+  ];
   const total = results.reduce((sum, r) => sum + r.salary, 0);
-  aoa.push(['合計支払い給与', '', '', '', total]);
+  aoa.push(['合計支払い給与', '', '', '', '', total]);
 
   if (format === 'csv') {
     const ws = XLSX.utils.aoa_to_sheet(aoa);

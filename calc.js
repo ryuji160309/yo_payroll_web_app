@@ -62,8 +62,17 @@ function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
 
   const results = names.map((name, idx) => {
     const r = calculateEmployee(schedules[idx], baseWage, overtime);
-    return { name, baseWage, hours: r.hours, days: r.days, salary: r.salary };
-    });
+    const baseSalary = r.salary;
+    return {
+      name,
+      baseWage,
+      hours: r.hours,
+      days: r.days,
+      baseSalary,
+      transport: 0,
+      salary: baseSalary
+    };
+  });
 
   const totalSalary = results.reduce((sum, r) => sum + r.salary, 0);
   return { results, totalSalary, schedules };
