@@ -25,7 +25,8 @@ select {
 #base-wage-control {
   margin: 0.5rem 0;
 }
-#base-wage-control input {
+#base-wage-control input,
+#transport-control input {
   width: 4rem;
 }
 table {
