@@ -1,4 +1,4 @@
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 const REMOTE_SETTINGS_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 let PASSWORD = '3963';
