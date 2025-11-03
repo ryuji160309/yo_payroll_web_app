@@ -39,7 +39,9 @@ th, td {
   text-align: center;
 }
 #employees th:nth-child(2),
-#employees td:nth-child(2) {
+#employees td:nth-child(2),
+#employees th:nth-child(5),
+#employees td:nth-child(5) {
   width: 6rem;
 }
 #actions {
