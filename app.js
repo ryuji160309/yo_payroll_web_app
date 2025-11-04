@@ -478,10 +478,13 @@ async function fetchWorkbook(url, sheetIndex = 0, storeKey) {
     sessionStorage.setItem(`workbook_${storeKey}`, bufferToBase64(buffer));
   }
   const wb = XLSX.read(buffer, { type: 'array' });
-  const sheetName = wb.SheetNames[sheetIndex] || wb.SheetNames[0];
+  const targetIndex = (sheetIndex >= 0 && sheetIndex < wb.SheetNames.length) ? sheetIndex : 0;
+  const sheetName = wb.SheetNames[targetIndex];
+  const metaSheets = wb.Workbook && wb.Workbook.Sheets;
+  const sheetId = metaSheets && metaSheets[targetIndex] ? metaSheets[targetIndex].sheetId : undefined;
 
   const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
-  return { sheetName, data };
+  return { sheetName, data, sheetId, sheetIndex: targetIndex };
 }
 
 async function fetchSheetList(url, storeKey) {
@@ -495,7 +498,12 @@ async function fetchSheetList(url, storeKey) {
     sessionStorage.setItem(`workbook_${storeKey}`, bufferToBase64(buffer));
   }
   const wb = XLSX.read(buffer, { type: 'array', bookSheets: true });
-  return wb.SheetNames.map((name, index) => ({ name, index }));
+  const metaSheets = wb.Workbook && wb.Workbook.Sheets;
+  return wb.SheetNames.map((name, index) => ({
+    name,
+    index,
+    sheetId: metaSheets && metaSheets[index] ? metaSheets[index].sheetId : undefined
+  }));
 
 }
 

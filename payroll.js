@@ -7,20 +7,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sheetIndex = parseInt(params.get('sheet'), 10) || 0;
   const store = getStore(storeKey);
   if (!store) return;
+  const openSourceBtn = document.getElementById('open-source');
+  if (openSourceBtn) {
+    openSourceBtn.disabled = true;
+  }
   const statusEl = document.getElementById('status');
   startLoading(statusEl, '読込中・・・');
   try {
     const key = `workbook_${storeKey}`;
     const cached = sessionStorage.getItem(key);
     let data;
+    let sheetId;
     if (cached) {
       const buffer = base64ToBuffer(cached);
       const wb = XLSX.read(buffer, { type: 'array' });
-      const sheetName = wb.SheetNames[sheetIndex] || wb.SheetNames[0];
+      const targetIndex = (sheetIndex >= 0 && sheetIndex < wb.SheetNames.length) ? sheetIndex : 0;
+      const sheetName = wb.SheetNames[targetIndex];
+      const metaSheets = wb.Workbook && wb.Workbook.Sheets;
+      sheetId = metaSheets && metaSheets[targetIndex] ? metaSheets[targetIndex].sheetId : undefined;
       data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
     } else {
       const result = await fetchWorkbook(store.url, sheetIndex, storeKey);
       data = result.data;
+      sheetId = result.sheetId;
     }
     stopLoading(statusEl);
     const year = data[1] && data[1][2];
@@ -148,6 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     setupDownload(storeName, `${year}${startMonthRaw}`, results);
+    setupSourceOpener(store.url, sheetId);
   } catch (e) {
     stopLoading(statusEl);
     document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
@@ -195,6 +205,43 @@ function setupDownload(storeName, period, results) {
   txtBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'txt'); hide(); });
   xlsxBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'xlsx'); hide(); });
   csvBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'csv'); hide(); });
+}
+
+function setupSourceOpener(storeUrl, sheetId) {
+  const button = document.getElementById('open-source');
+  if (!button) return;
+  if (!storeUrl) {
+    button.disabled = true;
+    button.title = '元シフトのURLが設定されていません。';
+    return;
+  }
+  button.disabled = false;
+  button.title = '';
+  button.addEventListener('click', () => {
+    const targetUrl = buildSheetUrl(storeUrl, sheetId);
+    window.open(targetUrl, '_blank', 'noopener');
+  });
+}
+
+function buildSheetUrl(baseUrl, sheetId) {
+  if (sheetId === undefined || sheetId === null) return baseUrl;
+  const gid = String(sheetId);
+  try {
+    const url = new URL(baseUrl);
+    if (url.searchParams.has('gid')) {
+      url.searchParams.set('gid', gid);
+    }
+    url.hash = `gid=${gid}`;
+    return url.toString();
+  } catch (e) {
+    if (baseUrl.includes('#gid=')) {
+      return baseUrl.replace(/#gid=\d+/, `#gid=${gid}`);
+    }
+    if (baseUrl.includes('gid=')) {
+      return baseUrl.replace(/gid=\d+/, `gid=${gid}`);
+    }
+    return `${baseUrl}${baseUrl.includes('#') ? '' : '#'}gid=${gid}`;
+  }
 }
 
 function downloadBlob(content, fileName, mimeType) {
