@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const storeKey = params.get('store');
 
   const sheetIndex = parseInt(params.get('sheet'), 10) || 0;
+  const sheetGidParam = params.get('gid');
   const store = getStore(storeKey);
   if (!store) return;
   const openSourceBtn = document.getElementById('open-source');
@@ -157,7 +158,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     setupDownload(storeName, `${year}${startMonthRaw}`, results);
-    setupSourceOpener(store.url, sheetId);
+    const preferredSheetId = sheetGidParam !== null ? sheetGidParam : sheetId;
+    setupSourceOpener(store.url, preferredSheetId);
   } catch (e) {
     stopLoading(statusEl);
     document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
