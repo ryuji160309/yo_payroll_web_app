@@ -27,12 +27,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     stopLoading(statusEl);
     const list = document.getElementById('sheet-list');
 
-    sheets.forEach(({ name, index }) => {
+    sheets.forEach(({ name, index, sheetId }) => {
       const btn = document.createElement('button');
       btn.textContent = formatSheetName(name);
       btn.addEventListener('click', () => {
-        window.location.href = `payroll.html?store=${storeKey}&sheet=${index}`;
-
+        const params = new URLSearchParams({ store: storeKey, sheet: index });
+        if (sheetId !== undefined && sheetId !== null) {
+          params.set('gid', sheetId);
+        }
+        window.location.href = `payroll.html?${params.toString()}`;
       });
       list.appendChild(btn);
     });
