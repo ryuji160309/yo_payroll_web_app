@@ -58,7 +58,8 @@ th, td {
   margin: 1rem;
 }
 
-.wage-input {
+.wage-input,
+.transport-input {
   width: 4rem;
 }
 
