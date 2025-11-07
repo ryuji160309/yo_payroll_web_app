@@ -152,6 +152,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('set-transport').addEventListener('click', () => {
       const transport = Number(transportAllInput.value);
       document.querySelectorAll('.transport-input').forEach(input => {
+        const idx = Number(input.dataset.idx);
+        if (!Number.isFinite(idx)) return;
+        const employee = results[idx];
+        if (!employee || employee.days === 0) {
+          return;
+        }
         input.value = transport;
       });
       recalc();
