@@ -23,7 +23,21 @@ const STATIC_ASSETS = [
 ];
 
 const OPTIONAL_ASSETS = ['/icons/icon-192.png', '/icons/icon-512.png'];
+const NETWORK_ONLY_PATHS = new Set(['/version.json']);
+const SPREADSHEET_HOST_SUFFIXES = ['googleusercontent.com'];
+const SPREADSHEET_HOSTS = new Set(['docs.google.com']);
 const CACHE_FIRST_PATHS = new Set([...STATIC_ASSETS, ...OPTIONAL_ASSETS]);
+
+function isSpreadsheetRequest(url) {
+  if (SPREADSHEET_HOSTS.has(url.hostname) && url.pathname.includes('/spreadsheets/')) {
+    return true;
+  }
+  return SPREADSHEET_HOST_SUFFIXES.some(suffix => url.hostname.endsWith(suffix));
+}
+
+function shouldCacheResponse(response) {
+  return response && (response.ok || response.type === 'opaque');
+}
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -33,7 +47,7 @@ self.addEventListener('install', event => {
         OPTIONAL_ASSETS.map(async asset => {
           try {
             const response = await fetch(asset);
-            if (response.ok) {
+            if (shouldCacheResponse(response)) {
               await cache.put(asset, response.clone());
             }
           } catch (error) {
@@ -65,11 +79,9 @@ self.addEventListener('fetch', event => {
   }
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+  const sameOrigin = url.origin === self.location.origin;
 
-  if (request.mode === 'navigate') {
+  if (sameOrigin && request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then(response => {
@@ -82,7 +94,17 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  const cacheFirst = CACHE_FIRST_PATHS.has(url.pathname);
+  if (sameOrigin && NETWORK_ONLY_PATHS.has(url.pathname)) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (isSpreadsheetRequest(url)) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  const cacheFirst = sameOrigin && CACHE_FIRST_PATHS.has(url.pathname);
 
   if (cacheFirst) {
     event.respondWith(
@@ -91,7 +113,7 @@ self.addEventListener('fetch', event => {
           return cached;
         }
         return fetch(request).then(response => {
-          if (response.ok) {
+          if (shouldCacheResponse(response)) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
@@ -105,7 +127,7 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(request)
       .then(response => {
-        if (response.ok) {
+        if (shouldCacheResponse(response)) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }

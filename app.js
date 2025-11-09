@@ -1,5 +1,117 @@
 const APP_VERSION = '1.6.0';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
+const VERSION_CHECK_URL = 'version.json';
+
+(function setupUpdateChecker() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  async function clearCachesAndReload(button, statusLabel) {
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '更新中…';
+    if (statusLabel) {
+      statusLabel.textContent = '更新の準備をしています…';
+    }
+
+    try {
+      if (window.caches && typeof caches.keys === 'function') {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+      if ('serviceWorker' in navigator && typeof navigator.serviceWorker.getRegistrations === 'function') {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          registrations.map(reg =>
+            reg.unregister().catch(() => {
+              /* ignore */
+            })
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Failed to prepare update', error);
+      button.disabled = false;
+      button.textContent = originalText;
+      if (statusLabel) {
+        statusLabel.textContent = '更新の準備中にエラーが発生しました。ページを再読み込みしてください。';
+      }
+      return;
+    }
+
+    if (statusLabel) {
+      statusLabel.textContent = '最新バージョンを読み込み直しています…';
+    }
+    window.location.reload();
+  }
+
+  function showUpdateNotice(latestVersion) {
+    if (document.getElementById('update-overlay')) {
+      return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'update-overlay';
+
+    const popup = document.createElement('div');
+    popup.id = 'update-popup';
+
+    const heading = document.createElement('h2');
+    heading.id = 'update-title';
+    heading.textContent = '更新のお知らせ';
+    popup.appendChild(heading);
+
+    const message = document.createElement('p');
+    message.id = 'update-message';
+    message.textContent = '簡易給与計算ソフトの更新があります。\n下のボタンを押して更新してください。';
+    popup.appendChild(message);
+
+    const versionInfo = document.createElement('p');
+    versionInfo.id = 'update-version';
+    versionInfo.textContent = `現在: ver.${APP_VERSION}\n最新: ver.${latestVersion}`;
+    popup.appendChild(versionInfo);
+
+    const status = document.createElement('p');
+    status.id = 'update-status';
+    popup.appendChild(status);
+
+    const button = document.createElement('button');
+    button.id = 'update-confirm';
+    button.textContent = '更新する';
+    button.addEventListener('click', () => clearCachesAndReload(button, status));
+    popup.appendChild(button);
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => {
+      overlay.style.display = 'flex';
+    });
+  }
+
+  async function checkForUpdates() {
+    try {
+      const response = await fetch(`${VERSION_CHECK_URL}?t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Unexpected status ${response.status}`);
+      }
+      const data = await response.json();
+      const latestVersion = data && typeof data.version === 'string' ? data.version.trim() : '';
+      if (!latestVersion || latestVersion === APP_VERSION) {
+        return;
+      }
+      showUpdateNotice(latestVersion);
+    } catch (error) {
+      console.warn('Version check failed', error);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkForUpdates, { once: true });
+  } else {
+    checkForUpdates();
+  }
+})();
 
 (function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) {
