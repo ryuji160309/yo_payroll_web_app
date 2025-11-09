@@ -445,31 +445,31 @@ function updateStore(key, values) {
 function startLoading(el, text) {
   if (!el) return;
   stopLoading(el);
-  const baseText = text.replace(/[・.]+$/, '');
+  const rawText = (text || '').replace(/[・.]+$/, '');
+  const displayText = rawText === '読込中' ? '読み込み中' : rawText;
   el.textContent = '';
-  const mainSpan = document.createElement('span');
-  mainSpan.textContent = baseText;
-  const dotSpan = document.createElement('span');
-  mainSpan.appendChild(dotSpan);
-  el.appendChild(mainSpan);
 
-  const note = document.createElement('div');
-  note.className = 'loading-note';
-  note.textContent = '通常よりも読み込みに時間がかかっていますが、正常に動作していますのでそのままお待ち下さい。';
-  note.style.display = 'none';
-  el.appendChild(note);
+  const container = document.createElement('div');
+  container.className = 'loading-container';
 
-  let dotCount = 0;
-  function updateDots() {
-    dotSpan.textContent = '・'.repeat(dotCount);
-    dotCount = (dotCount + 1) % 4;
-  }
-  updateDots();
-  const interval = setInterval(updateDots, 500);
+  const loader = document.createElement('div');
+  loader.className = 'loader';
+  container.appendChild(loader);
+
+  const message = document.createElement('div');
+  message.className = 'loading-message';
+  message.textContent = displayText || '読み込み中';
+  container.appendChild(message);
+
+  el.appendChild(container);
+
   const timeout = setTimeout(() => {
-    note.style.display = 'block';
+    message.textContent = '通常よりも読み込みに時間がかかっていますが、正常に動作していますのでそのままお待ち下さい。';
+    message.classList.remove('loading-message');
+    message.classList.add('loading-note');
   }, 5000);
-  loadingMap.set(el, { interval, timeout });
+
+  loadingMap.set(el, { timeout });
 }
 
 function stopLoading(el) {
