@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.6.1';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
 
