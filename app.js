@@ -9,45 +9,113 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
   }
 
   async function clearCachesAndReload(button, statusLabel) {
-    const originalText = button.textContent;
     button.disabled = true;
     button.textContent = '更新中…';
     if (statusLabel) {
       statusLabel.textContent = '更新の準備をしています…';
     }
 
-    try {
+    let hadIssues = false;
+
+    async function attempt(description, fn) {
+      try {
+        await fn();
+      } catch (error) {
+        hadIssues = true;
+        console.error(description, error);
+      }
+    }
+
+    await attempt('Failed to clear caches', async () => {
       if (window.caches && typeof caches.keys === 'function') {
         const keys = await caches.keys();
         await Promise.all(keys.map(key => caches.delete(key)));
       }
-      if ('serviceWorker' in navigator && typeof navigator.serviceWorker.getRegistrations === 'function') {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(
-          registrations.map(reg =>
-            reg.unregister().catch(() => {
-              /* ignore */
-            })
-          )
-        );
+    });
+
+    await attempt('Failed to unregister service workers', async () => {
+      if ('serviceWorker' in navigator) {
+        if (typeof navigator.serviceWorker.getRegistrations === 'function') {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(
+            registrations.map(reg =>
+              reg
+                .unregister()
+                .catch(error => {
+                  hadIssues = true;
+                  console.error('Service worker unregister failed', error);
+                })
+            )
+          );
+        } else if (typeof navigator.serviceWorker.getRegistration === 'function') {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration) {
+            try {
+              await registration.unregister();
+            } catch (error) {
+              hadIssues = true;
+              console.error('Service worker unregister failed', error);
+            }
+          }
+        }
       }
-    } catch (error) {
-      console.error('Failed to prepare update', error);
-      button.disabled = false;
-      button.textContent = originalText;
-      if (statusLabel) {
-        statusLabel.textContent = '更新の準備中にエラーが発生しました。ページを再読み込みしてください。';
+    });
+
+    await attempt('Failed to clear cached settings', async () => {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(SETTINGS_CACHE_KEY);
       }
-      return;
-    }
+    });
 
     if (statusLabel) {
-      statusLabel.textContent = '最新バージョンを読み込み直しています…';
+      statusLabel.textContent = hadIssues
+        ? '一部の古いデータを削除できませんでしたが、更新を試みています…'
+        : '最新バージョンを読み込み直しています…';
     }
 
     const url = new URL(window.location.href);
     url.searchParams.set('forceReload', Date.now().toString());
-    window.location.replace(url.toString());
+
+    let reloadAttempted = false;
+    const triggerReload = () => {
+      if (reloadAttempted) return;
+      reloadAttempted = true;
+      try {
+        window.location.replace(url.toString());
+      } catch (error) {
+        console.warn('Reload via replace failed, falling back to href', error);
+        window.location.href = url.toString();
+      }
+    };
+
+    if ('serviceWorker' in navigator && navigator.serviceWorker) {
+      const onControllerChange = () => {
+        if (!navigator.serviceWorker.controller) {
+          navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+          triggerReload();
+        }
+      };
+      try {
+        navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+      } catch (error) {
+        console.warn('Failed to listen for service worker controller changes', error);
+      }
+      setTimeout(triggerReload, 500);
+    } else {
+      triggerReload();
+    }
+
+    setTimeout(() => {
+      if (!reloadAttempted) {
+        triggerReload();
+      } else {
+        try {
+          window.location.reload();
+        } catch (error) {
+          console.warn('Fallback reload failed', error);
+        }
+      }
+    }, 2000);
   }
 
   function showUpdateNotice(latestVersion) {
