@@ -15,6 +15,9 @@ http.createServer((req, res) => {
     '.js': 'application/javascript',
     '.css': 'text/css',
     '.txt': 'text/plain',
+    '.json': 'application/json',
+    '.webmanifest': 'application/manifest+json',
+    '.png': 'image/png'
   };
   fs.readFile(filePath, (err, content) => {
     if (err) {

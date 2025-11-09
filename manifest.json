@@ -1,0 +1,22 @@
+{
+  "name": "YO 簡易給与計算",
+  "short_name": "給与計算",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f4a73",
+  "theme_color": "#0f4a73",
+  "lang": "ja-JP",
+  "description": "Google スプレッドシートを元に給与計算を行うオフライン対応アプリです。",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
