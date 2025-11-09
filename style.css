@@ -287,6 +287,41 @@ th, td {
   font-size: 1rem;
 }
 
+#update-continue {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #d33;
+  background: #fff;
+  color: #d33;
+}
+
+#update-continue:hover,
+#update-continue:focus {
+  background: #ffecec;
+}
+
+#update-dismiss-option {
+  margin: 1rem 0 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+#update-dismiss {
+  width: 1rem;
+  height: 1rem;
+}
+
+#update-close {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
 #download-overlay {
   position: fixed;
   inset: 0;

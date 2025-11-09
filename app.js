@@ -1,6 +1,7 @@
 const APP_VERSION = '1.6.2';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
+const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
 
 (function setupUpdateChecker() {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -82,6 +83,52 @@ const VERSION_CHECK_URL = 'version.json';
     button.addEventListener('click', () => clearCachesAndReload(button, status));
     popup.appendChild(button);
 
+    const continueButton = document.createElement('button');
+    continueButton.id = 'update-continue';
+    continueButton.textContent = 'このまま続ける';
+    popup.appendChild(continueButton);
+
+    const dismissOption = document.createElement('label');
+    dismissOption.id = 'update-dismiss-option';
+    dismissOption.style.display = 'none';
+
+    const dismissCheckbox = document.createElement('input');
+    dismissCheckbox.type = 'checkbox';
+    dismissCheckbox.id = 'update-dismiss';
+    dismissOption.appendChild(dismissCheckbox);
+
+    const dismissText = document.createElement('span');
+    dismissText.textContent = '再び表示しない';
+    dismissOption.appendChild(dismissText);
+    popup.appendChild(dismissOption);
+
+    const closeButton = document.createElement('button');
+    closeButton.id = 'update-close';
+    closeButton.textContent = '閉じる';
+    closeButton.style.display = 'none';
+    popup.appendChild(closeButton);
+
+    continueButton.addEventListener('click', () => {
+      message.textContent = '更新しないと不具合の修正や機能の追加が反映されない場合があります。';
+      versionInfo.style.display = 'none';
+      status.style.display = 'none';
+      button.style.display = 'none';
+      continueButton.style.display = 'none';
+      dismissOption.style.display = 'flex';
+      closeButton.style.display = 'block';
+    });
+
+    closeButton.addEventListener('click', () => {
+      if (dismissCheckbox.checked) {
+        try {
+          localStorage.setItem(UPDATE_DISMISS_KEY, latestVersion);
+        } catch (error) {
+          console.warn('Failed to remember update dismissal', error);
+        }
+      }
+      overlay.remove();
+    });
+
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
     requestAnimationFrame(() => {
@@ -99,6 +146,13 @@ const VERSION_CHECK_URL = 'version.json';
       const latestVersion = data && typeof data.version === 'string' ? data.version.trim() : '';
       if (!latestVersion || latestVersion === APP_VERSION) {
         return;
+      }
+      try {
+        if (localStorage.getItem(UPDATE_DISMISS_KEY) === latestVersion) {
+          return;
+        }
+      } catch (error) {
+        console.warn('Failed to read update dismissal', error);
       }
       showUpdateNotice(latestVersion);
     } catch (error) {
