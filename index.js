@@ -1,21 +1,42 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  await ensureSettingsLoaded();
-  document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const list = document.getElementById('store-list');
+  const status = document.getElementById('store-status');
+  startLoading(status, '読込中・・・');
+
+  try {
+    await ensureSettingsLoaded();
+  } catch (e) {
+    stopLoading(status);
+    if (list) {
+      list.style.color = 'red';
+      list.style.whiteSpace = 'pre-line';
+      list.textContent = '店舗一覧の読み込みに失敗しました。\n通信環境をご確認のうえ、再度お試しください。';
+    }
+    return;
+  }
+  document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const stores = loadStores();
+  stopLoading(status);
+  if (list) {
+    list.textContent = '';
+    list.style.color = '';
+    list.style.whiteSpace = '';
+  }
   const err = document.getElementById('settings-error');
   if (window.settingsError && err) {
     err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
   }
   initializeHelp('help/top.txt');
-  Object.keys(stores).forEach(key => {
-    const btn = document.createElement('button');
-    btn.textContent = stores[key].name;
-    btn.addEventListener('click', () => {
-      window.location.href = `sheets.html?store=${key}`;
+  if (list) {
+    Object.keys(stores).forEach(key => {
+      const btn = document.createElement('button');
+      btn.textContent = stores[key].name;
+      btn.addEventListener('click', () => {
+        window.location.href = `sheets.html?store=${key}`;
+      });
+      list.appendChild(btn);
     });
-    list.appendChild(btn);
-  });
+  }
 
   const infoBox = document.getElementById('announcements');
   if (infoBox) {
