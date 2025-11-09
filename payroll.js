@@ -15,23 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   startLoading(statusEl, '読込中・・・');
   try {
-    const key = `workbook_${storeKey}`;
-    const cached = sessionStorage.getItem(key);
-    let data;
-    let sheetId;
-    if (cached) {
-      const buffer = base64ToBuffer(cached);
-      const wb = XLSX.read(buffer, { type: 'array' });
-      const targetIndex = (sheetIndex >= 0 && sheetIndex < wb.SheetNames.length) ? sheetIndex : 0;
-      const sheetName = wb.SheetNames[targetIndex];
-      const metaSheets = wb.Workbook && wb.Workbook.Sheets;
-      sheetId = metaSheets && metaSheets[targetIndex] ? metaSheets[targetIndex].sheetId : undefined;
-      data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
-    } else {
-      const result = await fetchWorkbook(store.url, sheetIndex, storeKey);
-      data = result.data;
-      sheetId = result.sheetId;
-    }
+    const result = await fetchWorkbook(store.url, sheetIndex);
+    const data = result.data;
+    const sheetId = result.sheetId;
     stopLoading(statusEl);
     const year = data[1] && data[1][2];
     const startMonthRaw = data[1] && data[1][4];

@@ -1,5 +1,5 @@
 const APP_VERSION = '1.6.0';
-const REMOTE_SETTINGS_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 
 (function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) {
@@ -295,57 +295,85 @@ async function fetchRemoteSettings() {
 
 let settingsLoadPromise;
 let settingsLoaded = false;
+let cacheApplied = false;
 
-function loadSettingsFromSession() {
-  const raw = sessionStorage.getItem('remoteSettings');
+function applySettingsRecord(record) {
+  if (!record) return false;
+  if (record.stores) DEFAULT_STORES = record.stores;
+  if (record.password) PASSWORD = record.password;
+  if (record.settingsError) window.settingsError = true;
+  if (record.settingsErrorDetails) window.settingsErrorDetails = record.settingsErrorDetails;
+  return true;
+}
+
+function loadSettingsFromCache() {
+  let raw;
+  try {
+    raw = localStorage.getItem(SETTINGS_CACHE_KEY);
+  } catch (e) {
+    console.error('loadSettingsFromCache failed', e);
+    return false;
+  }
   if (!raw) return false;
   try {
     const data = JSON.parse(raw);
-    if (!data.fetchedAt || Date.now() - data.fetchedAt > REMOTE_SETTINGS_TTL_MS) {
-      sessionStorage.removeItem('remoteSettings');
-      return false;
-    }
-    if (data.stores) DEFAULT_STORES = data.stores;
-    if (data.password) PASSWORD = data.password;
-    if (data.settingsError) window.settingsError = true;
-    if (data.settingsErrorDetails) window.settingsErrorDetails = data.settingsErrorDetails;
-    return true;
+    return applySettingsRecord(data);
   } catch (e) {
-    console.error('loadSettingsFromSession parse failed', e);
-    sessionStorage.removeItem('remoteSettings');
+    console.error('loadSettingsFromCache parse failed', e);
+    try {
+      localStorage.removeItem(SETTINGS_CACHE_KEY);
+    } catch (removeErr) {
+      console.error('loadSettingsFromCache cleanup failed', removeErr);
+    }
     return false;
   }
 }
 
-function saveSettingsToSession() {
+function saveSettingsToCache() {
+  const payload = {
+    fetchedAt: Date.now(),
+    stores: DEFAULT_STORES,
+    password: PASSWORD,
+    settingsError: window.settingsError || undefined,
+    settingsErrorDetails: window.settingsErrorDetails || undefined,
+  };
   try {
-    sessionStorage.setItem('remoteSettings', JSON.stringify({
-      fetchedAt: Date.now(),
-      stores: DEFAULT_STORES,
-      password: PASSWORD,
-      settingsError: window.settingsError || undefined,
-      settingsErrorDetails: window.settingsErrorDetails || undefined,
-    }));
+    localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(payload));
   } catch (e) {
-    console.error('saveSettingsToSession failed', e);
+    console.error('saveSettingsToCache failed', e);
   }
 }
 
+function shouldFetchRemoteSettings() {
+  if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
+    return navigator.onLine !== false;
+  }
+  return true;
+}
+
 function ensureSettingsLoaded() {
-  // Always attempt to load previously fetched settings so that we have a
-  // usable configuration even if the network request fails. However, to make
-  // sure the latest settings are applied on every reload, we do not return
-  // early based on the cached data and instead always fetch the remote
-  // settings.
-  loadSettingsFromSession();
+  if (!cacheApplied) {
+    const loaded = loadSettingsFromCache();
+    if (loaded) {
+      settingsLoaded = true;
+    }
+    cacheApplied = true;
+  }
+
   if (!settingsLoadPromise) {
-    settingsLoadPromise = fetchRemoteSettings()
-      .then(() => {
-        saveSettingsToSession();
-      })
-      .finally(() => {
-        settingsLoadPromise = null;
-      });
+    const needsFetch = shouldFetchRemoteSettings();
+    const promise = needsFetch
+      ? fetchRemoteSettings().then(() => {
+          saveSettingsToCache();
+        })
+      : Promise.resolve();
+
+    settingsLoadPromise = promise.finally(() => {
+      settingsLoadPromise = null;
+    });
+    if (typeof window !== 'undefined') {
+      window.settingsLoadPromise = settingsLoadPromise;
+    }
   }
   return settingsLoadPromise;
 }
@@ -354,6 +382,16 @@ settingsLoadPromise = ensureSettingsLoaded();
 settingsLoadPromise.then(() => {
   settingsLoaded = true;
 });
+
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('online', () => {
+    const promise = ensureSettingsLoaded();
+    window.settingsLoadPromise = promise;
+    promise.then(() => {
+      settingsLoaded = true;
+    });
+  });
+}
 window.settingsLoadPromise = settingsLoadPromise;
 document.addEventListener('DOMContentLoaded', initPasswordGate);
 
@@ -456,27 +494,7 @@ function toXlsxExportUrl(url) {
   return fileId ? `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx` : null;
 }
 
-function bufferToBase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function base64ToBuffer(base64) {
-  const binary = atob(base64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-async function fetchWorkbook(url, sheetIndex = 0, storeKey) {
+async function fetchWorkbook(url, sheetIndex = 0) {
   const exportUrl = toXlsxExportUrl(url);
 
   const res = await fetch(exportUrl, { cache: 'no-store' });
@@ -485,9 +503,6 @@ async function fetchWorkbook(url, sheetIndex = 0, storeKey) {
   }
 
   const buffer = await res.arrayBuffer();
-  if (storeKey) {
-    sessionStorage.setItem(`workbook_${storeKey}`, bufferToBase64(buffer));
-  }
   const wb = XLSX.read(buffer, { type: 'array' });
   const targetIndex = (sheetIndex >= 0 && sheetIndex < wb.SheetNames.length) ? sheetIndex : 0;
   const sheetName = wb.SheetNames[targetIndex];
@@ -498,16 +513,13 @@ async function fetchWorkbook(url, sheetIndex = 0, storeKey) {
   return { sheetName, data, sheetId, sheetIndex: targetIndex };
 }
 
-async function fetchSheetList(url, storeKey) {
+async function fetchSheetList(url) {
   const exportUrl = toXlsxExportUrl(url);
   const res = await fetch(exportUrl, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
   const buffer = await res.arrayBuffer();
-  if (storeKey) {
-    sessionStorage.setItem(`workbook_${storeKey}`, bufferToBase64(buffer));
-  }
   const wb = XLSX.read(buffer, { type: 'array', bookSheets: true });
   const metaSheets = wb.Workbook && wb.Workbook.Sheets;
   return wb.SheetNames.map((name, index) => ({

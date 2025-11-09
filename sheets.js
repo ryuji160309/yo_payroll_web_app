@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   startLoading(statusEl, '読込中・・・');
   try {
-    const sheets = await fetchSheetList(store.url, storeKey);
+    const sheets = await fetchSheetList(store.url);
     stopLoading(statusEl);
     const list = document.getElementById('sheet-list');
 
