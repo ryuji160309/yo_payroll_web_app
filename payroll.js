@@ -37,137 +37,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
     const tbody = document.querySelector('#employees tbody');
 
-    const detailOverlay = document.createElement('div');
-    detailOverlay.id = 'employee-detail-overlay';
-    detailOverlay.style.display = 'none';
-    const detailPopup = document.createElement('div');
-    detailPopup.id = 'employee-detail-popup';
-    const detailTitle = document.createElement('h2');
-    detailTitle.id = 'employee-detail-title';
-    const detailSummary = document.createElement('p');
-    detailSummary.id = 'employee-detail-summary';
-    const detailTable = document.createElement('table');
-    detailTable.id = 'employee-detail-table';
-    const detailTableBody = document.createElement('tbody');
-    detailTable.appendChild(detailTableBody);
-    const detailClose = document.createElement('button');
-    detailClose.id = 'employee-detail-close';
-    detailClose.textContent = '閉じる';
-
-    detailPopup.appendChild(detailTitle);
-    detailPopup.appendChild(detailSummary);
-    detailPopup.appendChild(detailTable);
-    detailPopup.appendChild(detailClose);
-    detailOverlay.appendChild(detailPopup);
-    document.body.appendChild(detailOverlay);
-
-    function hideEmployeeDetail() {
-      detailOverlay.style.display = 'none';
-    }
-
-    function formatTimeSegment(match) {
-      const startHour = match[1].padStart(2, '0');
-      const startMinute = match[2];
-      const endHour = match[3].padStart(2, '0');
-      const endMinute = match[4];
-      let startText = `${startHour}時`;
-      if (startMinute !== undefined) {
-        startText += `${startMinute}分`;
-      }
-      let endText = `${endHour}時`;
-      if (endMinute !== undefined) {
-        endText += `${endMinute}分`;
-      }
-      return `${startText}～${endText}`;
-    }
-
-    function showEmployeeDetail(idx) {
-      const employee = results[idx];
-      if (!employee) {
-        return;
-      }
-
-      detailTitle.textContent = employee.name;
-      const summaryText = `基本時給：${Number(employee.baseWage).toLocaleString()}円　総勤務時間：${employee.hours.toFixed(2)}時間　出勤日数：${employee.days}日　交通費：${Number(employee.transport || 0).toLocaleString()}円　給与：${Number(employee.salary || 0).toLocaleString()}円`;
-      detailSummary.textContent = summaryText;
-
-      detailTableBody.innerHTML = '';
-
-      const entries = [];
-      const schedule = schedules[idx] || [];
-      schedule.forEach((cell, dayIdx) => {
-        if (!cell) return;
-        const segments = cell.toString().split(',')
-          .map(s => s.trim())
-          .map(seg => {
-            const match = seg.match(TIME_RANGE_REGEX);
-            return match ? formatTimeSegment(match) : null;
-          })
-          .filter(Boolean);
-        if (segments.length === 0) return;
-        const current = new Date(startDate);
-        current.setDate(startDate.getDate() + dayIdx);
-        entries.push({
-          month: current.getMonth() + 1,
-          day: current.getDate(),
-          segments,
-        });
-      });
-
-      if (entries.length === 0) {
-        const emptyRow = document.createElement('tr');
-        const emptyCell = document.createElement('td');
-        emptyCell.colSpan = 2;
-        emptyCell.textContent = '出勤記録がありません';
-        emptyRow.appendChild(emptyCell);
-        detailTableBody.appendChild(emptyRow);
-      } else {
-        let currentMonth = null;
-        entries.forEach(entry => {
-          if (entry.month !== currentMonth) {
-            currentMonth = entry.month;
-            const monthRow = document.createElement('tr');
-            monthRow.className = 'month-row';
-            const monthCell = document.createElement('th');
-            monthCell.colSpan = 2;
-            monthCell.textContent = `${entry.month}月`;
-            monthRow.appendChild(monthCell);
-            detailTableBody.appendChild(monthRow);
-          }
-
-          const row = document.createElement('tr');
-          const dateCell = document.createElement('td');
-          dateCell.className = 'date-cell';
-          dateCell.textContent = `${entry.day}日`;
-          const timeCell = document.createElement('td');
-          timeCell.className = 'time-cell';
-          entry.segments.forEach((segment, segIdx) => {
-            if (segIdx > 0) {
-              timeCell.appendChild(document.createElement('br'));
-            }
-            timeCell.appendChild(document.createTextNode(segment));
-          });
-          row.appendChild(dateCell);
-          row.appendChild(timeCell);
-          detailTableBody.appendChild(row);
-        });
-      }
-
-      detailOverlay.style.display = 'flex';
-    }
-
-    detailClose.addEventListener('click', hideEmployeeDetail);
-    detailOverlay.addEventListener('click', e => {
-      if (e.target === detailOverlay) {
-        hideEmployeeDetail();
-      }
-    });
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && detailOverlay.style.display === 'flex') {
-        hideEmployeeDetail();
-      }
-    });
-
     function recalc() {
       let total = 0;
       document.querySelectorAll('.wage-input').forEach(input => {
@@ -200,7 +69,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const nameTd = document.createElement('td');
       nameTd.textContent = r.name;
-      nameTd.addEventListener('click', () => showEmployeeDetail(idx));
+      nameTd.addEventListener('click', () => {
+        const lines = [];
+        schedules[idx].forEach((cell, dayIdx) => {
+          if (!cell) return;
+          const segments = cell.toString().split(',')
+            .map(s => s.trim())
+            .filter(seg => TIME_RANGE_REGEX.test(seg));
+          if (segments.length === 0) return;
+          const d = new Date(startDate);
+          d.setDate(startDate.getDate() + dayIdx);
+          const mm = d.getMonth() + 1;
+          const dd = d.getDate();
+          lines.push(`${mm}/${dd} ${segments.join(', ')}`);
+        });
+        const message = lines.length ? `${r.name}\n${lines.join('\n')}` : `${r.name}\n出勤記録がありません`;
+        alert(message);
+      });
 
       const wageTd = document.createElement('td');
       const input = document.createElement('input');
