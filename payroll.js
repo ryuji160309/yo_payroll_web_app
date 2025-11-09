@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  const statusEl = document.getElementById('status');
+  startLoading(statusEl, '読込中・・・');
   await ensureSettingsLoaded();
   initializeHelp('help/payroll.txt');
   const params = new URLSearchParams(location.search);
@@ -7,13 +9,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sheetIndex = parseInt(params.get('sheet'), 10) || 0;
   const sheetGidParam = params.get('gid');
   const store = getStore(storeKey);
-  if (!store) return;
+  if (!store) {
+    stopLoading(statusEl);
+    return;
+  }
   const openSourceBtn = document.getElementById('open-source');
   if (openSourceBtn) {
     openSourceBtn.disabled = true;
   }
-  const statusEl = document.getElementById('status');
-  startLoading(statusEl, '読込中・・・');
   try {
     const result = await fetchWorkbook(store.url, sheetIndex);
     const data = result.data;

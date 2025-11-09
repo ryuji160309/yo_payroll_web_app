@@ -13,15 +13,18 @@ function formatSheetName(name) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const statusEl = document.getElementById('status');
+  startLoading(statusEl, '読込中・・・');
   await ensureSettingsLoaded();
   initializeHelp('help/sheets.txt');
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
   const store = getStore(storeKey);
-  if (!store) return;
+  if (!store) {
+    stopLoading(statusEl);
+    return;
+  }
   document.getElementById('store-name').textContent = store.name;
-  const statusEl = document.getElementById('status');
-  startLoading(statusEl, '読込中・・・');
   try {
     const sheets = await fetchSheetList(store.url);
     stopLoading(statusEl);
