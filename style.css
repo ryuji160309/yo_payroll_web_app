@@ -437,4 +437,7 @@ th, td {
   padding: 0.75rem 1rem;
   font-size: 1rem;
   margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
