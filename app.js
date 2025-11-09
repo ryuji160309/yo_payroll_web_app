@@ -394,6 +394,12 @@ async function fetchRemoteSettings() {
       }
     }
     if (Object.keys(stores).length) {
+      window.settingsError = false;
+      window.settingsErrorDetails = undefined;
+      if (typeof document !== 'undefined') {
+        const err = document.getElementById('settings-error');
+        if (err) err.textContent = '';
+      }
       DEFAULT_STORES = stores;
       if (password) PASSWORD = password;
     } else {
