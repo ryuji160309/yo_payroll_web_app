@@ -1,5 +1,16 @@
-const APP_VERSION = '1.5.2';
+const APP_VERSION = '1.6.0';
 const REMOTE_SETTINGS_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+(function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    return;
+  }
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(err => {
+      console.error('Service worker registration failed:', err);
+    });
+  });
+})();
 
 let PASSWORD = '3963';
 window.settingsError = false;
