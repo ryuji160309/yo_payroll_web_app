@@ -349,3 +349,92 @@ th, td {
   display: block;
   margin: 1rem auto 0;
 }
+
+#employee-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  z-index: 970;
+}
+
+#employee-detail-popup {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  max-width: 32rem;
+  width: min(32rem, 100%);
+  max-height: min(90vh, 40rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+#employee-detail-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+#employee-detail-summary {
+  margin: 0 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.employee-detail-summary-line {
+  display: block;
+  line-height: 1.4;
+}
+
+#employee-detail-table-wrapper {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin: 0 0 1.5rem;
+}
+
+#employee-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid #d7deeb;
+}
+
+#employee-detail-table th,
+#employee-detail-table td {
+  text-align: left;
+  padding: 0.4rem 0.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+#employee-detail-table .month-row th {
+  background: #f4f6fb;
+  font-weight: bold;
+  font-size: 1rem;
+  border-top: 1px solid #d7deeb;
+}
+
+#employee-detail-table .date-cell {
+  width: 5rem;
+  white-space: nowrap;
+}
+
+#employee-detail-table .time-cell {
+  white-space: normal;
+}
+
+#employee-detail-close {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  margin-top: auto;
+}
