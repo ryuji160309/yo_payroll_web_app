@@ -44,7 +44,10 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
     if (statusLabel) {
       statusLabel.textContent = '最新バージョンを読み込み直しています…';
     }
-    window.location.reload();
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('forceReload', Date.now().toString());
+    window.location.replace(url.toString());
   }
 
   function showUpdateNotice(latestVersion) {
