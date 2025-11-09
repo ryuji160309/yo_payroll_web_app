@@ -1,8 +1,21 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  await ensureSettingsLoaded();
-  document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const list = document.getElementById('store-list');
+  startLoading(list, '読込中・・・');
+
+  try {
+    await ensureSettingsLoaded();
+  } catch (e) {
+    stopLoading(list);
+    if (list) {
+      list.style.color = 'red';
+      list.style.whiteSpace = 'pre-line';
+      list.textContent = '店舗一覧の読み込みに失敗しました。\n通信環境をご確認のうえ、再度お試しください。';
+    }
+    return;
+  }
+  document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const stores = loadStores();
+  stopLoading(list);
   const err = document.getElementById('settings-error');
   if (window.settingsError && err) {
     err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
