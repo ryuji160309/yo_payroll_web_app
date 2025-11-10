@@ -69,6 +69,32 @@ select {
   width: 90%;
   margin: 0.5rem auto;
 }
+
+#offline-controls {
+  width: 90%;
+  margin: 0.5rem auto 1rem;
+  text-align: center;
+}
+
+#offline-controls button {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.offline-indicator {
+  min-height: 1.25rem;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+}
+
+.offline-indicator.is-success {
+  color: #2e7d32;
+}
+
+.offline-indicator.is-error {
+  color: #d32f2f;
+}
 #base-wage-control {
   margin: 0.5rem 0;
 }

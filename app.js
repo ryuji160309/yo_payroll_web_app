@@ -874,6 +874,104 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
+const OFFLINE_WORKBOOK_STORAGE_KEY = 'offlineWorkbook';
+let offlineWorkbookCache = null;
+
+function getOfflineWorkbookEntry() {
+  if (!workbookCacheStorage) {
+    return null;
+  }
+  let raw;
+  try {
+    raw = workbookCacheStorage.getItem(OFFLINE_WORKBOOK_STORAGE_KEY);
+  } catch (e) {
+    return null;
+  }
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    try {
+      workbookCacheStorage.removeItem(OFFLINE_WORKBOOK_STORAGE_KEY);
+    } catch (removeError) {
+      // Ignore cleanup failures.
+    }
+    return null;
+  }
+}
+
+function clearOfflineWorkbook() {
+  offlineWorkbookCache = null;
+  if (!workbookCacheStorage) {
+    return;
+  }
+  try {
+    workbookCacheStorage.removeItem(OFFLINE_WORKBOOK_STORAGE_KEY);
+  } catch (e) {
+    // Ignore storage errors when clearing offline data.
+  }
+}
+
+function setOfflineWorkbook(buffer, meta = {}) {
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new Error('Invalid workbook buffer');
+  }
+  const clonedBuffer = buffer.slice ? buffer.slice(0) : buffer;
+  if (!workbookCacheStorage) {
+    throw new Error('Offline workbook storage is unavailable');
+  }
+  const payload = {
+    data: arrayBufferToBase64(clonedBuffer),
+    fileName: typeof meta.fileName === 'string' ? meta.fileName : '',
+    timestamp: Date.now(),
+  };
+  try {
+    workbookCacheStorage.setItem(OFFLINE_WORKBOOK_STORAGE_KEY, JSON.stringify(payload));
+    offlineWorkbookCache = clonedBuffer;
+  } catch (e) {
+    offlineWorkbookCache = null;
+    throw e;
+  }
+}
+
+function getOfflineWorkbookBuffer() {
+  if (offlineWorkbookCache) {
+    return offlineWorkbookCache;
+  }
+  const entry = getOfflineWorkbookEntry();
+  if (!entry || !entry.data) {
+    return null;
+  }
+  try {
+    offlineWorkbookCache = base64ToArrayBuffer(entry.data);
+    return offlineWorkbookCache;
+  } catch (e) {
+    clearOfflineWorkbook();
+    return null;
+  }
+}
+
+function getOfflineWorkbookInfo() {
+  const entry = getOfflineWorkbookEntry();
+  if (!entry) {
+    return null;
+  }
+  return {
+    fileName: typeof entry.fileName === 'string' ? entry.fileName : '',
+    timestamp: typeof entry.timestamp === 'number' ? entry.timestamp : null,
+  };
+}
+
+function isOfflineWorkbookActive() {
+  if (offlineWorkbookCache) {
+    return true;
+  }
+  const entry = getOfflineWorkbookEntry();
+  return !!(entry && entry.data);
+}
+
 function cacheWorkbookBuffer(url, buffer) {
   if (!workbookCacheStorage) {
     return;
@@ -904,8 +1002,34 @@ function getCachedWorkbookBuffer(url) {
   }
 }
 
+function buildSheetMetadata(wb) {
+  const metaSheets = wb.Workbook && wb.Workbook.Sheets;
+  return wb.SheetNames.map((name, index) => ({
+    name,
+    index,
+    sheetId: metaSheets && metaSheets[index] ? metaSheets[index].sheetId : undefined,
+  }));
+}
+
+function buildWorkbookResult(wb, sheetIndex = 0) {
+  const targetIndex = (sheetIndex >= 0 && sheetIndex < wb.SheetNames.length) ? sheetIndex : 0;
+  const sheetName = wb.SheetNames[targetIndex];
+  const metaSheets = wb.Workbook && wb.Workbook.Sheets;
+  const sheetId = metaSheets && metaSheets[targetIndex] ? metaSheets[targetIndex].sheetId : undefined;
+  const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
+  return { sheetName, data, sheetId, sheetIndex: targetIndex };
+}
+
 async function fetchWorkbook(url, sheetIndex = 0) {
+  const offlineBuffer = getOfflineWorkbookBuffer();
+  if (offlineBuffer) {
+    const wb = XLSX.read(offlineBuffer, { type: 'array' });
+    return buildWorkbookResult(wb, sheetIndex);
+  }
   const exportUrl = toXlsxExportUrl(url);
+  if (!exportUrl) {
+    throw new Error('Invalid spreadsheet URL');
+  }
   let buffer = getCachedWorkbookBuffer(url);
   if (!buffer) {
     const res = await fetch(exportUrl, { cache: 'no-store' });
@@ -917,17 +1041,19 @@ async function fetchWorkbook(url, sheetIndex = 0) {
     cacheWorkbookBuffer(url, buffer);
   }
   const wb = XLSX.read(buffer, { type: 'array' });
-  const targetIndex = (sheetIndex >= 0 && sheetIndex < wb.SheetNames.length) ? sheetIndex : 0;
-  const sheetName = wb.SheetNames[targetIndex];
-  const metaSheets = wb.Workbook && wb.Workbook.Sheets;
-  const sheetId = metaSheets && metaSheets[targetIndex] ? metaSheets[targetIndex].sheetId : undefined;
-
-  const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
-  return { sheetName, data, sheetId, sheetIndex: targetIndex };
+  return buildWorkbookResult(wb, sheetIndex);
 }
 
 async function fetchSheetList(url) {
+  const offlineBuffer = getOfflineWorkbookBuffer();
+  if (offlineBuffer) {
+    const wb = XLSX.read(offlineBuffer, { type: 'array', bookSheets: true });
+    return buildSheetMetadata(wb);
+  }
   const exportUrl = toXlsxExportUrl(url);
+  if (!exportUrl) {
+    throw new Error('Invalid spreadsheet URL');
+  }
   const res = await fetch(exportUrl, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
@@ -935,13 +1061,7 @@ async function fetchSheetList(url) {
   const buffer = await res.arrayBuffer();
   cacheWorkbookBuffer(url, buffer);
   const wb = XLSX.read(buffer, { type: 'array', bookSheets: true });
-  const metaSheets = wb.Workbook && wb.Workbook.Sheets;
-  return wb.SheetNames.map((name, index) => ({
-    name,
-    index,
-    sheetId: metaSheets && metaSheets[index] ? metaSheets[index].sheetId : undefined
-  }));
-
+  return buildSheetMetadata(wb);
 }
 
 function calculateEmployee(schedule, baseWage, overtime) {

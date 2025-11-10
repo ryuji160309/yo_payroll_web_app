@@ -17,6 +17,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   startLoading(statusEl, '読込中・・・');
   initializeHelp('help/sheets.txt');
   await ensureSettingsLoaded();
+  const offlineIndicator = document.getElementById('offline-file-indicator');
+  if (offlineIndicator) {
+    offlineIndicator.classList.remove('is-success', 'is-error');
+    const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
+    const info = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
+    if (offlineActive) {
+      const label = info && info.fileName ? `ローカルファイル：${info.fileName}` : 'ローカルファイルを使用しています';
+      offlineIndicator.textContent = label;
+      offlineIndicator.classList.add('is-success');
+    } else {
+      offlineIndicator.textContent = '';
+    }
+  }
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
   const store = getStore(storeKey);
