@@ -133,4 +133,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         messageDiv.textContent = 'お知らせを取得できませんでした。';
       });
   }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready
+      .then(registration => {
+        if (!registration || !registration.active) {
+          return;
+        }
+        registration.active.postMessage({
+          type: 'WARMUP_CACHE',
+          paths: [
+            '/payroll.html',
+            '/settings.html',
+            '/sheets.html',
+            '/payroll.js',
+            '/settings.js',
+            '/sheets.js',
+            '/calc.js',
+            '/help.js',
+            '/help/payroll.txt',
+            '/help/settings.txt',
+            '/help/sheets.txt'
+          ]
+        });
+      })
+      .catch(() => {
+        // Ignore failures warming the cache; navigation will still work without it.
+      });
+  }
 });
