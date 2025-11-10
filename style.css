@@ -12,9 +12,15 @@ header {
 }
 
 button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
 select {
   padding: 0.25rem 0.5rem;
   font-size: 1rem;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 0.5rem;
 }
 
 #store-list button, #sheet-list button {
