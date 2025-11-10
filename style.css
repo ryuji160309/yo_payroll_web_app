@@ -262,6 +262,8 @@ th, td {
 #help-overlay {
   position: fixed;
   inset: 0;
+  padding: 1.5rem;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.5);
   display: none;
   justify-content: center;
@@ -273,7 +275,8 @@ th, td {
   background: #fff;
   padding: 1rem;
   border-radius: 0.5rem;
-  max-width: 90%;
+  width: 100%;
+  max-width: 40rem;
   max-height: 80%;
   overflow-y: auto;
 }
@@ -284,12 +287,17 @@ th, td {
 
 #help-close {
   display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
   margin: 1rem auto 0;
 }
 
 #update-overlay {
   position: fixed;
   inset: 0;
+  padding: 1.5rem;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.55);
   display: none;
   justify-content: center;
@@ -301,8 +309,8 @@ th, td {
   background: #fff;
   padding: 1.5rem;
   border-radius: 0.75rem;
+  width: 100%;
   max-width: 22rem;
-  width: calc(100% - 3rem);
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
   text-align: center;
 }
@@ -404,7 +412,7 @@ th, td {
   display: none;
   justify-content: center;
   align-items: center;
-  padding: 1.25rem;
+  padding: 1.5rem;
   box-sizing: border-box;
   z-index: 970;
 }
