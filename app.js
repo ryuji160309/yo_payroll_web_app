@@ -737,15 +737,89 @@ function toXlsxExportUrl(url) {
   return fileId ? `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx` : null;
 }
 
+function getWorkbookCacheKey(url) {
+  return `workbookCache:${url}`;
+}
+
+function tryGetSessionStorage() {
+  try {
+    if (typeof sessionStorage === 'undefined') {
+      return null;
+    }
+    // Safari private mode can throw on setItem, so test availability.
+    const testKey = '__workbook_cache_test__';
+    sessionStorage.setItem(testKey, '1');
+    sessionStorage.removeItem(testKey);
+    return sessionStorage;
+  } catch (e) {
+    return null;
+  }
+}
+
+const workbookCacheStorage = tryGetSessionStorage();
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function cacheWorkbookBuffer(url, buffer) {
+  if (!workbookCacheStorage) {
+    return;
+  }
+  const key = getWorkbookCacheKey(url);
+  try {
+    const base64 = arrayBufferToBase64(buffer);
+    workbookCacheStorage.setItem(key, base64);
+  } catch (e) {
+    try {
+      workbookCacheStorage.removeItem(key);
+    } catch (removeError) {
+      // Ignore storage cleanup errors.
+    }
+  }
+}
+
+function getCachedWorkbookBuffer(url) {
+  if (!workbookCacheStorage) {
+    return null;
+  }
+  const key = getWorkbookCacheKey(url);
+  try {
+    const base64 = workbookCacheStorage.getItem(key);
+    return base64 ? base64ToArrayBuffer(base64) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function fetchWorkbook(url, sheetIndex = 0) {
   const exportUrl = toXlsxExportUrl(url);
+  let buffer = getCachedWorkbookBuffer(url);
+  if (!buffer) {
+    const res = await fetch(exportUrl, { cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
 
-  const res = await fetch(exportUrl, { cache: 'no-store' });
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+    buffer = await res.arrayBuffer();
+    cacheWorkbookBuffer(url, buffer);
   }
-
-  const buffer = await res.arrayBuffer();
   const wb = XLSX.read(buffer, { type: 'array' });
   const targetIndex = (sheetIndex >= 0 && sheetIndex < wb.SheetNames.length) ? sheetIndex : 0;
   const sheetName = wb.SheetNames[targetIndex];
@@ -763,6 +837,7 @@ async function fetchSheetList(url) {
     throw new Error(`HTTP ${res.status}`);
   }
   const buffer = await res.arrayBuffer();
+  cacheWorkbookBuffer(url, buffer);
   const wb = XLSX.read(buffer, { type: 'array', bookSheets: true });
   const metaSheets = wb.Workbook && wb.Workbook.Sheets;
   return wb.SheetNames.map((name, index) => ({
