@@ -1,6 +1,103 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const list = document.getElementById('store-list');
   const status = document.getElementById('store-status');
+  const offlineControls = document.getElementById('offline-controls');
+  const offlineButton = document.getElementById('offline-load-button');
+  const offlineInfo = document.getElementById('offline-workbook-info');
+
+  function updateOfflineIndicator(message, variant) {
+    if (!offlineInfo) return;
+    offlineInfo.textContent = message || '';
+    offlineInfo.classList.remove('is-success', 'is-error');
+    if (variant === 'success') {
+      offlineInfo.classList.add('is-success');
+    } else if (variant === 'error') {
+      offlineInfo.classList.add('is-error');
+    }
+  }
+
+  function resetOfflineState() {
+    if (typeof clearOfflineWorkbook === 'function') {
+      try {
+        clearOfflineWorkbook();
+      } catch (e) {
+        // Ignore cleanup failures; the offline cache is best-effort only.
+      }
+    }
+    updateOfflineIndicator('');
+    if (status) {
+      status.textContent = '';
+    }
+  }
+
+  resetOfflineState();
+
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) {
+      resetOfflineState();
+    }
+  });
+
+  let offlineFileInput = null;
+  if (offlineControls && offlineButton) {
+    offlineFileInput = document.createElement('input');
+    offlineFileInput.type = 'file';
+    offlineFileInput.accept = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    offlineFileInput.style.display = 'none';
+    offlineControls.appendChild(offlineFileInput);
+
+    offlineButton.addEventListener('click', () => {
+      updateOfflineIndicator('');
+      if (offlineFileInput) {
+        offlineFileInput.value = '';
+        offlineFileInput.click();
+      }
+    });
+
+    offlineFileInput.addEventListener('change', () => {
+      const file = offlineFileInput.files && offlineFileInput.files[0];
+      if (!file) {
+        return;
+      }
+      updateOfflineIndicator('');
+      if (status) {
+        startLoading(status, 'ローカルファイルを読み込み中・・・');
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        stopLoading(status);
+        try {
+          if (typeof setOfflineWorkbook !== 'function') {
+            throw new Error('Offline workbook is unavailable');
+          }
+          setOfflineWorkbook(reader.result, { fileName: file.name });
+          updateOfflineIndicator(`ローカルファイル：${file.name}`, 'success');
+          if (status) {
+            status.textContent = '店舗を選択して続行してください。';
+          }
+        } catch (e) {
+          console.error('Failed to store offline workbook', e);
+          updateOfflineIndicator('ローカルファイルを保存できませんでした。', 'error');
+          if (status) {
+            status.textContent = 'ローカルファイルを保存できませんでした。';
+          }
+        } finally {
+          offlineFileInput.value = '';
+        }
+      };
+      reader.onerror = () => {
+        stopLoading(status);
+        console.error('Failed to read offline workbook', reader.error);
+        updateOfflineIndicator('ローカルファイルの読み込みに失敗しました。', 'error');
+        if (status) {
+          status.textContent = 'ローカルファイルの読み込みに失敗しました。';
+        }
+        offlineFileInput.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
   startLoading(status, '読込中・・・');
 
   initializeHelp('help/top.txt');
@@ -19,6 +116,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const stores = loadStores();
   stopLoading(status);
+  if (status && typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive()) {
+    status.textContent = '店舗を選択して続行してください。';
+  }
   if (list) {
     list.textContent = '';
     list.style.color = '';
