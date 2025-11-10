@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.6.4';
+const CACHE_VERSION = 'v1.7.0';
 const CACHE_NAME = `yo-payroll-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
@@ -18,15 +18,18 @@ const STATIC_ASSETS = [
   '/help/top.txt',
   '/help/payroll.txt',
   '/help/settings.txt',
-  '/help/sheets.txt',
-  '/announcements.txt'
+  '/help/sheets.txt'
 ];
 
 const OPTIONAL_ASSETS = ['/icons/icon-192.png', '/icons/icon-512.png'];
-const NETWORK_ONLY_PATHS = new Set(['/version.json']);
+const NETWORK_ONLY_PATHS = new Set(['/version.json', '/announcements.txt']);
 const SPREADSHEET_HOST_SUFFIXES = ['googleusercontent.com'];
 const SPREADSHEET_HOSTS = new Set(['docs.google.com']);
 const CACHE_FIRST_PATHS = new Set([...STATIC_ASSETS, ...OPTIONAL_ASSETS]);
+
+function uniquePaths(paths) {
+  return Array.from(new Set(paths));
+}
 
 function isSpreadsheetRequest(url) {
   if (SPREADSHEET_HOSTS.has(url.hostname) && url.pathname.includes('/spreadsheets/')) {
@@ -70,6 +73,45 @@ self.addEventListener('activate', event => {
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', event => {
+  const { data } = event;
+  if (!data || data.type !== 'WARMUP_CACHE') {
+    return;
+  }
+
+  const rawPaths = Array.isArray(data.paths) ? data.paths : [];
+  const pathsToWarm = uniquePaths(
+    rawPaths.filter(
+      path =>
+        typeof path === 'string' &&
+        path.startsWith('/') &&
+        !NETWORK_ONLY_PATHS.has(path)
+    )
+  );
+
+  if (!pathsToWarm.length) {
+    return;
+  }
+
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async cache => {
+      await Promise.all(
+        pathsToWarm.map(async path => {
+          try {
+            const request = new Request(path, { cache: 'no-store' });
+            const response = await fetch(request);
+            if (shouldCacheResponse(response)) {
+              await cache.put(request, response.clone());
+            }
+          } catch (error) {
+            // Ignore warm-up failures to avoid breaking message handling.
+          }
+        })
+      );
+    })
+  );
 });
 
 self.addEventListener('fetch', event => {
