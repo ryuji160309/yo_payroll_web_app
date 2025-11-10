@@ -4,6 +4,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offlineControls = document.getElementById('offline-controls');
   const offlineButton = document.getElementById('offline-load-button');
   const offlineInfo = document.getElementById('offline-workbook-info');
+  const LAST_STORE_STORAGE_KEY = 'lastSelectedStore';
+
+  function getLastSelectedStoreKey(stores) {
+    if (!stores) {
+      return null;
+    }
+    try {
+      const key = localStorage.getItem(LAST_STORE_STORAGE_KEY);
+      if (key && stores[key]) {
+        return key;
+      }
+    } catch (e) {
+      // Ignore storage access issues.
+    }
+    return null;
+  }
+
+  function setLastSelectedStoreKey(key) {
+    if (!key) {
+      return;
+    }
+    try {
+      localStorage.setItem(LAST_STORE_STORAGE_KEY, key);
+    } catch (e) {
+      // Ignore storage access issues.
+    }
+  }
 
   function updateOfflineIndicator(message, variant) {
     if (!offlineInfo) return;
@@ -72,8 +99,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           setOfflineWorkbook(reader.result, { fileName: file.name });
           updateOfflineIndicator(`ローカルファイル：${file.name}`, 'success');
-          if (status) {
-            status.textContent = '店舗を選択して続行してください。';
+          const stores = typeof loadStores === 'function' ? loadStores() : null;
+          const availableKeys = stores ? Object.keys(stores) : [];
+          const storedKey = getLastSelectedStoreKey(stores);
+          const targetKey = storedKey && availableKeys.includes(storedKey) ? storedKey : availableKeys[0];
+          if (targetKey) {
+            setLastSelectedStoreKey(targetKey);
+            window.location.href = `sheets.html?store=${encodeURIComponent(targetKey)}&offline=1`;
+          } else if (status) {
+            status.textContent = '店舗情報が設定されていないためローカルファイルを開けません。設定を確認してください。';
           }
         } catch (e) {
           console.error('Failed to store offline workbook', e);
@@ -133,6 +167,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const btn = document.createElement('button');
       btn.textContent = stores[key].name;
       btn.addEventListener('click', () => {
+        setLastSelectedStoreKey(key);
+        if (typeof setOfflineWorkbookActive === 'function') {
+          try {
+            setOfflineWorkbookActive(false);
+          } catch (e) {
+            // Ignore failures disabling offline mode.
+          }
+        }
         window.location.href = `sheets.html?store=${key}`;
       });
       list.appendChild(btn);

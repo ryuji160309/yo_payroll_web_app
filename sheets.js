@@ -17,12 +17,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   startLoading(statusEl, '読込中・・・');
   initializeHelp('help/sheets.txt');
   await ensureSettingsLoaded();
+  const params = new URLSearchParams(location.search);
+  const offlineMode = params.get('offline') === '1';
+  const info = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
+  const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
   const offlineIndicator = document.getElementById('offline-file-indicator');
   if (offlineIndicator) {
     offlineIndicator.classList.remove('is-success', 'is-error');
-    const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
-    const info = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
-    if (offlineActive) {
+    if (offlineMode && offlineActive) {
       const label = info && info.fileName ? `ローカルファイル：${info.fileName}` : 'ローカルファイルを使用しています';
       offlineIndicator.textContent = label;
       offlineIndicator.classList.add('is-success');
@@ -30,16 +32,36 @@ document.addEventListener('DOMContentLoaded', async () => {
       offlineIndicator.textContent = '';
     }
   }
-  const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
   const store = getStore(storeKey);
   if (!store) {
     stopLoading(statusEl);
     return;
   }
-  document.getElementById('store-name').textContent = store.name;
+  if (!offlineMode && typeof setOfflineWorkbookActive === 'function') {
+    try {
+      setOfflineWorkbookActive(false);
+    } catch (e) {
+      // Ignore errors while disabling offline mode.
+    }
+  }
+  const titleEl = document.getElementById('store-name');
+  if (titleEl) {
+    if (offlineMode && offlineActive && info && info.fileName) {
+      titleEl.textContent = info.fileName;
+      document.title = `${info.fileName} - シート選択`;
+    } else {
+      titleEl.textContent = store.name;
+      document.title = `${store.name} - シート選択`;
+    }
+  }
+  if (offlineMode && !offlineActive) {
+    stopLoading(statusEl);
+    statusEl.textContent = 'ローカルファイルを利用できません。もう一度トップに戻って読み込み直してください。';
+    return;
+  }
   try {
-    const sheets = await fetchSheetList(store.url);
+    const sheets = await fetchSheetList(store.url, { allowOffline: offlineMode });
     stopLoading(statusEl);
     const list = document.getElementById('sheet-list');
 
@@ -50,6 +72,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams({ store: storeKey, sheet: index });
         if (sheetId !== undefined && sheetId !== null) {
           params.set('gid', sheetId);
+        }
+        if (offlineMode) {
+          params.set('offline', '1');
         }
         window.location.href = `payroll.html?${params.toString()}`;
       });
