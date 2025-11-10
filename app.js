@@ -249,6 +249,102 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
   });
 })();
 
+(function setupNetworkStatusIndicator() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const ONLINE_MESSAGE_DURATION = 3000;
+  const FADE_OUT_DURATION = 400;
+  let statusElement = null;
+  let hideTimer = null;
+  let clearTimer = null;
+
+  function clearTimers() {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    if (clearTimer) {
+      clearTimeout(clearTimer);
+      clearTimer = null;
+    }
+  }
+
+  function showOffline() {
+    if (!statusElement) {
+      return;
+    }
+    clearTimers();
+    statusElement.textContent = '🔴オフライン';
+    statusElement.classList.add('is-visible', 'network-status--offline');
+    statusElement.classList.remove('network-status--online');
+  }
+
+  function hideOnlineMessage() {
+    if (!statusElement) {
+      return;
+    }
+    hideTimer = window.setTimeout(() => {
+      if (!statusElement) {
+        return;
+      }
+      statusElement.classList.remove('is-visible');
+      clearTimer = window.setTimeout(() => {
+        if (!statusElement) {
+          return;
+        }
+        statusElement.textContent = '';
+        statusElement.classList.remove('network-status--online');
+        clearTimer = null;
+      }, FADE_OUT_DURATION);
+      hideTimer = null;
+    }, ONLINE_MESSAGE_DURATION);
+  }
+
+  function showOnlineRecovered() {
+    if (!statusElement) {
+      return;
+    }
+    clearTimers();
+    statusElement.textContent = '🟢オンラインに復帰しました';
+    statusElement.classList.add('is-visible', 'network-status--online');
+    statusElement.classList.remove('network-status--offline');
+    hideOnlineMessage();
+  }
+
+  function handleOffline() {
+    showOffline();
+  }
+
+  function handleOnline() {
+    showOnlineRecovered();
+  }
+
+  function initNetworkStatus() {
+    statusElement = document.getElementById('network-status');
+    if (!statusElement) {
+      return;
+    }
+
+    if (!navigator.onLine) {
+      showOffline();
+    } else {
+      statusElement.textContent = '';
+      statusElement.classList.remove('is-visible', 'network-status--offline', 'network-status--online');
+    }
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNetworkStatus, { once: true });
+  } else {
+    initNetworkStatus();
+  }
+})();
+
 let PASSWORD = '3963';
 window.settingsError = false;
 const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=xlsx';

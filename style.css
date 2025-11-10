@@ -4,11 +4,49 @@ body {
   padding: 0;
 }
 header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 0.5rem 1rem;
   background: #f0f0f0;
+  gap: 0.5rem;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-left {
+  justify-content: flex-start;
+}
+
+.header-right {
+  justify-content: flex-end;
+}
+
+.header-status {
+  text-align: center;
+  min-height: 1.5rem;
+}
+
+.network-status {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.network-status.is-visible {
+  opacity: 1;
+}
+
+.network-status--offline {
+  color: #d32f2f;
+}
+
+.network-status--online {
+  color: #2e7d32;
 }
 
 button,
