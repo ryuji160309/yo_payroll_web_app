@@ -21,16 +21,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offlineMode = params.get('offline') === '1';
   const info = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
   const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
-  const offlineIndicator = document.getElementById('offline-file-indicator');
-  if (offlineIndicator) {
-    offlineIndicator.classList.remove('is-success', 'is-error');
-    if (offlineMode && offlineActive) {
-      offlineIndicator.textContent = 'ローカルファイルを使用しています';
-      offlineIndicator.classList.add('is-success');
-    } else {
-      offlineIndicator.textContent = '';
-    }
-  }
   const storeKey = params.get('store');
   const store = getStore(storeKey);
   if (!store) {

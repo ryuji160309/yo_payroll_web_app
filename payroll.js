@@ -7,16 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offlineMode = params.get('offline') === '1';
   const offlineInfo = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
   const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
-  const offlineIndicator = document.getElementById('offline-file-indicator');
-  if (offlineIndicator) {
-    offlineIndicator.classList.remove('is-success', 'is-error');
-    if (offlineMode && offlineActive) {
-      offlineIndicator.textContent = 'ローカルファイルを使用しています';
-      offlineIndicator.classList.add('is-success');
-    } else {
-      offlineIndicator.textContent = '';
-    }
-  }
   if (offlineMode && !offlineActive) {
     stopLoading(statusEl);
     statusEl.textContent = 'ローカルファイルを利用できません。トップに戻って読み込み直してください。';
