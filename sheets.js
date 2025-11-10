@@ -15,8 +15,8 @@ function formatSheetName(name) {
 document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   startLoading(statusEl, '読込中・・・');
-  await ensureSettingsLoaded();
   initializeHelp('help/sheets.txt');
+  await ensureSettingsLoaded();
   const params = new URLSearchParams(location.search);
   const storeKey = params.get('store');
   const store = getStore(storeKey);

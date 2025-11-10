@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const status = document.getElementById('store-status');
   startLoading(status, '読込中・・・');
 
+  initializeHelp('help/top.txt');
+
   try {
     await ensureSettingsLoaded();
   } catch (e) {
@@ -26,7 +28,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.settingsError && err) {
     err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
   }
-  initializeHelp('help/top.txt');
   if (list) {
     Object.keys(stores).forEach(key => {
       const btn = document.createElement('button');
@@ -40,6 +41,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const infoBox = document.getElementById('announcements');
   if (infoBox) {
+    infoBox.textContent = '';
+    const header = document.createElement('div');
+    header.style.textAlign = 'center';
+    header.style.fontSize = '1.2rem';
+    header.textContent = '●お知らせ●';
+    infoBox.appendChild(header);
+
+    const controlWrapper = document.createElement('div');
+    infoBox.appendChild(controlWrapper);
+
+    const messageDiv = document.createElement('div');
+    messageDiv.textContent = 'お知らせの読み込み中';
+    infoBox.appendChild(messageDiv);
+
     fetch('announcements.txt', { cache: 'no-store' })
       .then(res => res.text())
       .then(text => {
@@ -59,13 +74,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           return 0;
         });
-        if (!notes.length) return;
-        infoBox.textContent = '';
-        const header = document.createElement('div');
-        header.style.textAlign = 'center';
-        header.style.fontSize = '1.2rem';
-        header.textContent = '●お知らせ●';
-        infoBox.appendChild(header);
+        if (!notes.length) {
+          controlWrapper.textContent = '';
+          messageDiv.textContent = '現在お知らせはありません。';
+          return;
+        }
+        controlWrapper.textContent = '';
         const select = document.createElement('select');
         const latestOpt = document.createElement('option');
         latestOpt.value = '';
@@ -77,9 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           opt.textContent = `ver.${n.version}`;
           select.appendChild(opt);
         });
-        infoBox.appendChild(select);
-        const messageDiv = document.createElement('div');
-        infoBox.appendChild(messageDiv);
+        controlWrapper.appendChild(select);
         const latestNotes = notes.slice(0, 3);
 
         function buildNoteFragment(note) {
@@ -117,7 +129,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         render(select.value);
       })
       .catch(() => {
-        infoBox.textContent = 'お知らせを取得できませんでした。';
+        controlWrapper.textContent = '';
+        messageDiv.textContent = 'お知らせを取得できませんでした。';
       });
   }
 });
