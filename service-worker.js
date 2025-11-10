@@ -85,11 +85,30 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          const copyForRequest = response.clone();
+          const copyForPath = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, copyForRequest);
+            cache.put(url.pathname, copyForPath).catch(() => {
+              // Ignore errors writing the path-only cache entry.
+            });
+          });
           return response;
         })
-        .catch(() => caches.match(request).then(res => res || caches.match('/index.html')))
+        .catch(async () => {
+          const cached = await caches.match(request, { ignoreSearch: true });
+          if (cached) {
+            return cached;
+          }
+          const fallback = await caches.match('/index.html');
+          if (fallback) {
+            return fallback;
+          }
+          return new Response('Offline', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+          });
+        })
     );
     return;
   }

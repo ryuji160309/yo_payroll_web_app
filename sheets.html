@@ -16,8 +16,13 @@
 </head>
 <body>
   <header>
-    <button class="back-btn" onclick="history.back()">＜店舗選択</button>
-    <button class="back-btn" onclick="location.href='index.html'">はじめから</button>
+    <div class="header-left">
+      <button class="back-btn" onclick="history.back()">＜店舗選択</button>
+    </div>
+    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-right">
+      <button class="back-btn" onclick="location.href='index.html'">はじめから</button>
+    </div>
   </header>
   <h1 id="store-name" style="text-align:center"></h1>
   <h2 style="text-align:center">計算する月を選択</h2>
