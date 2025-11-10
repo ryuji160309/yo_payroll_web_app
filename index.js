@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('Offline workbook is unavailable');
           }
           setOfflineWorkbook(reader.result, { fileName: file.name });
-          updateOfflineIndicator(`ローカルファイル：${file.name}`, 'success');
+          updateOfflineIndicator('ローカルファイルを使用しています', 'success');
           const stores = typeof loadStores === 'function' ? loadStores() : null;
           const availableKeys = stores ? Object.keys(stores) : [];
           const storedKey = getLastSelectedStoreKey(stores);
