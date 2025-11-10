@@ -14,8 +14,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   const storeKey = params.get('store');
 
-  const sheetIndex = parseInt(params.get('sheet'), 10) || 0;
+  const multiSheetsParam = params.get('sheets');
+  let sheetIndices = multiSheetsParam
+    ? multiSheetsParam.split(',').map(v => parseInt(v, 10))
+    : [];
+  const seenIndices = new Set();
+  sheetIndices = sheetIndices.filter(idx => {
+    if (!Number.isFinite(idx)) return false;
+    if (seenIndices.has(idx)) return false;
+    seenIndices.add(idx);
+    return true;
+  });
+  if (sheetIndices.length === 0) {
+    const fallbackSheet = parseInt(params.get('sheet'), 10);
+    sheetIndices = [Number.isFinite(fallbackSheet) ? fallbackSheet : 0];
+  }
+  const isMultiSheetMode = sheetIndices.length > 1;
   const sheetGidParam = params.get('gid');
+  const multiGidsParam = params.get('gids');
+  const requestedGids = multiGidsParam
+    ? multiGidsParam.split(',')
+    : (sheetGidParam !== null ? [sheetGidParam] : []);
   const store = getStore(storeKey);
   if (!store) {
     stopLoading(statusEl);
@@ -43,27 +62,128 @@ document.addEventListener('DOMContentLoaded', async () => {
     openSourceBtn.disabled = true;
   }
   try {
-    const result = await fetchWorkbook(store.url, sheetIndex, { allowOffline: offlineMode });
-    const data = result.data;
-    const sheetId = result.sheetId;
+    const workbookResults = await Promise.all(
+      sheetIndices.map(idx => fetchWorkbook(store.url, idx, { allowOffline: offlineMode }))
+    );
     stopLoading(statusEl);
-    const year = data[1] && data[1][2];
-    const startMonthRaw = data[1] && data[1][4];
-    const startMonth = parseInt(startMonthRaw, 10);
-    const endMonth = (startMonth % 12) + 1;
-    document.getElementById('period').textContent = `${year}年${startMonth}月16日～${endMonth}月15日`;
-    const startDate = new Date(year, startMonth - 1, 16);
-    const nameRow = data[36] || [];
-    const storeName = nameRow[14] || store.name;
+
+    const summaries = workbookResults.map(result => {
+      const data = result.data;
+      const rawYear = data[1] && data[1][2];
+      const year = Number.parseInt(rawYear, 10);
+      const startMonthRaw = data[1] && data[1][4];
+      const startMonth = Number.parseInt(startMonthRaw, 10);
+      const hasValidStart = Number.isFinite(year) && Number.isFinite(startMonth);
+      const startDate = hasValidStart ? new Date(year, startMonth - 1, 16) : null;
+      const endDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 1, 15) : null;
+      let periodLabel = '';
+      if (startDate && endDate) {
+        const endYear = endDate.getFullYear();
+        const endMonth = endDate.getMonth() + 1;
+        periodLabel = endYear !== year
+          ? `${year}年${startMonth}月16日～${endYear}年${endMonth}月15日`
+          : `${year}年${startMonth}月16日～${endMonth}月15日`;
+      } else {
+        periodLabel = result.sheetName || `シート${result.sheetIndex + 1}`;
+      }
+      const payrollResult = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
+      const nameRow = data[36] || [];
+      const sheetStoreName = nameRow[14];
+      return {
+        result,
+        data,
+        payrollResult,
+        startDate,
+        endDate,
+        periodLabel,
+        startMonthRaw: startMonthRaw !== undefined && startMonthRaw !== null ? String(startMonthRaw) : '',
+        year: Number.isFinite(year) ? year : null,
+        sheetStoreName,
+        sheetId: result.sheetId,
+      };
+    });
+
+    const resolvedStoreName = summaries.map(s => s.sheetStoreName).find(name => !!name) || store.name;
     const displayTitleEl = document.getElementById('store-name');
     if (displayTitleEl) {
-      const displayName = (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) ? offlineInfo.fileName : storeName;
+      const displayName = (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName)
+        ? offlineInfo.fileName
+        : resolvedStoreName;
       displayTitleEl.textContent = displayName;
       document.title = `${displayName} - 給与計算`;
     }
+
+    const periodEl = document.getElementById('period');
+    if (periodEl) {
+      if (isMultiSheetMode) {
+        const labels = summaries.map(s => s.periodLabel).filter(Boolean);
+        periodEl.textContent = labels.length ? `選択した月：${labels.join(' ／ ')}` : '選択した月：複数シート';
+      } else {
+        periodEl.textContent = summaries[0] ? summaries[0].periodLabel : '';
+      }
+    }
+
     startLoading(statusEl, '計算中・・・');
 
-    const { results, totalSalary, schedules } = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
+    const resultMap = new Map();
+    summaries.forEach(summary => {
+      const schedulesList = summary.payrollResult.schedules || [];
+      summary.payrollResult.results.forEach((employee, idx) => {
+        const baseSalary = Number(employee.baseSalary ?? employee.salary ?? 0);
+        const hours = Number(employee.hours) || 0;
+        const days = Number(employee.days) || 0;
+        const scheduleSource = Array.isArray(schedulesList[idx]) ? schedulesList[idx].slice() : [];
+        const blockStartDate = summary.startDate ? new Date(summary.startDate.getTime()) : null;
+        const existing = resultMap.get(employee.name);
+        if (!existing) {
+          resultMap.set(employee.name, {
+            name: employee.name,
+            baseWage: employee.baseWage,
+            hours,
+            days,
+            baseSalary,
+            transport: Number(employee.transport || 0),
+            salary: baseSalary + Number(employee.transport || 0),
+            flattenedSchedule: scheduleSource.slice(),
+            scheduleBlocks: blockStartDate && scheduleSource.length > 0
+              ? [{ startDate: blockStartDate, schedule: scheduleSource.slice() }]
+              : [],
+          });
+        } else {
+          existing.baseWage = employee.baseWage;
+          existing.hours += hours;
+          existing.days += days;
+          existing.baseSalary += baseSalary;
+          existing.salary = existing.baseSalary + Number(existing.transport || 0);
+          if (scheduleSource.length > 0) {
+            if (!Array.isArray(existing.flattenedSchedule)) {
+              existing.flattenedSchedule = [];
+            }
+            existing.flattenedSchedule.push(...scheduleSource);
+          }
+          if (blockStartDate && scheduleSource.length > 0) {
+            if (!Array.isArray(existing.scheduleBlocks)) {
+              existing.scheduleBlocks = [];
+            }
+            existing.scheduleBlocks.push({ startDate: blockStartDate, schedule: scheduleSource.slice() });
+          }
+        }
+      });
+    });
+
+    const results = Array.from(resultMap.values());
+    results.forEach(employee => {
+      if (!Array.isArray(employee.flattenedSchedule)) {
+        employee.flattenedSchedule = [];
+      }
+      if (!Array.isArray(employee.scheduleBlocks)) {
+        employee.scheduleBlocks = [];
+      }
+      employee.transport = Number(employee.transport || 0);
+      employee.salary = employee.baseSalary + employee.transport;
+    });
+
+    const totalSalary = results.reduce((sum, r) => sum + (Number(r.salary) || 0), 0);
     document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
     const tbody = document.querySelector('#employees tbody');
 
@@ -139,25 +259,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       detailTableBody.innerHTML = '';
 
       const entries = [];
-      const schedule = schedules[idx] || [];
-      schedule.forEach((cell, dayIdx) => {
-        if (!cell) return;
-        const segments = cell.toString().split(',')
-          .map(s => s.trim())
-          .map(seg => {
-            const match = seg.match(TIME_RANGE_REGEX);
-            return match ? formatTimeSegment(match) : null;
-          })
-          .filter(Boolean);
-        if (segments.length === 0) return;
-        const current = new Date(startDate);
-        current.setDate(startDate.getDate() + dayIdx);
-        entries.push({
-          month: current.getMonth() + 1,
-          day: current.getDate(),
-          segments,
+      (employee.scheduleBlocks || []).forEach(block => {
+        if (!block || !block.schedule || block.schedule.length === 0) return;
+        const baseDate = block.startDate ? new Date(block.startDate) : null;
+        if (!baseDate || Number.isNaN(baseDate.getTime())) return;
+        block.schedule.forEach((cell, dayIdx) => {
+          if (!cell) return;
+          const segments = cell.toString().split(',')
+            .map(s => s.trim())
+            .map(seg => {
+              const match = seg.match(TIME_RANGE_REGEX);
+              return match ? formatTimeSegment(match) : null;
+            })
+            .filter(Boolean);
+          if (segments.length === 0) return;
+          const current = new Date(baseDate);
+          current.setDate(baseDate.getDate() + dayIdx);
+          entries.push({
+            date: current,
+            segments,
+          });
         });
       });
+
+      entries.sort((a, b) => a.date - b.date);
 
       if (entries.length === 0) {
         const emptyRow = document.createElement('tr');
@@ -167,15 +292,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         emptyRow.appendChild(emptyCell);
         detailTableBody.appendChild(emptyRow);
       } else {
-        let currentMonth = null;
+        let currentMonthKey = null;
         entries.forEach(entry => {
-          if (entry.month !== currentMonth) {
-            currentMonth = entry.month;
+          const monthKey = `${entry.date.getFullYear()}-${entry.date.getMonth()}`;
+          if (monthKey !== currentMonthKey) {
+            currentMonthKey = monthKey;
             const monthRow = document.createElement('tr');
             monthRow.className = 'month-row';
             const monthCell = document.createElement('th');
             monthCell.colSpan = 2;
-            monthCell.textContent = `${entry.month}月`;
+            monthCell.textContent = `${entry.date.getFullYear()}年${entry.date.getMonth() + 1}月`;
             monthRow.appendChild(monthCell);
             detailTableBody.appendChild(monthRow);
           }
@@ -183,7 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const row = document.createElement('tr');
           const dateCell = document.createElement('td');
           dateCell.className = 'date-cell';
-          dateCell.textContent = `${entry.day}日`;
+          dateCell.textContent = `${entry.date.getDate()}日`;
           const timeCell = document.createElement('td');
           timeCell.className = 'time-cell';
           entry.segments.forEach((segment, segIdx) => {
@@ -219,17 +345,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         const idx = parseInt(input.dataset.idx, 10);
         const wage = Number(input.value);
         if (Number.isFinite(wage)) {
-          const calcResult = calculateEmployee(schedules[idx], wage, store.overtime);
-          results[idx].baseWage = wage;
-          results[idx].baseSalary = calcResult.salary;
+          const employee = results[idx];
+          const schedule = employee && Array.isArray(employee.flattenedSchedule) ? employee.flattenedSchedule : [];
+          const calcResult = calculateEmployee(schedule, wage, store.overtime);
+          if (employee) {
+            employee.baseWage = wage;
+            employee.baseSalary = calcResult.salary;
+          }
         }
-        const baseSalary = results[idx].baseSalary;
+        const baseSalary = results[idx] ? results[idx].baseSalary : 0;
         const transportInput = document.querySelector(`.transport-input[data-idx="${idx}"]`);
         const transportRaw = transportInput ? Number(transportInput.value) : 0;
         const transport = Number.isFinite(transportRaw) ? transportRaw : 0;
-        results[idx].transport = transport;
+        if (results[idx]) {
+          results[idx].transport = transport;
+        }
         const salary = baseSalary + transport;
-        results[idx].salary = salary;
+        if (results[idx]) {
+          results[idx].salary = salary;
+        }
         const row = input.closest('tr');
         if (row) {
           const salaryCell = row.querySelector('.salary-cell');
@@ -312,9 +446,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       recalc();
     });
 
-    setupDownload(storeName, `${year}${startMonthRaw}`, results);
-    const preferredSheetId = sheetGidParam !== null ? sheetGidParam : sheetId;
-    setupSourceOpener(store.url, preferredSheetId);
+    const sortedSummaries = summaries.slice().sort((a, b) => {
+      if (a.startDate && b.startDate) return a.startDate - b.startDate;
+      if (a.startDate) return -1;
+      if (b.startDate) return 1;
+      return (a.result.sheetIndex || 0) - (b.result.sheetIndex || 0);
+    });
+    let downloadPeriodId = 'result';
+    if (isMultiSheetMode) {
+      const datedSummaries = sortedSummaries.filter(s => s.startDate && s.endDate);
+      if (datedSummaries.length > 0) {
+        const first = datedSummaries[0];
+        const last = datedSummaries[datedSummaries.length - 1];
+        const startLabel = `${first.startDate.getFullYear()}${String(first.startDate.getMonth() + 1).padStart(2, '0')}16`;
+        const endLabel = `${last.endDate.getFullYear()}${String(last.endDate.getMonth() + 1).padStart(2, '0')}15`;
+        downloadPeriodId = `${startLabel}-${endLabel}`;
+      } else {
+        downloadPeriodId = 'multi-month';
+      }
+    } else if (sortedSummaries[0]) {
+      const primary = sortedSummaries[0];
+      if (primary.year !== null && primary.startMonthRaw) {
+        const paddedMonth = primary.startMonthRaw.padStart(2, '0');
+        downloadPeriodId = `${primary.year}${paddedMonth}`;
+      } else if (primary.result && primary.result.sheetName) {
+        downloadPeriodId = primary.result.sheetName;
+      }
+    }
+
+    setupDownload(resolvedStoreName, downloadPeriodId, results);
+
+    if (openSourceBtn) {
+      if (isMultiSheetMode) {
+        openSourceBtn.disabled = true;
+        openSourceBtn.title = '月横断計算モードでは利用できません。';
+      } else {
+        const preferredSheetId = (requestedGids[0] && requestedGids[0] !== '')
+          ? requestedGids[0]
+          : (summaries[0] ? summaries[0].sheetId : undefined);
+        setupSourceOpener(store.url, preferredSheetId);
+      }
+    }
   } catch (e) {
     stopLoading(statusEl);
     document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
