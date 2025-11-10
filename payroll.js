@@ -11,8 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (offlineIndicator) {
     offlineIndicator.classList.remove('is-success', 'is-error');
     if (offlineMode && offlineActive) {
-      const label = offlineInfo && offlineInfo.fileName ? `ローカルファイル：${offlineInfo.fileName}` : 'ローカルファイルを使用しています';
-      offlineIndicator.textContent = label;
+      offlineIndicator.textContent = 'ローカルファイルを使用しています';
       offlineIndicator.classList.add('is-success');
     } else {
       offlineIndicator.textContent = '';
