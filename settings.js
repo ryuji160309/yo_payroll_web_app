@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  initializeHelp('help/settings.txt');
   await ensureSettingsLoaded();
   if (window.settingsError) {
     const err = document.getElementById('settings-error');
@@ -10,7 +11,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       err.textContent = lines.join('\n');
     }
   }
-  initializeHelp('help/settings.txt');
   const select = document.getElementById('store-select');
   Object.keys(DEFAULT_STORES).forEach(key => {
     const opt = document.createElement('option');

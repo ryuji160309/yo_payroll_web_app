@@ -32,13 +32,32 @@ function initializeHelp(path) {
     return withBold.replace(/\n/g, '<br>');
   };
 
-  button.addEventListener('click', async () => {
+  let cachedHTML = null;
+  let isLoading = false;
+
+  async function loadContent() {
+    if (cachedHTML !== null || isLoading) {
+      return;
+    }
+    isLoading = true;
     try {
       const res = await fetch(path);
       const text = await res.text();
-      content.innerHTML = renderContent(text);
+      cachedHTML = renderContent(text);
+      content.innerHTML = cachedHTML;
     } catch (e) {
       content.textContent = 'ヘルプを読み込めませんでした。';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  button.addEventListener('click', () => {
+    if (cachedHTML !== null) {
+      content.innerHTML = cachedHTML;
+    } else {
+      content.textContent = 'ヘルプの読み込み中';
+      loadContent();
     }
     overlay.style.display = 'flex';
   });
