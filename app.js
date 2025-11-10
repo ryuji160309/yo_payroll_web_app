@@ -914,6 +914,25 @@ function clearOfflineWorkbook() {
   }
 }
 
+function setOfflineWorkbookActive(active) {
+  if (!workbookCacheStorage) {
+    return;
+  }
+  const entry = getOfflineWorkbookEntry();
+  if (!entry) {
+    return;
+  }
+  const nextEntry = { ...entry, active: !!active };
+  try {
+    workbookCacheStorage.setItem(OFFLINE_WORKBOOK_STORAGE_KEY, JSON.stringify(nextEntry));
+  } catch (e) {
+    // Ignore storage errors when updating state.
+  }
+  if (!active) {
+    offlineWorkbookCache = null;
+  }
+}
+
 function setOfflineWorkbook(buffer, meta = {}) {
   if (!(buffer instanceof ArrayBuffer)) {
     throw new Error('Invalid workbook buffer');
@@ -926,6 +945,7 @@ function setOfflineWorkbook(buffer, meta = {}) {
     data: arrayBufferToBase64(clonedBuffer),
     fileName: typeof meta.fileName === 'string' ? meta.fileName : '',
     timestamp: Date.now(),
+    active: true,
   };
   try {
     workbookCacheStorage.setItem(OFFLINE_WORKBOOK_STORAGE_KEY, JSON.stringify(payload));
@@ -937,12 +957,13 @@ function setOfflineWorkbook(buffer, meta = {}) {
 }
 
 function getOfflineWorkbookBuffer() {
+  const entry = getOfflineWorkbookEntry();
+  if (!entry || entry.active === false || !entry.data) {
+    offlineWorkbookCache = null;
+    return null;
+  }
   if (offlineWorkbookCache) {
     return offlineWorkbookCache;
-  }
-  const entry = getOfflineWorkbookEntry();
-  if (!entry || !entry.data) {
-    return null;
   }
   try {
     offlineWorkbookCache = base64ToArrayBuffer(entry.data);
@@ -965,11 +986,8 @@ function getOfflineWorkbookInfo() {
 }
 
 function isOfflineWorkbookActive() {
-  if (offlineWorkbookCache) {
-    return true;
-  }
   const entry = getOfflineWorkbookEntry();
-  return !!(entry && entry.data);
+  return !!(entry && entry.data && entry.active !== false);
 }
 
 function cacheWorkbookBuffer(url, buffer) {
@@ -1020,8 +1038,9 @@ function buildWorkbookResult(wb, sheetIndex = 0) {
   return { sheetName, data, sheetId, sheetIndex: targetIndex };
 }
 
-async function fetchWorkbook(url, sheetIndex = 0) {
-  const offlineBuffer = getOfflineWorkbookBuffer();
+async function fetchWorkbook(url, sheetIndex = 0, options = {}) {
+  const allowOffline = options && options.allowOffline !== undefined ? options.allowOffline : true;
+  const offlineBuffer = allowOffline ? getOfflineWorkbookBuffer() : null;
   if (offlineBuffer) {
     const wb = XLSX.read(offlineBuffer, { type: 'array' });
     return buildWorkbookResult(wb, sheetIndex);
@@ -1044,8 +1063,9 @@ async function fetchWorkbook(url, sheetIndex = 0) {
   return buildWorkbookResult(wb, sheetIndex);
 }
 
-async function fetchSheetList(url) {
-  const offlineBuffer = getOfflineWorkbookBuffer();
+async function fetchSheetList(url, options = {}) {
+  const allowOffline = options && options.allowOffline !== undefined ? options.allowOffline : true;
+  const offlineBuffer = allowOffline ? getOfflineWorkbookBuffer() : null;
   if (offlineBuffer) {
     const wb = XLSX.read(offlineBuffer, { type: 'array', bookSheets: true });
     return buildSheetMetadata(wb);

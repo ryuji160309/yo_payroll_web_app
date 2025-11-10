@@ -4,18 +4,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   initializeHelp('help/payroll.txt');
   await ensureSettingsLoaded();
   const params = new URLSearchParams(location.search);
+  const offlineMode = params.get('offline') === '1';
+  const offlineInfo = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
+  const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
   const offlineIndicator = document.getElementById('offline-file-indicator');
   if (offlineIndicator) {
     offlineIndicator.classList.remove('is-success', 'is-error');
-    const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
-    const info = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
-    if (offlineActive) {
-      const label = info && info.fileName ? `ローカルファイル：${info.fileName}` : 'ローカルファイルを使用しています';
+    if (offlineMode && offlineActive) {
+      const label = offlineInfo && offlineInfo.fileName ? `ローカルファイル：${offlineInfo.fileName}` : 'ローカルファイルを使用しています';
       offlineIndicator.textContent = label;
       offlineIndicator.classList.add('is-success');
     } else {
       offlineIndicator.textContent = '';
     }
+  }
+  if (offlineMode && !offlineActive) {
+    stopLoading(statusEl);
+    statusEl.textContent = 'ローカルファイルを利用できません。トップに戻って読み込み直してください。';
+    return;
   }
   const storeKey = params.get('store');
 
@@ -26,12 +32,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     stopLoading(statusEl);
     return;
   }
+  if (!offlineMode && typeof setOfflineWorkbookActive === 'function') {
+    try {
+      setOfflineWorkbookActive(false);
+    } catch (e) {
+      // Ignore failures when disabling offline mode.
+    }
+  }
+  const titleEl = document.getElementById('store-name');
+  if (titleEl) {
+    if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
+      titleEl.textContent = offlineInfo.fileName;
+      document.title = `${offlineInfo.fileName} - 給与計算`;
+    } else {
+      titleEl.textContent = store.name;
+      document.title = `${store.name} - 給与計算`;
+    }
+  }
   const openSourceBtn = document.getElementById('open-source');
   if (openSourceBtn) {
     openSourceBtn.disabled = true;
   }
   try {
-    const result = await fetchWorkbook(store.url, sheetIndex);
+    const result = await fetchWorkbook(store.url, sheetIndex, { allowOffline: offlineMode });
     const data = result.data;
     const sheetId = result.sheetId;
     stopLoading(statusEl);
@@ -43,7 +66,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const startDate = new Date(year, startMonth - 1, 16);
     const nameRow = data[36] || [];
     const storeName = nameRow[14] || store.name;
-    document.getElementById('store-name').textContent = storeName;
+    const displayTitleEl = document.getElementById('store-name');
+    if (displayTitleEl) {
+      const displayName = (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) ? offlineInfo.fileName : storeName;
+      displayTitleEl.textContent = displayName;
+      document.title = `${displayName} - 給与計算`;
+    }
     startLoading(statusEl, '計算中・・・');
 
     const { results, totalSalary, schedules } = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
