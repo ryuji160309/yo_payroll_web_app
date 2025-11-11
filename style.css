@@ -70,6 +70,18 @@ select {
   margin: 0.5rem auto;
 }
 
+#multi-store-mode-button {
+  background: #e3f2fd;
+  border-color: #64b5f6;
+  color: #0d47a1;
+  font-weight: 600;
+}
+
+#multi-store-mode-button:hover,
+#multi-store-mode-button:focus {
+  background: #bbdefb;
+}
+
 #multi-month-mode-button {
   background: #fff6de;
   border-color: #f0c36b;
@@ -166,6 +178,109 @@ select {
   background: #cfd8dc;
   border-color: #cfd8dc;
   color: #607d8b;
+}
+
+#multi-store-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  z-index: 970;
+}
+
+#multi-store-popup {
+  background: #fff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  width: min(30rem, 100%);
+  max-height: min(90vh, 34rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
+}
+
+#multi-store-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+#multi-store-description {
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+#multi-store-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding: 0 0.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.multi-store-option {
+  width: 100%;
+  margin: 0;
+}
+
+.multi-store-option.is-selected {
+  background: #0f4a73;
+  color: #fff;
+  border-color: #0f4a73;
+}
+
+#multi-store-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+#multi-store-close,
+#multi-store-start {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+}
+
+#multi-store-start {
+  background: #0f4a73;
+  border-color: #0f4a73;
+  color: #fff;
+}
+
+#multi-store-start:disabled {
+  background: #cfd8dc;
+  border-color: #cfd8dc;
+  color: #607d8b;
+}
+
+.store-section {
+  width: 90%;
+  margin: 1.5rem auto 0;
+}
+
+.store-section-title {
+  text-align: center;
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.store-sheet-buttons {
+  display: flex;
+  flex-direction: column;
+}
+
+.store-section-empty {
+  text-align: center;
+  color: #616161;
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
 }
 
 #offline-controls {

@@ -1,4 +1,8 @@
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const CROSS_STORE_LOADING_MESSAGE = [
+  '店舗横断計算モードでは複数店舗のデータを読み込むため、通常の計算よりも時間がかかります。',
+  'しばらくお待ち下さい。'
+].join('\n');
 
 function isValidDate(value) {
   return value instanceof Date && !Number.isNaN(value.getTime());
@@ -22,11 +26,15 @@ function formatPeriodRange(startDate, endDate) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
-  startLoading(statusEl, '読込中・・・');
+  const params = new URLSearchParams(location.search);
+  const selectionsParamRaw = params.get('selections');
+  const isCrossStoreMode = selectionsParamRaw !== null && selectionsParamRaw.trim() !== '';
+  startLoading(statusEl, isCrossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・');
   initializeHelp('help/payroll.txt');
   await ensureSettingsLoaded();
-  const params = new URLSearchParams(location.search);
-  const offlineMode = params.get('offline') === '1';
+
+  const offlineRequested = params.get('offline') === '1';
+  const offlineMode = offlineRequested && !isCrossStoreMode;
   const offlineInfo = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
   const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
   if (offlineMode && !offlineActive) {
@@ -34,34 +42,103 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusEl.textContent = 'ローカルファイルを利用できません。トップに戻って読み込み直してください。';
     return;
   }
-  const storeKey = params.get('store');
 
-  const multiSheetsParam = params.get('sheets');
-  let sheetIndices = multiSheetsParam
-    ? multiSheetsParam.split(',').map(v => parseInt(v, 10))
-    : [];
-  const seenIndices = new Set();
-  sheetIndices = sheetIndices.filter(idx => {
-    if (!Number.isFinite(idx)) return false;
-    if (seenIndices.has(idx)) return false;
-    seenIndices.add(idx);
-    return true;
-  });
-  if (sheetIndices.length === 0) {
-    const fallbackSheet = parseInt(params.get('sheet'), 10);
-    sheetIndices = [Number.isFinite(fallbackSheet) ? fallbackSheet : 0];
+  function normalizeStoreKey(value) {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return '';
+    }
+    try {
+      return decodeURIComponent(trimmed);
+    } catch (e) {
+      return trimmed;
+    }
   }
-  const isMultiSheetMode = sheetIndices.length > 1;
-  const sheetGidParam = params.get('gid');
-  const multiGidsParam = params.get('gids');
-  const requestedGids = multiGidsParam
-    ? multiGidsParam.split(',')
-    : (sheetGidParam !== null ? [sheetGidParam] : []);
-  const store = getStore(storeKey);
-  if (!store) {
+
+  const targetSelections = [];
+  const requestedGids = [];
+  const seenSelectionKeys = new Set();
+
+  if (isCrossStoreMode) {
+    const segments = selectionsParamRaw.split(',').map(seg => seg.trim()).filter(Boolean);
+    segments.forEach(segment => {
+      const parts = segment.split(':');
+      if (parts.length < 2) {
+        return;
+      }
+      const storeKey = normalizeStoreKey(parts[0]);
+      const sheetIndex = Number.parseInt(parts[1], 10);
+      if (!storeKey || !Number.isFinite(sheetIndex)) {
+        return;
+      }
+      const identifier = `${storeKey}|${sheetIndex}`;
+      if (seenSelectionKeys.has(identifier)) {
+        return;
+      }
+      const sheetId = parts.length > 2 ? parts.slice(2).join(':') : '';
+      const store = getStore(storeKey);
+      if (!store) {
+        return;
+      }
+      seenSelectionKeys.add(identifier);
+      targetSelections.push({ storeKey, store, sheetIndex, sheetId: sheetId || '' });
+    });
+  } else {
+    const storeKey = normalizeStoreKey(params.get('store'));
+    const store = storeKey ? getStore(storeKey) : null;
+    if (!store) {
+      stopLoading(statusEl);
+      return;
+    }
+    const multiSheetsParam = params.get('sheets');
+    let sheetIndices = multiSheetsParam
+      ? multiSheetsParam.split(',').map(v => parseInt(v, 10))
+      : [];
+    const seenIndices = new Set();
+    sheetIndices = sheetIndices.filter(idx => {
+      if (!Number.isFinite(idx) || seenIndices.has(idx)) {
+        return false;
+      }
+      seenIndices.add(idx);
+      return true;
+    });
+    if (sheetIndices.length === 0) {
+      const fallbackSheet = parseInt(params.get('sheet'), 10);
+      sheetIndices = [Number.isFinite(fallbackSheet) ? fallbackSheet : 0];
+    }
+    const sheetGidParam = params.get('gid');
+    const multiGidsParam = params.get('gids');
+    const rawGids = multiGidsParam
+      ? multiGidsParam.split(',')
+      : (sheetGidParam !== null ? [sheetGidParam] : []);
+    const sanitizedGids = sheetIndices.map((_, idx) => rawGids[idx] !== undefined ? rawGids[idx] : '');
+    sanitizedGids.forEach(gid => requestedGids.push(gid));
+    sheetIndices.forEach((sheetIndex, idx) => {
+      const identifier = `${storeKey}|${sheetIndex}`;
+      if (seenSelectionKeys.has(identifier)) {
+        return;
+      }
+      seenSelectionKeys.add(identifier);
+      targetSelections.push({ storeKey, store, sheetIndex, sheetId: sanitizedGids[idx] || '' });
+    });
+  }
+
+  if (targetSelections.length === 0) {
     stopLoading(statusEl);
+    statusEl.textContent = '計算対象のシートが選択されていません。前の画面に戻って選び直してください。';
     return;
   }
+
+  const store = targetSelections[0].store;
+  if (!store) {
+    stopLoading(statusEl);
+    statusEl.textContent = '店舗情報を取得できませんでした。設定を確認してください。';
+    return;
+  }
+
   if (!offlineMode && typeof setOfflineWorkbookActive === 'function') {
     try {
       setOfflineWorkbookActive(false);
@@ -69,9 +146,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Ignore failures when disabling offline mode.
     }
   }
+
+  const isMultiSheetMode = targetSelections.length > 1;
+
   const titleEl = document.getElementById('store-name');
   if (titleEl) {
-    if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
+    if (isCrossStoreMode) {
+      titleEl.textContent = '店舗横断計算モード';
+      document.title = '店舗横断計算モード - 給与計算';
+    } else if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
       titleEl.textContent = offlineInfo.fileName;
       document.title = `${offlineInfo.fileName} - 給与計算`;
     } else {
@@ -79,23 +162,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.title = `${store.name} - 給与計算`;
     }
   }
+
   const openSourceBtn = document.getElementById('open-source');
   if (openSourceBtn) {
     openSourceBtn.disabled = true;
   }
   try {
-    const fetchPromises = sheetIndices.map(idx =>
-      fetchWorkbook(store.url, idx, { allowOffline: offlineMode })
+    const fetchPromises = targetSelections.map(selection =>
+      fetchWorkbook(selection.store.url, selection.sheetIndex, { allowOffline: !isCrossStoreMode && offlineMode })
     );
     const settledResults = await Promise.allSettled(fetchPromises);
     const workbookResults = [];
     const failedSheets = [];
     settledResults.forEach((res, idx) => {
-      const sheetIndex = sheetIndices[idx];
+      const selection = targetSelections[idx];
+      if (!selection) {
+        return;
+      }
       if (res.status === 'fulfilled') {
-        workbookResults.push(res.value);
+        workbookResults.push({ selection, workbook: res.value });
       } else {
-        failedSheets.push({ sheetIndex, reason: res.reason });
+        failedSheets.push({ selection, reason: res.reason });
       }
     });
     if (workbookResults.length === 0) {
@@ -106,8 +193,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const processingFailures = [];
     const summaries = [];
-    workbookResults.forEach(result => {
-      const data = result.data;
+    workbookResults.forEach(({ selection, workbook }) => {
+      const data = workbook.data;
       const rawYear = data[1] && data[1][2];
       const year = Number.parseInt(rawYear, 10);
       const startMonthRaw = data[1] && data[1][4];
@@ -123,14 +210,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           ? `${year}年${startMonth}月16日～${endYear}年${endMonth}月15日`
           : `${year}年${startMonth}月16日～${endMonth}月15日`;
       } else {
-        periodLabel = result.sheetName || `シート${result.sheetIndex + 1}`;
+        periodLabel = workbook.sheetName || `シート${workbook.sheetIndex + 1}`;
       }
       try {
-        const payrollResult = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
+        const payrollResult = calculatePayroll(
+          data,
+          selection.store.baseWage,
+          selection.store.overtime,
+          selection.store.excludeWords || []
+        );
         const nameRow = data[36] || [];
         const sheetStoreName = nameRow[14];
         summaries.push({
-          result,
+          selection,
+          result: workbook,
           data,
           payrollResult,
           startDate,
@@ -139,10 +232,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           startMonthRaw: startMonthRaw !== undefined && startMonthRaw !== null ? String(startMonthRaw) : '',
           year: Number.isFinite(year) ? year : null,
           sheetStoreName,
-          sheetId: result.sheetId,
+          sheetId: workbook.sheetId,
         });
       } catch (err) {
-        processingFailures.push({ sheetIndex: result.sheetIndex, reason: err });
+        processingFailures.push({ sheetIndex: workbook.sheetIndex, reason: err, selection });
       }
     });
 
@@ -150,7 +243,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       throw new Error('有効なシートがありません');
     }
 
-    const resolvedStoreName = summaries.map(s => s.sheetStoreName).find(name => !!name) || store.name;
+    const resolvedStoreName = isCrossStoreMode
+      ? '店舗横断計算モード'
+      : (summaries.map(s => s.sheetStoreName).find(name => !!name) || store.name);
     const displayTitleEl = document.getElementById('store-name');
     if (displayTitleEl) {
       const displayName = (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName)
@@ -566,7 +661,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupDownload(resolvedStoreName, downloadPeriodId, results);
 
     if (openSourceBtn) {
-      if (isMultiSheetMode) {
+      if (isCrossStoreMode) {
+        openSourceBtn.disabled = true;
+        openSourceBtn.title = '店舗横断計算モードでは利用できません。';
+      } else if (isMultiSheetMode) {
         openSourceBtn.disabled = true;
         openSourceBtn.title = '月横断計算モードでは利用できません。';
       } else {
