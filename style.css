@@ -136,10 +136,18 @@ select {
   border-color: #0f4a73;
 }
 
+#multi-month-select-all {
+  align-self: flex-end;
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.8rem;
+}
+
 #multi-month-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0;
+  width: 100%;
 }
 
 #multi-month-close,

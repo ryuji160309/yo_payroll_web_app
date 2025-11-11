@@ -63,17 +63,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const popupTitle = document.createElement('h2');
     popupTitle.id = 'multi-month-title';
-    popupTitle.textContent = '計算する月を選択';
+    popupTitle.textContent = '月横断計算モード';
 
     const popupDescription = document.createElement('p');
     popupDescription.id = 'multi-month-description';
-    popupDescription.textContent = '計算したい月を選択してください。複数選択できます。';
+    popupDescription.textContent = '計算したい月を複数選択してください。';
 
     const popupList = document.createElement('div');
     popupList.id = 'multi-month-list';
 
     const popupActions = document.createElement('div');
     popupActions.id = 'multi-month-actions';
+
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.type = 'button';
+    selectAllBtn.id = 'multi-month-select-all';
+    selectAllBtn.textContent = '全選択';
 
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
@@ -92,6 +97,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     popup.appendChild(popupTitle);
     popup.appendChild(popupDescription);
     popup.appendChild(popupList);
+    popup.appendChild(selectAllBtn);
     popup.appendChild(popupActions);
 
     overlay.appendChild(popup);
@@ -172,6 +178,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       popupButtons.push(popupBtn);
       popupList.appendChild(popupBtn);
+    });
+
+    selectAllBtn.addEventListener('click', () => {
+      popupButtons.forEach(btn => {
+        const sheetKey = Number(btn.dataset.sheetIndex);
+        if (Number.isFinite(sheetKey)) {
+          if (!selectedSheets.has(sheetKey)) {
+            selectedSheets.add(sheetKey);
+          }
+          btn.classList.add('is-selected');
+        }
+      });
+      updateStartButton();
     });
 
     startBtn.addEventListener('click', () => {
