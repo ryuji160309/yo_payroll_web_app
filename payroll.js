@@ -449,11 +449,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detailDownloadOptions = document.createElement('div');
     detailDownloadOptions.id = 'employee-detail-download-options';
     const detailTxtBtn = document.createElement('button');
-    detailTxtBtn.textContent = 'テキスト形式';
+    detailTxtBtn.textContent = 'テキスト形式（.txt）';
     const detailXlsxBtn = document.createElement('button');
-    detailXlsxBtn.textContent = 'EXCEL形式';
+    detailXlsxBtn.textContent = 'EXCEL形式（.xlsx）';
     const detailCsvBtn = document.createElement('button');
-    detailCsvBtn.textContent = 'CSV形式';
+    detailCsvBtn.textContent = 'CSV形式（.csv）';
     detailDownloadOptions.appendChild(detailTxtBtn);
     detailDownloadOptions.appendChild(detailXlsxBtn);
     detailDownloadOptions.appendChild(detailCsvBtn);
@@ -863,11 +863,11 @@ function setupDownload(storeName, period, results) {
   includeDetail.appendChild(includeLabel);
 
   const txtBtn = document.createElement('button');
-  txtBtn.textContent = 'テキスト形式';
+  txtBtn.textContent = 'テキスト形式（.txt）';
   const xlsxBtn = document.createElement('button');
   xlsxBtn.textContent = 'EXCEL形式（.xlsx）';
   const csvBtn = document.createElement('button');
-  csvBtn.textContent = 'CSV形式';
+  csvBtn.textContent = 'CSV形式（.csv）';
 
   options.appendChild(includeDetail);
   options.appendChild(txtBtn);

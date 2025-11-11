@@ -3,6 +3,105 @@ const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
 const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
 
+(function setupToastSystem() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const DEFAULT_DURATION = 2600;
+
+  function ensureContainer() {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.setAttribute('role', 'status');
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('aria-atomic', 'true');
+    }
+    if (!container.isConnected) {
+      const parent = document.body || document.documentElement;
+      if (parent) {
+        parent.appendChild(container);
+      }
+    }
+    return container;
+  }
+
+  function scheduleRemoval(toast, container) {
+    const removeToastElement = () => {
+      if (toast.parentElement) {
+        toast.parentElement.removeChild(toast);
+      }
+      if (container && container.parentElement && container.childElementCount === 0) {
+        container.parentElement.removeChild(container);
+      }
+    };
+
+    const onTransitionEnd = event => {
+      if (event.propertyName === 'opacity' && !toast.classList.contains('is-visible')) {
+        toast.removeEventListener('transitionend', onTransitionEnd);
+        clearTimeout(fallbackRemoval);
+        removeToastElement();
+      }
+    };
+
+    const fallbackRemoval = setTimeout(() => {
+      toast.removeEventListener('transitionend', onTransitionEnd);
+      removeToastElement();
+    }, 400);
+
+    toast.addEventListener('transitionend', onTransitionEnd);
+
+    return () => {
+      clearTimeout(fallbackRemoval);
+      toast.removeEventListener('transitionend', onTransitionEnd);
+      removeToastElement();
+    };
+  }
+
+  window.showToast = function showToast(message, options = {}) {
+    if (!message) {
+      return null;
+    }
+    const container = ensureContainer();
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    const duration = typeof options.duration === 'number' && options.duration > 0
+      ? options.duration
+      : DEFAULT_DURATION;
+
+    const removeToastElement = scheduleRemoval(toast, container);
+
+    requestAnimationFrame(() => {
+      toast.classList.add('is-visible');
+    });
+
+    const hide = () => {
+      toast.classList.remove('is-visible');
+    };
+
+    const hideTimer = setTimeout(hide, duration);
+
+    toast.addEventListener('click', () => {
+      clearTimeout(hideTimer);
+      hide();
+    });
+
+    return {
+      element: toast,
+      hide: () => {
+        clearTimeout(hideTimer);
+        hide();
+      },
+      remove: removeToastElement
+    };
+  };
+})();
+
 (function setupUpdateChecker() {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return;
