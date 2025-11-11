@@ -512,28 +512,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       hideDetailDownload();
     });
 
-    function parseTimeSegment(match) {
-      const startHour = match[1].padStart(2, '0');
-      const startMinuteRaw = match[2];
-      const endHour = match[3].padStart(2, '0');
-      const endMinuteRaw = match[4];
-      const startMinute = startMinuteRaw !== undefined ? startMinuteRaw.padStart(2, '0') : '00';
-      const endMinute = endMinuteRaw !== undefined ? endMinuteRaw.padStart(2, '0') : '00';
-      let startText = `${startHour}時`;
-      if (startMinuteRaw !== undefined) {
-        startText += `${startMinuteRaw}分`;
-      }
-      let endText = `${endHour}時`;
-      if (endMinuteRaw !== undefined) {
-        endText += `${endMinuteRaw}分`;
-      }
-      return {
-        display: `${startText}～${endText}`,
-        canonical: `${startHour}:${startMinute}-${endHour}:${endMinute}`,
-        sortKey: `${startHour}${startMinute}-${endHour}${endMinute}`
-      };
-    }
-
     function showEmployeeDetail(idx) {
       const employee = results[idx];
       if (!employee) {
@@ -543,15 +521,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       hideDetailDownload();
       detailDownloadBtn.disabled = true;
 
-      detailTitle.textContent = employee.name;
-      const summaryLines = [
-        `基本時給：${Number(employee.baseWage).toLocaleString()}円`,
-        `総勤務時間：${employee.hours.toFixed(2)}時間`,
-        `出勤日数：${employee.days}日`,
-        `交通費：${Number(employee.transport || 0).toLocaleString()}円`,
-        `給与：${Number(employee.salary || 0).toLocaleString()}円`
-      ];
+      const detailInfo = buildEmployeeDetailDownloadInfo(employee, resolvedStoreName);
+      if (!detailInfo) {
+        return;
+      }
+
+      detailTitle.textContent = detailInfo.employeeName || '';
       detailSummary.innerHTML = '';
+      const summaryLines = Array.isArray(detailInfo.summaryLines) ? detailInfo.summaryLines : [];
       summaryLines.forEach(line => {
         const lineEl = document.createElement('div');
         lineEl.className = 'employee-detail-summary-line';
@@ -560,129 +537,68 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       detailTableBody.innerHTML = '';
-
-      const entriesMap = new Map();
-      (employee.scheduleBlocks || []).forEach(block => {
-        if (!block || !block.schedule || block.schedule.length === 0) return;
-        const baseDate = block.startDate ? new Date(block.startDate) : null;
-        if (!baseDate || Number.isNaN(baseDate.getTime())) return;
-        const blockStoreName = block.storeName && String(block.storeName).trim()
-          ? String(block.storeName).trim()
-          : resolvedStoreName;
-        block.schedule.forEach((cell, dayIdx) => {
-          if (!cell) return;
-          const segments = cell.toString().split(',')
-            .map(s => s.trim())
-            .map(seg => {
-              const match = seg.match(TIME_RANGE_REGEX);
-              return match ? parseTimeSegment(match) : null;
-            })
-            .filter(Boolean);
-          if (segments.length === 0) return;
-          const current = new Date(baseDate);
-          current.setDate(baseDate.getDate() + dayIdx);
-          const dateKey = `${current.getFullYear()}-${current.getMonth()}-${current.getDate()}`;
-          let entry = entriesMap.get(dateKey);
-          if (!entry) {
-            entry = { date: current, segments: new Map() };
-            entriesMap.set(dateKey, entry);
-          }
-          segments.forEach(segmentInfo => {
-            let segment = entry.segments.get(segmentInfo.canonical);
-            if (!segment) {
-              segment = {
-                display: segmentInfo.display,
-                sortKey: segmentInfo.sortKey,
-                storeNames: new Set()
-              };
-              entry.segments.set(segmentInfo.canonical, segment);
-            }
-            if (blockStoreName) {
-              segment.storeNames.add(blockStoreName);
-            }
-          });
-        });
-      });
-
-      const entries = Array.from(entriesMap.values()).sort((a, b) => a.date - b.date);
-      const detailRowsForDownload = [];
-
-      if (entries.length === 0) {
+      const rows = Array.isArray(detailInfo.rows) ? detailInfo.rows : [];
+      if (rows.length === 0) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
         emptyCell.colSpan = 3;
         emptyCell.textContent = '出勤記録がありません';
         emptyRow.appendChild(emptyCell);
         detailTableBody.appendChild(emptyRow);
-        currentDetailDownloadInfo = {
-          employeeName: employee.name,
-          summaryLines: summaryLines.slice(),
-          rows: []
-        };
-        detailDownloadBtn.disabled = false;
       } else {
         let currentMonthKey = null;
-        entries.forEach(entry => {
-          const monthKey = `${entry.date.getFullYear()}-${entry.date.getMonth()}`;
-          if (monthKey !== currentMonthKey) {
-            currentMonthKey = monthKey;
-            const monthRow = document.createElement('tr');
-            monthRow.className = 'month-row';
-            const monthCell = document.createElement('th');
-            monthCell.colSpan = 3;
-            monthCell.textContent = `${entry.date.getFullYear()}年${entry.date.getMonth() + 1}月`;
-            monthRow.appendChild(monthCell);
-            detailTableBody.appendChild(monthRow);
-            detailRowsForDownload.push({ type: 'month', label: monthCell.textContent });
+        rows.forEach(row => {
+          if (!row) {
+            return;
           }
-
-          const row = document.createElement('tr');
-          const dateCell = document.createElement('td');
-          dateCell.className = 'date-cell';
-          dateCell.textContent = `${entry.date.getDate()}日`;
-          const timeCell = document.createElement('td');
-          timeCell.className = 'time-cell';
-          const storeCell = document.createElement('td');
-          storeCell.className = 'store-cell';
-          const sortedSegments = Array.from(entry.segments.values())
-            .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-          const segmentDetails = sortedSegments.map(segment => {
-            const storeNames = Array.from(segment.storeNames)
-              .filter(Boolean)
-              .sort((a, b) => a.localeCompare(b, 'ja'));
-            const storeLabel = storeNames.length > 0 ? storeNames.join('、') : '';
-            return {
-              timeLabel: segment.display,
-              storeLabel
-            };
-          });
-          segmentDetails.forEach((detail, segIdx) => {
-            if (segIdx > 0) {
-              timeCell.appendChild(document.createElement('br'));
-              storeCell.appendChild(document.createElement('br'));
+          if (row.type === 'month') {
+            const monthKey = row.label;
+            if (monthKey !== currentMonthKey) {
+              currentMonthKey = monthKey;
+              const monthRow = document.createElement('tr');
+              monthRow.className = 'month-row';
+              const monthCell = document.createElement('th');
+              monthCell.colSpan = 3;
+              monthCell.textContent = row.label || '';
+              monthRow.appendChild(monthCell);
+              detailTableBody.appendChild(monthRow);
             }
-            timeCell.appendChild(document.createTextNode(detail.timeLabel));
-            storeCell.appendChild(document.createTextNode(detail.storeLabel));
-          });
-          row.appendChild(dateCell);
-          row.appendChild(timeCell);
-          row.appendChild(storeCell);
-          detailTableBody.appendChild(row);
-          detailRowsForDownload.push({
-            type: 'day',
-            dateLabel: dateCell.textContent,
-            times: segmentDetails.map(detail => detail.timeLabel),
-            stores: segmentDetails.map(detail => detail.storeLabel)
-          });
+            return;
+          }
+          if (row.type === 'day') {
+            const dayRow = document.createElement('tr');
+            const dateCell = document.createElement('td');
+            dateCell.className = 'date-cell';
+            dateCell.textContent = row.dateLabel || '';
+            const timeCell = document.createElement('td');
+            timeCell.className = 'time-cell';
+            const storeCell = document.createElement('td');
+            storeCell.className = 'store-cell';
+            const times = Array.isArray(row.times) ? row.times : [];
+            const stores = Array.isArray(row.stores) ? row.stores : [];
+            const maxSegments = Math.max(times.length, stores.length);
+            for (let i = 0; i < maxSegments; i += 1) {
+              if (i > 0) {
+                timeCell.appendChild(document.createElement('br'));
+                storeCell.appendChild(document.createElement('br'));
+              }
+              if (times[i]) {
+                timeCell.appendChild(document.createTextNode(times[i]));
+              }
+              if (stores[i]) {
+                storeCell.appendChild(document.createTextNode(stores[i]));
+              }
+            }
+            dayRow.appendChild(dateCell);
+            dayRow.appendChild(timeCell);
+            dayRow.appendChild(storeCell);
+            detailTableBody.appendChild(dayRow);
+          }
         });
-        currentDetailDownloadInfo = {
-          employeeName: employee.name,
-          summaryLines: summaryLines.slice(),
-          rows: detailRowsForDownload
-        };
-        detailDownloadBtn.disabled = false;
       }
 
+      currentDetailDownloadInfo = detailInfo;
+      detailDownloadBtn.disabled = false;
       detailOverlay.style.display = 'flex';
     }
 
@@ -925,19 +841,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function setupDownload(storeName, period, results) {
   const button = document.getElementById('download');
+  if (!button) {
+    return;
+  }
   const overlay = document.createElement('div');
   overlay.id = 'download-overlay';
+  overlay.style.display = 'none';
   const popup = document.createElement('div');
   popup.id = 'download-popup';
   const options = document.createElement('div');
   options.id = 'download-options';
 
+  const includeDetail = document.createElement('label');
+  includeDetail.id = 'download-include-detail';
+  const includeCheckbox = document.createElement('input');
+  includeCheckbox.type = 'checkbox';
+  includeCheckbox.id = 'download-include-detail-checkbox';
+  const includeLabel = document.createElement('span');
+  includeLabel.textContent = '詳細を含める';
+  includeDetail.appendChild(includeCheckbox);
+  includeDetail.appendChild(includeLabel);
+
   const txtBtn = document.createElement('button');
   txtBtn.textContent = 'テキスト形式';
   const xlsxBtn = document.createElement('button');
-  xlsxBtn.textContent = 'EXCEL形式';
+  xlsxBtn.textContent = 'EXCEL形式（.xlsx）';
   const csvBtn = document.createElement('button');
   csvBtn.textContent = 'CSV形式';
+
+  options.appendChild(includeDetail);
   options.appendChild(txtBtn);
   options.appendChild(xlsxBtn);
   options.appendChild(csvBtn);
@@ -956,14 +888,35 @@ function setupDownload(storeName, period, results) {
   }
 
   button.addEventListener('click', () => {
+    updateFormatButtons();
     overlay.style.display = 'flex';
   });
   closeBtn.addEventListener('click', hide);
   overlay.addEventListener('click', e => { if (e.target === overlay) hide(); });
 
-  txtBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'txt'); hide(); });
-  xlsxBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'xlsx'); hide(); });
-  csvBtn.addEventListener('click', () => { downloadResults(storeName, period, results, 'csv'); hide(); });
+  function updateFormatButtons() {
+    const includeDetails = includeCheckbox.checked;
+    txtBtn.disabled = includeDetails;
+    csvBtn.disabled = includeDetails;
+  }
+
+  includeCheckbox.addEventListener('change', updateFormatButtons);
+
+  txtBtn.addEventListener('click', () => {
+    downloadResults(storeName, period, results, 'txt');
+    hide();
+  });
+  xlsxBtn.addEventListener('click', () => {
+    downloadResults(storeName, period, results, {
+      format: 'xlsx',
+      includeDetails: includeCheckbox.checked
+    });
+    hide();
+  });
+  csvBtn.addEventListener('click', () => {
+    downloadResults(storeName, period, results, 'csv');
+    hide();
+  });
 }
 
 function setupSourceOpener(storeUrl, sheetId) {
@@ -1032,37 +985,143 @@ function sanitizeFileNameComponent(text) {
   return text.replace(/[\\/:*?"<>|]/g, '_').trim();
 }
 
-async function downloadResults(storeName, period, results, format) {
-  const aoa = [
-    ['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'],
-    ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.transport, r.salary])
-  ];
-  const total = results.reduce((sum, r) => sum + r.salary, 0);
-  aoa.push(['合計支払い給与', '', '', '', '', total]);
-
-  if (format === 'csv') {
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const csv = XLSX.utils.sheet_to_csv(ws);
-    downloadBlob(csv, `${period}_${storeName}.csv`, 'text/csv;charset=utf-8', { addBom: true });
-  } else if (format === 'txt') {
-    const text = aoa.map(row => row.join('\t')).join('\n');
-    downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain;charset=utf-8', { addBom: true });
-  } else {
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '結果');
-    XLSX.writeFile(wb, `${period}_${storeName}.xlsx`);
+function parseTimeSegment(match) {
+  if (!Array.isArray(match)) {
+    return null;
   }
+  const startHour = match[1].padStart(2, '0');
+  const startMinuteRaw = match[2];
+  const endHour = match[3].padStart(2, '0');
+  const endMinuteRaw = match[4];
+  const startMinute = startMinuteRaw !== undefined ? startMinuteRaw.padStart(2, '0') : '00';
+  const endMinute = endMinuteRaw !== undefined ? endMinuteRaw.padStart(2, '0') : '00';
+  let startText = `${startHour}時`;
+  if (startMinuteRaw !== undefined) {
+    startText += `${startMinuteRaw}分`;
+  }
+  let endText = `${endHour}時`;
+  if (endMinuteRaw !== undefined) {
+    endText += `${endMinuteRaw}分`;
+  }
+  return {
+    display: `${startText}～${endText}`,
+    canonical: `${startHour}:${startMinute}-${endHour}:${endMinute}`,
+    sortKey: `${startHour}${startMinute}-${endHour}${endMinute}`
+  };
 }
 
-function downloadEmployeeDetail(storeName, period, detailInfo, format) {
-  if (!detailInfo) {
-    return;
+function buildEmployeeDetailDownloadInfo(employee, defaultStoreName) {
+  if (!employee) {
+    return null;
   }
 
-  const summaryLines = Array.isArray(detailInfo.summaryLines) ? detailInfo.summaryLines : [];
+  const baseWageValue = Number(employee.baseWage || 0);
+  const hoursValueRaw = Number(employee.hours);
+  const hoursValue = Number.isFinite(hoursValueRaw) ? hoursValueRaw : 0;
+  const daysValueRaw = Number(employee.days);
+  const daysValue = Number.isFinite(daysValueRaw) ? daysValueRaw : (employee.days || 0);
+  const transportValue = Number(employee.transport || 0);
+  const salaryValue = Number(employee.salary || 0);
+
+  const summaryLines = [
+    `基本時給：${baseWageValue.toLocaleString()}円`,
+    `総勤務時間：${hoursValue.toFixed(2)}時間`,
+    `出勤日数：${daysValue}日`,
+    `交通費：${transportValue.toLocaleString()}円`,
+    `給与：${salaryValue.toLocaleString()}円`
+  ];
+
+  const entriesMap = new Map();
+  const scheduleBlocks = Array.isArray(employee.scheduleBlocks) ? employee.scheduleBlocks : [];
+  scheduleBlocks.forEach(block => {
+    if (!block || !Array.isArray(block.schedule) || block.schedule.length === 0) {
+      return;
+    }
+    const baseDate = block.startDate ? new Date(block.startDate) : null;
+    if (!baseDate || Number.isNaN(baseDate.getTime())) {
+      return;
+    }
+    const blockStoreName = block.storeName && String(block.storeName).trim()
+      ? String(block.storeName).trim()
+      : defaultStoreName;
+    block.schedule.forEach((cell, dayIdx) => {
+      if (!cell) return;
+      const segments = cell.toString().split(',')
+        .map(s => s.trim())
+        .map(seg => {
+          const match = seg.match(TIME_RANGE_REGEX);
+          return match ? parseTimeSegment(match) : null;
+        })
+        .filter(Boolean);
+      if (segments.length === 0) return;
+      const current = new Date(baseDate);
+      current.setDate(baseDate.getDate() + dayIdx);
+      const dateKey = `${current.getFullYear()}-${current.getMonth()}-${current.getDate()}`;
+      let entry = entriesMap.get(dateKey);
+      if (!entry) {
+        entry = { date: current, segments: new Map() };
+        entriesMap.set(dateKey, entry);
+      }
+      segments.forEach(segmentInfo => {
+        let segment = entry.segments.get(segmentInfo.canonical);
+        if (!segment) {
+          segment = {
+            display: segmentInfo.display,
+            sortKey: segmentInfo.sortKey,
+            storeNames: new Set()
+          };
+          entry.segments.set(segmentInfo.canonical, segment);
+        }
+        if (blockStoreName) {
+          segment.storeNames.add(blockStoreName);
+        }
+      });
+    });
+  });
+
+  const entries = Array.from(entriesMap.values()).sort((a, b) => a.date - b.date);
+  const rows = [];
+  let currentMonthLabel = null;
+  entries.forEach(entry => {
+    const monthLabel = `${entry.date.getFullYear()}年${entry.date.getMonth() + 1}月`;
+    if (monthLabel !== currentMonthLabel) {
+      currentMonthLabel = monthLabel;
+      rows.push({ type: 'month', label: monthLabel });
+    }
+    const sortedSegments = Array.from(entry.segments.values())
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    const segmentDetails = sortedSegments.map(segment => {
+      const storeNames = Array.from(segment.storeNames)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'ja'));
+      return {
+        timeLabel: segment.display,
+        storeLabel: storeNames.length > 0 ? storeNames.join('、') : ''
+      };
+    });
+    rows.push({
+      type: 'day',
+      dateLabel: `${entry.date.getDate()}日`,
+      times: segmentDetails.map(detail => detail.timeLabel),
+      stores: segmentDetails.map(detail => detail.storeLabel)
+    });
+  });
+
+  return {
+    employeeName: employee.name || '',
+    summaryLines,
+    rows
+  };
+}
+
+function detailInfoToAoa(detailInfo) {
   const aoa = [];
+  if (!detailInfo) {
+    return aoa;
+  }
+
   aoa.push(['従業員名', detailInfo.employeeName || '']);
+  const summaryLines = Array.isArray(detailInfo.summaryLines) ? detailInfo.summaryLines : [];
   if (summaryLines.length > 0) {
     aoa.push([]);
     summaryLines.forEach(line => {
@@ -1076,7 +1135,9 @@ function downloadEmployeeDetail(storeName, period, detailInfo, format) {
     aoa.push(['出勤記録がありません']);
   } else {
     rows.forEach(row => {
-      if (!row) return;
+      if (!row) {
+        return;
+      }
       if (row.type === 'month') {
         aoa.push([row.label || '', '', '']);
       } else if (row.type === 'day') {
@@ -1090,6 +1151,101 @@ function downloadEmployeeDetail(storeName, period, detailInfo, format) {
       }
     });
   }
+
+  return aoa;
+}
+
+function sanitizeSheetName(name) {
+  if (typeof name !== 'string') {
+    return '';
+  }
+  return name.replace(/[\\/?*\[\]:]/g, '_').trim();
+}
+
+function makeUniqueSheetName(baseName, usedNames) {
+  const MAX_LENGTH = 31;
+  const base = sanitizeSheetName(baseName) || '詳細';
+  let candidate = base.slice(0, MAX_LENGTH) || '詳細';
+  let counter = 1;
+  while (usedNames.has(candidate)) {
+    counter += 1;
+    const suffix = `_${counter}`;
+    const trimmedBase = base.slice(0, Math.max(0, MAX_LENGTH - suffix.length)) || '詳細';
+    candidate = `${trimmedBase}${suffix}`;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
+async function downloadResults(storeName, period, results, options = {}) {
+  let format = 'xlsx';
+  let includeDetails = false;
+  if (typeof options === 'string') {
+    format = options;
+  } else if (options && typeof options === 'object') {
+    if (options.format) {
+      format = options.format;
+    }
+    includeDetails = Boolean(options.includeDetails);
+  }
+
+  const normalizedFormat = typeof format === 'string' ? format.toLowerCase() : 'xlsx';
+  const aoa = [
+    ['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'],
+    ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.transport, r.salary])
+  ];
+  const total = results.reduce((sum, r) => sum + (Number(r.salary) || 0), 0);
+  aoa.push(['合計支払い給与', '', '', '', '', total]);
+
+  if (normalizedFormat === 'csv') {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    downloadBlob(csv, `${period}_${storeName}.csv`, 'text/csv;charset=utf-8', { addBom: true });
+    return;
+  }
+
+  if (normalizedFormat === 'txt') {
+    const text = aoa.map(row => row.join('\t')).join('\n');
+    downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain;charset=utf-8', { addBom: true });
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const summarySheet = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, summarySheet, '結果');
+  const usedSheetNames = new Set(['結果']);
+
+  if (includeDetails) {
+    results.forEach(employee => {
+      const detailInfo = buildEmployeeDetailDownloadInfo(employee, storeName);
+      if (!detailInfo) {
+        return;
+      }
+      const detailAoa = detailInfoToAoa(detailInfo);
+      const detailSheet = XLSX.utils.aoa_to_sheet(detailAoa);
+      const baseSheetName = detailInfo.employeeName
+        ? `詳細_${detailInfo.employeeName}`
+        : '詳細';
+      const sheetName = makeUniqueSheetName(baseSheetName, usedSheetNames);
+      XLSX.utils.book_append_sheet(wb, detailSheet, sheetName);
+    });
+  }
+
+  const parts = [];
+  const periodPart = sanitizeFileNameComponent(period || '');
+  if (periodPart) parts.push(periodPart);
+  const storePart = sanitizeFileNameComponent(storeName || '');
+  if (storePart) parts.push(storePart);
+  const fileName = `${parts.join('_') || 'result'}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+}
+
+function downloadEmployeeDetail(storeName, period, detailInfo, format) {
+  if (!detailInfo) {
+    return;
+  }
+
+  const aoa = detailInfoToAoa(detailInfo);
 
   const baseParts = [];
   const periodPart = sanitizeFileNameComponent(period || '');
