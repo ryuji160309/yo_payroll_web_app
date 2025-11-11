@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const description = document.createElement('p');
       description.id = 'multi-store-description';
-      description.textContent = '計算したい店舗を選択してください。';
+      description.textContent = '計算したい店舗を複数選択してください。';
 
       const optionList = document.createElement('div');
       optionList.id = 'multi-store-list';
