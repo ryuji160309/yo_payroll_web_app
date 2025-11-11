@@ -731,6 +731,13 @@ th, td {
   white-space: normal;
 }
 
+#employee-detail-download {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
 #employee-detail-close {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -739,4 +746,33 @@ th, td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+#employee-detail-download-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 980;
+}
+
+#employee-detail-download-popup {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 90%;
+  width: min(18rem, 90%);
+}
+
+#employee-detail-download-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#employee-detail-download-close {
+  display: block;
+  margin: 1rem auto 0;
 }
