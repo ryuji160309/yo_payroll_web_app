@@ -162,8 +162,122 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.settingsError && err) {
     err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
   }
-  if (list) {
-    Object.keys(stores).forEach(key => {
+  const storeKeys = Object.keys(stores);
+  if (list && storeKeys.length > 0) {
+    if (!document.getElementById('multi-store-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'multi-store-overlay';
+      overlay.style.display = 'none';
+
+      const popup = document.createElement('div');
+      popup.id = 'multi-store-popup';
+
+      const title = document.createElement('h2');
+      title.id = 'multi-store-title';
+      title.textContent = '店舗横断計算モード';
+
+      const description = document.createElement('p');
+      description.id = 'multi-store-description';
+      description.textContent = '計算したい店舗を選択してください。';
+
+      const optionList = document.createElement('div');
+      optionList.id = 'multi-store-list';
+
+      const actions = document.createElement('div');
+      actions.id = 'multi-store-actions';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.id = 'multi-store-close';
+      closeBtn.textContent = '閉じる';
+
+      const startBtn = document.createElement('button');
+      startBtn.type = 'button';
+      startBtn.id = 'multi-store-start';
+      startBtn.textContent = '読み込み開始';
+      startBtn.disabled = true;
+
+      actions.appendChild(closeBtn);
+      actions.appendChild(startBtn);
+
+      popup.appendChild(title);
+      popup.appendChild(description);
+      popup.appendChild(optionList);
+      popup.appendChild(actions);
+
+      overlay.appendChild(popup);
+      document.body.appendChild(overlay);
+
+      const selectedStores = new Set();
+
+      function updateStartButton() {
+        const count = selectedStores.size;
+        startBtn.disabled = count === 0;
+        startBtn.textContent = count === 0
+          ? '読み込み開始'
+          : `読み込み開始 (${count}件)`;
+      }
+
+      function toggleOverlay(show) {
+        overlay.style.display = show ? 'flex' : 'none';
+      }
+
+      closeBtn.addEventListener('click', () => {
+        toggleOverlay(false);
+      });
+
+      overlay.addEventListener('click', event => {
+        if (event.target === overlay) {
+          toggleOverlay(false);
+        }
+      });
+
+      storeKeys.forEach(key => {
+        const storeInfo = stores[key];
+        if (!storeInfo) {
+          return;
+        }
+        const optionBtn = document.createElement('button');
+        optionBtn.type = 'button';
+        optionBtn.className = 'multi-store-option';
+        optionBtn.textContent = storeInfo.name;
+        optionBtn.dataset.storeKey = key;
+        optionBtn.addEventListener('click', () => {
+          if (selectedStores.has(key)) {
+            selectedStores.delete(key);
+            optionBtn.classList.remove('is-selected');
+          } else {
+            selectedStores.add(key);
+            optionBtn.classList.add('is-selected');
+          }
+          updateStartButton();
+        });
+        optionList.appendChild(optionBtn);
+      });
+
+      startBtn.addEventListener('click', () => {
+        if (selectedStores.size === 0) {
+          return;
+        }
+        const orderedKeys = Array.from(selectedStores);
+        const params = new URLSearchParams();
+        params.set('stores', orderedKeys.join(','));
+        window.location.href = `sheets.html?${params.toString()}`;
+      });
+
+      const modeButton = document.createElement('button');
+      modeButton.type = 'button';
+      modeButton.id = 'multi-store-mode-button';
+      modeButton.textContent = '店舗横断計算モード';
+      modeButton.addEventListener('click', () => {
+        toggleOverlay(true);
+      });
+
+      list.appendChild(modeButton);
+      updateStartButton();
+    }
+
+    storeKeys.forEach(key => {
       const btn = document.createElement('button');
       btn.textContent = stores[key].name;
       btn.addEventListener('click', () => {
