@@ -628,7 +628,7 @@ th, td {
   display: none;
   justify-content: center;
   align-items: center;
-  z-index: 980;
+  z-index: 950;
 }
 
 #download-popup {
@@ -636,7 +636,6 @@ th, td {
   padding: 1rem;
   border-radius: 0.5rem;
   max-width: 90%;
-  width: min(18rem, 90%);
 }
 
 #download-options {
@@ -648,18 +647,6 @@ th, td {
 #download-close {
   display: block;
   margin: 1rem auto 0;
-}
-
-#download-include-detail {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.95rem;
-}
-
-#download-include-detail input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
 }
 
 #employee-detail-overlay {
