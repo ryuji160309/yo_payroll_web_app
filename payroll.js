@@ -313,6 +313,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const baseSalary = Number(employee.baseSalary ?? employee.salary ?? 0);
         const hours = Number(employee.hours) || 0;
         const days = Number(employee.days) || 0;
+        const rawBreakdown = employee.breakdown && typeof employee.breakdown === 'object'
+          ? employee.breakdown
+          : {
+              regularHours: employee.regularHours,
+              overtimeHours: employee.overtimeHours
+            };
+        const breakdown = {
+          regularHours: Number(rawBreakdown && rawBreakdown.regularHours) || 0,
+          overtimeHours: Number(rawBreakdown && rawBreakdown.overtimeHours) || 0
+        };
         const scheduleSource = Array.isArray(schedulesList[idx]) ? schedulesList[idx].slice() : [];
         const blockStartDate = summary.startDate ? new Date(summary.startDate.getTime()) : null;
         const scheduleStoreNameRaw = summary.sheetStoreName && String(summary.sheetStoreName).trim()
@@ -331,6 +341,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             baseSalary,
             transport: Number(employee.transport || 0),
             salary: baseSalary + Number(employee.transport || 0),
+            breakdown: { ...breakdown },
+            regularHours: breakdown.regularHours,
+            overtimeHours: breakdown.overtimeHours,
             flattenedSchedule: scheduleSource.slice(),
             scheduleBlocks: blockStartDate && scheduleSource.length > 0
               ? [{ startDate: blockStartDate, schedule: scheduleSource.slice(), storeName: scheduleStoreName }]
@@ -342,6 +355,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           existing.days += days;
           existing.baseSalary += baseSalary;
           existing.salary = existing.baseSalary + Number(existing.transport || 0);
+          if (!existing.breakdown || typeof existing.breakdown !== 'object') {
+            existing.breakdown = { regularHours: 0, overtimeHours: 0 };
+          }
+          existing.breakdown.regularHours += breakdown.regularHours;
+          existing.breakdown.overtimeHours += breakdown.overtimeHours;
+          existing.regularHours = existing.breakdown.regularHours;
+          existing.overtimeHours = existing.breakdown.overtimeHours;
           if (scheduleSource.length > 0) {
             if (!Array.isArray(existing.flattenedSchedule)) {
               existing.flattenedSchedule = [];
@@ -366,12 +386,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!Array.isArray(employee.scheduleBlocks)) {
         employee.scheduleBlocks = [];
       }
+      if (!employee.breakdown || typeof employee.breakdown !== 'object') {
+        employee.breakdown = {
+          regularHours: Number(employee.regularHours) || 0,
+          overtimeHours: Number(employee.overtimeHours) || 0
+        };
+      } else {
+        employee.breakdown = {
+          regularHours: Number(employee.breakdown.regularHours) || 0,
+          overtimeHours: Number(employee.breakdown.overtimeHours) || 0
+        };
+      }
+      employee.regularHours = employee.breakdown.regularHours;
+      employee.overtimeHours = employee.breakdown.overtimeHours;
       employee.transport = Number(employee.transport || 0);
       employee.salary = employee.baseSalary + employee.transport;
     });
 
     const totalSalary = results.reduce((sum, r) => sum + (Number(r.salary) || 0), 0);
-    document.getElementById('total-salary').textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
+    const totalSalaryEl = document.getElementById('total-salary');
+    totalSalaryEl.textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
+    let totalSalaryValue = totalSalary;
     const tbody = document.querySelector('#employees tbody');
 
     const detailOverlay = document.createElement('div');
@@ -663,43 +698,87 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    function recalc() {
-      let total = 0;
-      document.querySelectorAll('.wage-input').forEach(input => {
-        const idx = parseInt(input.dataset.idx, 10);
-        const wage = Number(input.value);
-        if (Number.isFinite(wage)) {
-          const employee = results[idx];
-          const schedule = employee && Array.isArray(employee.flattenedSchedule) ? employee.flattenedSchedule : [];
-          const calcResult = calculateEmployee(schedule, wage, store.overtime);
-          if (employee) {
-            employee.baseWage = wage;
-            employee.baseSalary = calcResult.salary;
-          }
-        }
-        const baseSalary = results[idx] ? results[idx].baseSalary : 0;
-        const transportInput = document.querySelector(`.transport-input[data-idx="${idx}"]`);
-        const transportRaw = transportInput ? Number(transportInput.value) : 0;
-        const transport = Number.isFinite(transportRaw) ? transportRaw : 0;
-        if (results[idx]) {
-          results[idx].transport = transport;
-        }
-        const salary = baseSalary + transport;
-        if (results[idx]) {
-          results[idx].salary = salary;
-        }
-        const row = input.closest('tr');
-        if (row) {
-          const salaryCell = row.querySelector('.salary-cell');
-          if (salaryCell) salaryCell.textContent = salary.toLocaleString();
-        }
-        total += salary;
+    const scheduleFrame = (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function')
+      ? window.requestAnimationFrame.bind(window)
+      : (typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame
+        : (cb => setTimeout(cb, 16)));
+    const dirtyRows = new Set();
+    let rafScheduled = false;
+    let totalDirty = false;
+
+    function flushUpdates() {
+      rafScheduled = false;
+      dirtyRows.forEach(idx => {
+        const row = tbody.querySelector(`tr[data-idx="${idx}"]`);
+        if (!row) return;
+        const salaryCell = row.querySelector('.salary-cell');
+        if (!salaryCell) return;
+        const salaryValue = Number(results[idx] && results[idx].salary) || 0;
+        salaryCell.textContent = salaryValue.toLocaleString();
       });
-      document.getElementById('total-salary').textContent = `合計支払い給与：${total.toLocaleString()}円`;
+      dirtyRows.clear();
+      if (totalDirty) {
+        totalSalaryEl.textContent = `合計支払い給与：${totalSalaryValue.toLocaleString()}円`;
+        totalDirty = false;
+      }
+    }
+
+    function queueFlush() {
+      if (rafScheduled) return;
+      rafScheduled = true;
+      scheduleFrame(flushUpdates);
+    }
+
+    function recalc(idx, overrides = {}) {
+      if (!Number.isInteger(idx) || !results[idx]) {
+        totalSalaryValue = results.reduce((sum, r) => sum + (Number(r.salary) || 0), 0);
+        totalDirty = true;
+        queueFlush();
+        return;
+      }
+      const employee = results[idx];
+      const previousSalary = Number(employee.salary) || 0;
+      const updates = overrides || {};
+      if (Object.prototype.hasOwnProperty.call(updates, 'wage')) {
+        const wage = updates.wage;
+        if (Number.isFinite(wage)) {
+          employee.baseWage = wage;
+          const breakdown = employee.breakdown && typeof employee.breakdown === 'object'
+            ? employee.breakdown
+            : {
+                regularHours: Number(employee.regularHours) || 0,
+                overtimeHours: Number(employee.overtimeHours) || 0
+              };
+          const regular = Number(breakdown.regularHours) || 0;
+          const overtimeHours = Number(breakdown.overtimeHours) || 0;
+          const overtimeRate = Number.isFinite(store.overtime) ? Number(store.overtime) : 1;
+          const newBaseSalary = Math.floor((regular * wage) + (overtimeHours * wage * overtimeRate));
+          employee.baseSalary = newBaseSalary;
+          employee.salary = newBaseSalary + (Number(employee.transport) || 0);
+          employee.breakdown = {
+            regularHours: regular,
+            overtimeHours
+          };
+          employee.regularHours = regular;
+          employee.overtimeHours = overtimeHours;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'transport')) {
+        const transport = Number(updates.transport) || 0;
+        employee.transport = transport;
+        employee.salary = (Number(employee.baseSalary) || 0) + transport;
+      }
+      const newSalary = Number(employee.salary) || 0;
+      totalSalaryValue += newSalary - previousSalary;
+      dirtyRows.add(idx);
+      totalDirty = true;
+      queueFlush();
     }
 
     results.forEach((r, idx) => {
       const tr = document.createElement('tr');
+      tr.dataset.idx = idx;
 
       const nameTd = document.createElement('td');
       nameTd.textContent = r.name;
@@ -711,7 +790,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       input.value = r.baseWage;
       input.className = 'wage-input';
       input.dataset.idx = idx;
-      input.addEventListener('input', recalc);
+      input.addEventListener('input', () => {
+        const wage = Number(input.value);
+        if (!Number.isFinite(wage)) return;
+        recalc(idx, { wage });
+      });
       wageTd.appendChild(input);
 
       const hoursTd = document.createElement('td');
@@ -726,7 +809,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       transportInput.value = r.transport;
       transportInput.className = 'transport-input';
       transportInput.dataset.idx = idx;
-      transportInput.addEventListener('input', recalc);
+      transportInput.addEventListener('input', () => {
+        const value = Number(transportInput.value);
+        const transport = Number.isFinite(value) ? value : 0;
+        recalc(idx, { transport });
+      });
       transportTd.appendChild(transportInput);
 
       const salaryTd = document.createElement('td');
@@ -758,26 +845,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     baseWageInput.value = store.baseWage;
     document.getElementById('set-base-wage').addEventListener('click', () => {
       const wage = Number(baseWageInput.value);
+      if (!Number.isFinite(wage)) {
+        return;
+      }
       document.querySelectorAll('.wage-input').forEach(input => {
         input.value = wage;
+        const idx = Number(input.dataset.idx);
+        if (!Number.isInteger(idx) || !results[idx]) return;
+        recalc(idx, { wage });
       });
-      recalc();
     });
 
     const transportAllInput = document.getElementById('transport-input');
     transportAllInput.value = 0;
     document.getElementById('set-transport').addEventListener('click', () => {
-      const transport = Number(transportAllInput.value);
+      const value = Number(transportAllInput.value);
+      const transport = Number.isFinite(value) ? value : 0;
       document.querySelectorAll('.transport-input').forEach(input => {
         const idx = Number(input.dataset.idx);
-        if (!Number.isFinite(idx)) return;
+        if (!Number.isInteger(idx)) return;
         const employee = results[idx];
         if (!employee || employee.days === 0) {
           return;
         }
         input.value = transport;
+        recalc(idx, { transport });
       });
-      recalc();
     });
 
     const sortedSummaries = summaries.slice().sort((a, b) => {

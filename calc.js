@@ -5,10 +5,21 @@ const BREAK_DEDUCTIONS = [
   { minHours: 6, deduct: 0.5 }
 ];
 
+function calculateSalaryFromBreakdown(breakdown, baseWage, overtime) {
+  if (!breakdown) return 0;
+  const regular = Number(breakdown.regularHours ?? breakdown.regular ?? 0) || 0;
+  const overtimeHours = Number(breakdown.overtimeHours ?? breakdown.overtime ?? 0) || 0;
+  const overtimeRate = Number.isFinite(overtime) ? Number(overtime) : 1;
+  const base = regular * baseWage;
+  const extra = overtimeHours * baseWage * overtimeRate;
+  return Math.floor(base + extra);
+}
+
 function calculateEmployee(schedule, baseWage, overtime) {
   let total = 0;
   let workdays = 0;
-  let salary = 0;
+  let regularTotal = 0;
+  let overtimeTotal = 0;
   schedule.forEach(cell => {
     if (!cell) return;
     const segments = cell.toString().split(',');
@@ -42,9 +53,19 @@ function calculateEmployee(schedule, baseWage, overtime) {
     total += dayHours;
     const regular = Math.min(dayHours, 8);
     const over = Math.max(dayHours - 8, 0);
-    salary += regular * baseWage + over * baseWage * overtime;
+    regularTotal += regular;
+    overtimeTotal += over;
   });
-  return { hours: total, days: workdays, salary: Math.floor(salary) };
+  const breakdown = { regularHours: regularTotal, overtimeHours: overtimeTotal };
+  const salary = calculateSalaryFromBreakdown(breakdown, baseWage, overtime);
+  return {
+    hours: total,
+    days: workdays,
+    salary,
+    breakdown,
+    regularHours: regularTotal,
+    overtimeHours: overtimeTotal
+  };
 }
 
 function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
@@ -70,7 +91,10 @@ function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
       days: r.days,
       baseSalary,
       transport: 0,
-      salary: baseSalary
+      salary: baseSalary,
+      breakdown: r.breakdown,
+      regularHours: r.regularHours,
+      overtimeHours: r.overtimeHours
     };
   });
 
@@ -81,6 +105,7 @@ function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
 module.exports = {
   calculateEmployee,
   calculatePayroll,
+  calculateSalaryFromBreakdown,
   TIME_RANGE_REGEX,
   BREAK_DEDUCTIONS
 };
