@@ -175,23 +175,47 @@ document.addEventListener('DOMContentLoaded', async () => {
           popupBtn.classList.add('is-selected');
         }
         updateStartButton();
+        updateSelectAllState();
       });
       popupButtons.push(popupBtn);
       popupList.appendChild(popupBtn);
     });
 
-    selectAllBtn.addEventListener('click', () => {
-      popupButtons.forEach(btn => {
+    function areAllSelected() {
+      if (popupButtons.length === 0) {
+        return false;
+      }
+      return popupButtons.every(btn => {
         const sheetKey = Number(btn.dataset.sheetIndex);
-        if (Number.isFinite(sheetKey)) {
-          if (!selectedSheets.has(sheetKey)) {
-            selectedSheets.add(sheetKey);
-          }
-          btn.classList.add('is-selected');
-        }
+        return Number.isFinite(sheetKey) && selectedSheets.has(sheetKey);
       });
+    }
+
+    function updateSelectAllState() {
+      selectAllBtn.textContent = areAllSelected() ? '選択解除' : '全選択';
+    }
+
+    selectAllBtn.addEventListener('click', () => {
+      if (areAllSelected()) {
+        selectedSheets.clear();
+        popupButtons.forEach(btn => {
+          btn.classList.remove('is-selected');
+        });
+      } else {
+        popupButtons.forEach(btn => {
+          const sheetKey = Number(btn.dataset.sheetIndex);
+          if (!Number.isFinite(sheetKey)) {
+            return;
+          }
+          selectedSheets.add(sheetKey);
+          btn.classList.add('is-selected');
+        });
+      }
       updateStartButton();
+      updateSelectAllState();
     });
+
+    updateSelectAllState();
 
     startBtn.addEventListener('click', () => {
       if (selectedSheets.size === 0) {
