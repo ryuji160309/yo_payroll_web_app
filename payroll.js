@@ -1,3 +1,25 @@
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function isValidDate(value) {
+  return value instanceof Date && !Number.isNaN(value.getTime());
+}
+
+function formatPeriodRange(startDate, endDate) {
+  if (!isValidDate(startDate) || !isValidDate(endDate)) {
+    return '';
+  }
+  const startYear = startDate.getFullYear();
+  const startMonth = startDate.getMonth() + 1;
+  const startDay = startDate.getDate();
+  const endYear = endDate.getFullYear();
+  const endMonth = endDate.getMonth() + 1;
+  const endDay = endDate.getDate();
+  const startLabel = `${startYear}年${startMonth}月${startDay}日`;
+  const endLabelYear = startYear === endYear ? '' : `${endYear}年`;
+  const endLabel = `${endLabelYear}${endMonth}月${endDay}日`;
+  return `${startLabel}～${endLabel}`;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   startLoading(statusEl, '読込中・・・');
@@ -117,7 +139,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (periodEl) {
       if (isMultiSheetMode) {
         const labels = summaries.map(s => s.periodLabel).filter(Boolean);
-        periodEl.textContent = labels.length ? `選択した月：${labels.join(' ／ ')}` : '選択した月：複数シート';
+        let mergedRangeLabel = '';
+        if (summaries.length > 0) {
+          const chronologicalSummaries = summaries
+            .filter(summary => isValidDate(summary.startDate) && isValidDate(summary.endDate))
+            .slice()
+            .sort((a, b) => a.startDate - b.startDate);
+          if (chronologicalSummaries.length === summaries.length) {
+            const isConsecutive = chronologicalSummaries.every((summary, idx) => {
+              if (idx === 0) {
+                return true;
+              }
+              const previous = chronologicalSummaries[idx - 1];
+              return summary.startDate.getTime() - previous.endDate.getTime() === DAY_IN_MS;
+            });
+            if (isConsecutive) {
+              const firstRange = chronologicalSummaries[0];
+              const lastRange = chronologicalSummaries[chronologicalSummaries.length - 1];
+              mergedRangeLabel = formatPeriodRange(firstRange.startDate, lastRange.endDate);
+            }
+          }
+        }
+        if (mergedRangeLabel) {
+          periodEl.textContent = `選択した月：${mergedRangeLabel}`;
+        } else {
+          periodEl.textContent = labels.length ? `選択した月：${labels.join(' ／ ')}` : '選択した月：複数シート';
+        }
       } else {
         periodEl.textContent = summaries[0] ? summaries[0].periodLabel : '';
       }
