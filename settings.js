@@ -30,4 +30,78 @@ document.addEventListener('DOMContentLoaded', async () => {
   select.addEventListener('change', () => load(select.value));
   select.value = Object.keys(DEFAULT_STORES)[0];
   load(select.value);
+
+  const urlInput = document.getElementById('url');
+  if (urlInput) {
+    let isCopying = false;
+
+    const copyUrlToClipboard = async () => {
+      if (isCopying) {
+        return;
+      }
+      const value = urlInput.value.trim();
+      if (!value) {
+        return;
+      }
+
+      isCopying = true;
+      let copied = false;
+      try {
+        urlInput.focus();
+        urlInput.select();
+        urlInput.setSelectionRange(0, value.length);
+
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          try {
+            await navigator.clipboard.writeText(value);
+            copied = true;
+          } catch (error) {
+            console.warn('Failed to copy URL via navigator.clipboard', error);
+          }
+        }
+
+        if (!copied) {
+          const hiddenField = document.createElement('textarea');
+          hiddenField.value = value;
+          hiddenField.setAttribute('readonly', '');
+          hiddenField.style.position = 'fixed';
+          hiddenField.style.left = '-9999px';
+          hiddenField.style.opacity = '0';
+          document.body.appendChild(hiddenField);
+          hiddenField.select();
+          hiddenField.setSelectionRange(0, hiddenField.value.length);
+          try {
+            copied = document.execCommand('copy');
+          } catch (error) {
+            console.warn('Failed to copy URL via execCommand', error);
+          }
+          document.body.removeChild(hiddenField);
+        }
+      } finally {
+        setTimeout(() => {
+          try {
+            urlInput.setSelectionRange(value.length, value.length);
+          } catch (error) {
+            // Ignore selection errors on some browsers.
+          }
+        }, 0);
+        isCopying = false;
+      }
+
+      if (copied && typeof window.showToast === 'function') {
+        window.showToast('シートURLをコピーしました。');
+      }
+    };
+
+    urlInput.addEventListener('click', () => {
+      copyUrlToClipboard();
+    });
+
+    urlInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        copyUrlToClipboard();
+      }
+    });
+  }
 });
