@@ -781,12 +781,14 @@ function updateStore(key, values) {
   saveStores(stores);
 }
 
-function startLoading(el, text) {
+function startLoading(el, text, options = {}) {
   if (!el) return;
   stopLoading(el);
   const rawText = (text || '').replace(/[・.]+$/, '');
   const displayText = rawText === '読込中' ? '読み込み中' : rawText;
   el.textContent = '';
+
+  const { disableSlowNote = false } = options;
 
   const container = document.createElement('div');
   container.className = 'loading-container';
@@ -802,11 +804,14 @@ function startLoading(el, text) {
 
   el.appendChild(container);
 
-  const timeout = setTimeout(() => {
-    message.textContent = '通常よりも読み込みに時間がかかっていますが、正常に動作していますのでそのままお待ち下さい。';
-    message.classList.remove('loading-message');
-    message.classList.add('loading-note');
-  }, 5000);
+  let timeout = null;
+  if (!disableSlowNote) {
+    timeout = setTimeout(() => {
+      message.textContent = '通常よりも読み込みに時間がかかっていますが、正常に動作していますのでそのままお待ち下さい。';
+      message.classList.remove('loading-message');
+      message.classList.add('loading-note');
+    }, 5000);
+  }
 
   loadingMap.set(el, { timeout });
 }
