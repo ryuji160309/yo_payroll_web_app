@@ -1,4 +1,8 @@
-const { calculateEmployee, calculatePayroll } = require('../calc');
+const {
+  calculateEmployee,
+  calculatePayroll,
+  calculateSalaryFromBreakdown
+} = require('../calc');
 
 describe('calculateEmployee', () => {
   test('computes hours, days, and salary including overtime', () => {
@@ -6,7 +10,14 @@ describe('calculateEmployee', () => {
     const baseWage = 1000;
     const overtime = 1.25;
     const result = calculateEmployee(schedule, baseWage, overtime);
-    expect(result).toEqual({ hours: 24, days: 3, salary: 24250 });
+    expect(result).toEqual({
+      hours: 24,
+      days: 3,
+      salary: 24250,
+      breakdown: { regularHours: 23, overtimeHours: 1 },
+      regularHours: 23,
+      overtimeHours: 1
+    });
   });
 });
 
@@ -27,9 +38,47 @@ describe('calculatePayroll', () => {
     const { results, totalSalary } = calculatePayroll(data, baseWage, overtime);
 
     expect(results).toEqual([
-      { name: 'Alice', baseWage, hours: 12, days: 2, baseSalary: 12000, transport: 0, salary: 12000 },
-      { name: 'Bob', baseWage, hours: 9, days: 1, baseSalary: 9250, transport: 0, salary: 9250 }
+      {
+        name: 'Alice',
+        baseWage,
+        hours: 12,
+        days: 2,
+        baseSalary: 12000,
+        transport: 0,
+        salary: 12000,
+        breakdown: { regularHours: 12, overtimeHours: 0 },
+        regularHours: 12,
+        overtimeHours: 0
+      },
+      {
+        name: 'Bob',
+        baseWage,
+        hours: 9,
+        days: 1,
+        baseSalary: 9250,
+        transport: 0,
+        salary: 9250,
+        breakdown: { regularHours: 8, overtimeHours: 1 },
+        regularHours: 8,
+        overtimeHours: 1
+      }
     ]);
     expect(totalSalary).toBe(21250);
+  });
+});
+
+describe('calculateSalaryFromBreakdown', () => {
+  test('recomputes salary using stored hour breakdown', () => {
+    const schedule = ['9-17', '9-19'];
+    const baseWage = 1000;
+    const overtime = 1.25;
+    const result = calculateEmployee(schedule, baseWage, overtime);
+    const newBaseWage = 1200;
+    const recomputed = calculateSalaryFromBreakdown(result.breakdown, newBaseWage, overtime);
+    const expected = Math.floor(
+      result.breakdown.regularHours * newBaseWage +
+      result.breakdown.overtimeHours * newBaseWage * overtime
+    );
+    expect(recomputed).toBe(expected);
   });
 });
