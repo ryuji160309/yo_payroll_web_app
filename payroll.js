@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (entries.length === 0) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
-        emptyCell.colSpan = 2;
+        emptyCell.colSpan = 3;
         emptyCell.textContent = '出勤記録がありません';
         emptyRow.appendChild(emptyCell);
         detailTableBody.appendChild(emptyRow);
@@ -590,7 +590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const monthRow = document.createElement('tr');
             monthRow.className = 'month-row';
             const monthCell = document.createElement('th');
-            monthCell.colSpan = 2;
+            monthCell.colSpan = 3;
             monthCell.textContent = `${entry.date.getFullYear()}年${entry.date.getMonth() + 1}月`;
             monthRow.appendChild(monthCell);
             detailTableBody.appendChild(monthRow);
@@ -603,28 +603,37 @@ document.addEventListener('DOMContentLoaded', async () => {
           dateCell.textContent = `${entry.date.getDate()}日`;
           const timeCell = document.createElement('td');
           timeCell.className = 'time-cell';
+          const storeCell = document.createElement('td');
+          storeCell.className = 'store-cell';
           const sortedSegments = Array.from(entry.segments.values())
             .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-          const segmentTexts = sortedSegments.map(segment => {
+          const segmentDetails = sortedSegments.map(segment => {
             const storeNames = Array.from(segment.storeNames)
               .filter(Boolean)
               .sort((a, b) => a.localeCompare(b, 'ja'));
-            const storeLabel = storeNames.length > 0 ? `（${storeNames.join('、')}）` : '';
-            return `${segment.display}${storeLabel}`;
+            const storeLabel = storeNames.length > 0 ? storeNames.join('、') : '';
+            return {
+              timeLabel: segment.display,
+              storeLabel
+            };
           });
-          segmentTexts.forEach((text, segIdx) => {
+          segmentDetails.forEach((detail, segIdx) => {
             if (segIdx > 0) {
               timeCell.appendChild(document.createElement('br'));
+              storeCell.appendChild(document.createElement('br'));
             }
-            timeCell.appendChild(document.createTextNode(text));
+            timeCell.appendChild(document.createTextNode(detail.timeLabel));
+            storeCell.appendChild(document.createTextNode(detail.storeLabel));
           });
           row.appendChild(dateCell);
           row.appendChild(timeCell);
+          row.appendChild(storeCell);
           detailTableBody.appendChild(row);
           detailRowsForDownload.push({
             type: 'day',
             dateLabel: dateCell.textContent,
-            segments: segmentTexts
+            times: segmentDetails.map(detail => detail.timeLabel),
+            stores: segmentDetails.map(detail => detail.storeLabel)
           });
         });
         currentDetailDownloadInfo = {
@@ -902,8 +911,14 @@ function buildSheetUrl(baseUrl, sheetId) {
   }
 }
 
-function downloadBlob(content, fileName, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
+function downloadBlob(content, fileName, mimeType, options = {}) {
+  const { addBom = false } = options;
+  const parts = [];
+  if (addBom) {
+    parts.push('﻿');
+  }
+  parts.push(content);
+  const blob = new Blob(parts, { type: mimeType });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = fileName;
@@ -931,10 +946,10 @@ async function downloadResults(storeName, period, results, format) {
   if (format === 'csv') {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const csv = XLSX.utils.sheet_to_csv(ws);
-    downloadBlob(csv, `${period}_${storeName}.csv`, 'text/csv');
+    downloadBlob(csv, `${period}_${storeName}.csv`, 'text/csv;charset=utf-8', { addBom: true });
   } else if (format === 'txt') {
     const text = aoa.map(row => row.join('\t')).join('\n');
-    downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain');
+    downloadBlob(text, `${period}_${storeName}.txt`, 'text/plain;charset=utf-8', { addBom: true });
   } else {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
@@ -966,10 +981,15 @@ function downloadEmployeeDetail(storeName, period, detailInfo, format) {
     rows.forEach(row => {
       if (!row) return;
       if (row.type === 'month') {
-        aoa.push([row.label || '']);
+        aoa.push([row.label || '', '', '']);
       } else if (row.type === 'day') {
-        const segments = Array.isArray(row.segments) ? row.segments : [];
-        aoa.push([row.dateLabel || '', ...segments]);
+        const times = Array.isArray(row.times) ? row.times : [];
+        const stores = Array.isArray(row.stores) ? row.stores : [];
+        aoa.push([
+          row.dateLabel || '',
+          times.join('\n'),
+          stores.join('\n')
+        ]);
       }
     });
   }
@@ -986,10 +1006,10 @@ function downloadEmployeeDetail(storeName, period, detailInfo, format) {
   if (format === 'csv') {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const csv = XLSX.utils.sheet_to_csv(ws);
-    downloadBlob(csv, `${baseName}.csv`, 'text/csv');
+    downloadBlob(csv, `${baseName}.csv`, 'text/csv;charset=utf-8', { addBom: true });
   } else if (format === 'txt') {
     const text = aoa.map(row => row.join('\t')).join('\n');
-    downloadBlob(text, `${baseName}.txt`, 'text/plain');
+    downloadBlob(text, `${baseName}.txt`, 'text/plain;charset=utf-8', { addBom: true });
   } else {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();

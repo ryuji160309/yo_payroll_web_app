@@ -401,6 +401,10 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
   list.appendChild(modeButton);
 
   if (crossStoreMode) {
+    requestAnimationFrame(() => toggleOverlay(true));
+  }
+
+  if (crossStoreMode) {
     const sectionsContainer = document.createElement('div');
     sectionsContainer.id = 'store-sheet-sections';
     list.appendChild(sectionsContainer);
