@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   initializeHelp('help/payroll.txt');
   await ensureSettingsLoaded();
 
+  let downloadPeriodId = 'result';
+  let currentDetailDownloadInfo = null;
+
   const offlineRequested = params.get('offline') === '1';
   const offlineMode = offlineRequested && !isCrossStoreMode;
   const offlineInfo = typeof getOfflineWorkbookInfo === 'function' ? getOfflineWorkbookInfo() : null;
@@ -308,6 +311,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const days = Number(employee.days) || 0;
         const scheduleSource = Array.isArray(schedulesList[idx]) ? schedulesList[idx].slice() : [];
         const blockStartDate = summary.startDate ? new Date(summary.startDate.getTime()) : null;
+        const scheduleStoreNameRaw = summary.sheetStoreName && String(summary.sheetStoreName).trim()
+          ? String(summary.sheetStoreName).trim()
+          : (summary.selection && summary.selection.store && summary.selection.store.name
+            ? summary.selection.store.name
+            : resolvedStoreName);
+        const scheduleStoreName = scheduleStoreNameRaw || resolvedStoreName;
         const existing = resultMap.get(employee.name);
         if (!existing) {
           resultMap.set(employee.name, {
@@ -320,7 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             salary: baseSalary + Number(employee.transport || 0),
             flattenedSchedule: scheduleSource.slice(),
             scheduleBlocks: blockStartDate && scheduleSource.length > 0
-              ? [{ startDate: blockStartDate, schedule: scheduleSource.slice() }]
+              ? [{ startDate: blockStartDate, schedule: scheduleSource.slice(), storeName: scheduleStoreName }]
               : [],
           });
         } else {
@@ -339,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!Array.isArray(existing.scheduleBlocks)) {
               existing.scheduleBlocks = [];
             }
-            existing.scheduleBlocks.push({ startDate: blockStartDate, schedule: scheduleSource.slice() });
+            existing.scheduleBlocks.push({ startDate: blockStartDate, schedule: scheduleSource.slice(), storeName: scheduleStoreName });
           }
         }
       });
@@ -377,6 +386,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detailTableBody = document.createElement('tbody');
     detailTable.appendChild(detailTableBody);
     detailTableWrapper.appendChild(detailTable);
+    const detailDownloadBtn = document.createElement('button');
+    detailDownloadBtn.id = 'employee-detail-download';
+    detailDownloadBtn.textContent = '個別計算結果をダウンロード';
+    detailDownloadBtn.disabled = true;
     const detailClose = document.createElement('button');
     detailClose.id = 'employee-detail-close';
     detailClose.textContent = '閉じる';
@@ -384,28 +397,102 @@ document.addEventListener('DOMContentLoaded', async () => {
     detailPopup.appendChild(detailTitle);
     detailPopup.appendChild(detailSummary);
     detailPopup.appendChild(detailTableWrapper);
+    detailPopup.appendChild(detailDownloadBtn);
     detailPopup.appendChild(detailClose);
     detailOverlay.appendChild(detailPopup);
     document.body.appendChild(detailOverlay);
 
+    const detailDownloadOverlay = document.createElement('div');
+    detailDownloadOverlay.id = 'employee-detail-download-overlay';
+    detailDownloadOverlay.style.display = 'none';
+    const detailDownloadPopup = document.createElement('div');
+    detailDownloadPopup.id = 'employee-detail-download-popup';
+    const detailDownloadOptions = document.createElement('div');
+    detailDownloadOptions.id = 'employee-detail-download-options';
+    const detailTxtBtn = document.createElement('button');
+    detailTxtBtn.textContent = 'テキスト形式';
+    const detailXlsxBtn = document.createElement('button');
+    detailXlsxBtn.textContent = 'EXCEL形式';
+    const detailCsvBtn = document.createElement('button');
+    detailCsvBtn.textContent = 'CSV形式';
+    detailDownloadOptions.appendChild(detailTxtBtn);
+    detailDownloadOptions.appendChild(detailXlsxBtn);
+    detailDownloadOptions.appendChild(detailCsvBtn);
+    const detailDownloadClose = document.createElement('button');
+    detailDownloadClose.id = 'employee-detail-download-close';
+    detailDownloadClose.textContent = '閉じる';
+    detailDownloadPopup.appendChild(detailDownloadOptions);
+    detailDownloadPopup.appendChild(detailDownloadClose);
+    detailDownloadOverlay.appendChild(detailDownloadPopup);
+    document.body.appendChild(detailDownloadOverlay);
+
     function hideEmployeeDetail() {
       detailOverlay.style.display = 'none';
+      detailDownloadOverlay.style.display = 'none';
+      currentDetailDownloadInfo = null;
+      detailDownloadBtn.disabled = true;
     }
 
-    function formatTimeSegment(match) {
+    function hideDetailDownload() {
+      detailDownloadOverlay.style.display = 'none';
+    }
+
+    function showDetailDownload() {
+      if (!currentDetailDownloadInfo) {
+        return;
+      }
+      detailDownloadOverlay.style.display = 'flex';
+    }
+
+    detailDownloadBtn.addEventListener('click', () => {
+      if (detailDownloadBtn.disabled) {
+        return;
+      }
+      showDetailDownload();
+    });
+    detailDownloadClose.addEventListener('click', hideDetailDownload);
+    detailDownloadOverlay.addEventListener('click', e => {
+      if (e.target === detailDownloadOverlay) {
+        hideDetailDownload();
+      }
+    });
+
+    detailTxtBtn.addEventListener('click', () => {
+      if (!currentDetailDownloadInfo) return;
+      downloadEmployeeDetail(resolvedStoreName, downloadPeriodId, currentDetailDownloadInfo, 'txt');
+      hideDetailDownload();
+    });
+    detailXlsxBtn.addEventListener('click', () => {
+      if (!currentDetailDownloadInfo) return;
+      downloadEmployeeDetail(resolvedStoreName, downloadPeriodId, currentDetailDownloadInfo, 'xlsx');
+      hideDetailDownload();
+    });
+    detailCsvBtn.addEventListener('click', () => {
+      if (!currentDetailDownloadInfo) return;
+      downloadEmployeeDetail(resolvedStoreName, downloadPeriodId, currentDetailDownloadInfo, 'csv');
+      hideDetailDownload();
+    });
+
+    function parseTimeSegment(match) {
       const startHour = match[1].padStart(2, '0');
-      const startMinute = match[2];
+      const startMinuteRaw = match[2];
       const endHour = match[3].padStart(2, '0');
-      const endMinute = match[4];
+      const endMinuteRaw = match[4];
+      const startMinute = startMinuteRaw !== undefined ? startMinuteRaw.padStart(2, '0') : '00';
+      const endMinute = endMinuteRaw !== undefined ? endMinuteRaw.padStart(2, '0') : '00';
       let startText = `${startHour}時`;
-      if (startMinute !== undefined) {
-        startText += `${startMinute}分`;
+      if (startMinuteRaw !== undefined) {
+        startText += `${startMinuteRaw}分`;
       }
       let endText = `${endHour}時`;
-      if (endMinute !== undefined) {
-        endText += `${endMinute}分`;
+      if (endMinuteRaw !== undefined) {
+        endText += `${endMinuteRaw}分`;
       }
-      return `${startText}～${endText}`;
+      return {
+        display: `${startText}～${endText}`,
+        canonical: `${startHour}:${startMinute}-${endHour}:${endMinute}`,
+        sortKey: `${startHour}${startMinute}-${endHour}${endMinute}`
+      };
     }
 
     function showEmployeeDetail(idx) {
@@ -413,6 +500,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!employee) {
         return;
       }
+
+      hideDetailDownload();
+      detailDownloadBtn.disabled = true;
 
       detailTitle.textContent = employee.name;
       const summaryLines = [
@@ -432,31 +522,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       detailTableBody.innerHTML = '';
 
-      const entries = [];
+      const entriesMap = new Map();
       (employee.scheduleBlocks || []).forEach(block => {
         if (!block || !block.schedule || block.schedule.length === 0) return;
         const baseDate = block.startDate ? new Date(block.startDate) : null;
         if (!baseDate || Number.isNaN(baseDate.getTime())) return;
+        const blockStoreName = block.storeName && String(block.storeName).trim()
+          ? String(block.storeName).trim()
+          : resolvedStoreName;
         block.schedule.forEach((cell, dayIdx) => {
           if (!cell) return;
           const segments = cell.toString().split(',')
             .map(s => s.trim())
             .map(seg => {
               const match = seg.match(TIME_RANGE_REGEX);
-              return match ? formatTimeSegment(match) : null;
+              return match ? parseTimeSegment(match) : null;
             })
             .filter(Boolean);
           if (segments.length === 0) return;
           const current = new Date(baseDate);
           current.setDate(baseDate.getDate() + dayIdx);
-          entries.push({
-            date: current,
-            segments,
+          const dateKey = `${current.getFullYear()}-${current.getMonth()}-${current.getDate()}`;
+          let entry = entriesMap.get(dateKey);
+          if (!entry) {
+            entry = { date: current, segments: new Map() };
+            entriesMap.set(dateKey, entry);
+          }
+          segments.forEach(segmentInfo => {
+            let segment = entry.segments.get(segmentInfo.canonical);
+            if (!segment) {
+              segment = {
+                display: segmentInfo.display,
+                sortKey: segmentInfo.sortKey,
+                storeNames: new Set()
+              };
+              entry.segments.set(segmentInfo.canonical, segment);
+            }
+            if (blockStoreName) {
+              segment.storeNames.add(blockStoreName);
+            }
           });
         });
       });
 
-      entries.sort((a, b) => a.date - b.date);
+      const entries = Array.from(entriesMap.values()).sort((a, b) => a.date - b.date);
+      const detailRowsForDownload = [];
 
       if (entries.length === 0) {
         const emptyRow = document.createElement('tr');
@@ -465,6 +575,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         emptyCell.textContent = '出勤記録がありません';
         emptyRow.appendChild(emptyCell);
         detailTableBody.appendChild(emptyRow);
+        currentDetailDownloadInfo = {
+          employeeName: employee.name,
+          summaryLines: summaryLines.slice(),
+          rows: []
+        };
+        detailDownloadBtn.disabled = false;
       } else {
         let currentMonthKey = null;
         entries.forEach(entry => {
@@ -478,6 +594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             monthCell.textContent = `${entry.date.getFullYear()}年${entry.date.getMonth() + 1}月`;
             monthRow.appendChild(monthCell);
             detailTableBody.appendChild(monthRow);
+            detailRowsForDownload.push({ type: 'month', label: monthCell.textContent });
           }
 
           const row = document.createElement('tr');
@@ -486,16 +603,36 @@ document.addEventListener('DOMContentLoaded', async () => {
           dateCell.textContent = `${entry.date.getDate()}日`;
           const timeCell = document.createElement('td');
           timeCell.className = 'time-cell';
-          entry.segments.forEach((segment, segIdx) => {
+          const sortedSegments = Array.from(entry.segments.values())
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+          const segmentTexts = sortedSegments.map(segment => {
+            const storeNames = Array.from(segment.storeNames)
+              .filter(Boolean)
+              .sort((a, b) => a.localeCompare(b, 'ja'));
+            const storeLabel = storeNames.length > 0 ? `（${storeNames.join('、')}）` : '';
+            return `${segment.display}${storeLabel}`;
+          });
+          segmentTexts.forEach((text, segIdx) => {
             if (segIdx > 0) {
               timeCell.appendChild(document.createElement('br'));
             }
-            timeCell.appendChild(document.createTextNode(segment));
+            timeCell.appendChild(document.createTextNode(text));
           });
           row.appendChild(dateCell);
           row.appendChild(timeCell);
           detailTableBody.appendChild(row);
+          detailRowsForDownload.push({
+            type: 'day',
+            dateLabel: dateCell.textContent,
+            segments: segmentTexts
+          });
         });
+        currentDetailDownloadInfo = {
+          employeeName: employee.name,
+          summaryLines: summaryLines.slice(),
+          rows: detailRowsForDownload
+        };
+        detailDownloadBtn.disabled = false;
       }
 
       detailOverlay.style.display = 'flex';
@@ -636,7 +773,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (b.startDate) return 1;
       return (a.result.sheetIndex || 0) - (b.result.sheetIndex || 0);
     });
-    let downloadPeriodId = 'result';
+    downloadPeriodId = 'result';
     if (isMultiSheetMode) {
       const datedSummaries = sortedSummaries.filter(s => s.startDate && s.endDate);
       if (datedSummaries.length > 0) {
@@ -776,6 +913,13 @@ function downloadBlob(content, fileName, mimeType) {
   URL.revokeObjectURL(a.href);
 }
 
+function sanitizeFileNameComponent(text) {
+  if (typeof text !== 'string') {
+    return '';
+  }
+  return text.replace(/[\\/:*?"<>|]/g, '_').trim();
+}
+
 async function downloadResults(storeName, period, results, format) {
   const aoa = [
     ['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'],
@@ -796,5 +940,60 @@ async function downloadResults(storeName, period, results, format) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '結果');
     XLSX.writeFile(wb, `${period}_${storeName}.xlsx`);
+  }
+}
+
+function downloadEmployeeDetail(storeName, period, detailInfo, format) {
+  if (!detailInfo) {
+    return;
+  }
+
+  const summaryLines = Array.isArray(detailInfo.summaryLines) ? detailInfo.summaryLines : [];
+  const aoa = [];
+  aoa.push(['従業員名', detailInfo.employeeName || '']);
+  if (summaryLines.length > 0) {
+    aoa.push([]);
+    summaryLines.forEach(line => {
+      aoa.push([line]);
+    });
+  }
+  aoa.push([]);
+
+  const rows = Array.isArray(detailInfo.rows) ? detailInfo.rows : [];
+  if (rows.length === 0) {
+    aoa.push(['出勤記録がありません']);
+  } else {
+    rows.forEach(row => {
+      if (!row) return;
+      if (row.type === 'month') {
+        aoa.push([row.label || '']);
+      } else if (row.type === 'day') {
+        const segments = Array.isArray(row.segments) ? row.segments : [];
+        aoa.push([row.dateLabel || '', ...segments]);
+      }
+    });
+  }
+
+  const baseParts = [];
+  const periodPart = sanitizeFileNameComponent(period || '');
+  if (periodPart) baseParts.push(periodPart);
+  const storePart = sanitizeFileNameComponent(storeName || '');
+  if (storePart) baseParts.push(storePart);
+  const employeePart = sanitizeFileNameComponent(detailInfo.employeeName || '');
+  if (employeePart) baseParts.push(employeePart);
+  const baseName = `${baseParts.join('_') || 'employee'}_detail`;
+
+  if (format === 'csv') {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    downloadBlob(csv, `${baseName}.csv`, 'text/csv');
+  } else if (format === 'txt') {
+    const text = aoa.map(row => row.join('\t')).join('\n');
+    downloadBlob(text, `${baseName}.txt`, 'text/plain');
+  } else {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '詳細');
+    XLSX.writeFile(wb, `${baseName}.xlsx`);
   }
 }
