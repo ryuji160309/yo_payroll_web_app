@@ -24,7 +24,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const storesParamRaw = params.get('stores');
   const crossStoreMode = storesParamRaw !== null;
 
-  startLoading(statusEl, crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・');
+  startLoading(
+    statusEl,
+    crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
+    { disableSlowNote: crossStoreMode }
+  );
   initializeHelp('help/sheets.txt');
   await ensureSettingsLoaded();
 

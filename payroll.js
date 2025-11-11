@@ -29,7 +29,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const selectionsParamRaw = params.get('selections');
   const isCrossStoreMode = selectionsParamRaw !== null && selectionsParamRaw.trim() !== '';
-  startLoading(statusEl, isCrossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・');
+  startLoading(
+    statusEl,
+    isCrossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
+    { disableSlowNote: isCrossStoreMode }
+  );
   initializeHelp('help/payroll.txt');
   await ensureSettingsLoaded();
 
