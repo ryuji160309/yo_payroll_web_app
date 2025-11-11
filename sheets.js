@@ -12,15 +12,22 @@ function formatSheetName(name) {
   return name;
 }
 
+const CROSS_STORE_LOADING_MESSAGE = [
+  '店舗横断計算モードでは複数店舗のデータを読み込むため、通常の計算よりも時間がかかります。',
+  'しばらくお待ち下さい。'
+].join('\n');
+
 document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
-  startLoading(statusEl, '読込中・・・');
-  initializeHelp('help/sheets.txt');
-  await ensureSettingsLoaded();
 
   const params = new URLSearchParams(location.search);
   const storesParamRaw = params.get('stores');
   const crossStoreMode = storesParamRaw !== null;
+
+  startLoading(statusEl, crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・');
+  initializeHelp('help/sheets.txt');
+  await ensureSettingsLoaded();
+
   const storeParamRaw = params.get('store');
   const offlineRequested = params.get('offline') === '1';
   const offlineMode = offlineRequested && !crossStoreMode;
@@ -404,7 +411,7 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
 
       const heading = document.createElement('h3');
       heading.className = 'store-section-title';
-      heading.textContent = `${entry.store.name} - シート一覧`;
+      heading.textContent = entry.store.name;
       section.appendChild(heading);
 
       const buttonWrapper = document.createElement('div');
