@@ -5,6 +5,189 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offlineButton = document.getElementById('offline-load-button');
   const offlineInfo = document.getElementById('offline-workbook-info');
   const LAST_STORE_STORAGE_KEY = 'lastSelectedStore';
+  const IOS_PWA_PROMPT_DISMISSED_KEY = 'iosPwaPromptDismissed';
+
+  function isIos() {
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIpadOs13 = ua.includes('macintosh') && 'ontouchend' in document;
+    return /iphone|ipod|ipad/.test(ua) || isIpadOs13;
+  }
+
+  function isStandaloneMode() {
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      return true;
+    }
+    if (typeof window.navigator.standalone === 'boolean' && window.navigator.standalone) {
+      return true;
+    }
+    return false;
+  }
+
+  function isPwaPromptDismissed() {
+    try {
+      return localStorage.getItem(IOS_PWA_PROMPT_DISMISSED_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function setPwaPromptDismissed() {
+    try {
+      localStorage.setItem(IOS_PWA_PROMPT_DISMISSED_KEY, '1');
+    } catch (e) {
+      // Ignore storage access issues.
+    }
+  }
+
+  function showIosPwaPrompt() {
+    if (!document.body) {
+      return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'ios-pwa-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+
+    const dialog = document.createElement('div');
+    dialog.className = 'ios-pwa-dialog';
+
+    const title = document.createElement('h2');
+    title.className = 'ios-pwa-title';
+    title.textContent = 'ホーム画面に追加すると便利です';
+    dialog.appendChild(title);
+
+    const description = document.createElement('p');
+    description.className = 'ios-pwa-description';
+    description.textContent = '簡易給与計算をホーム画面にアプリとして追加することができます。';
+    dialog.appendChild(description);
+
+    const steps = document.createElement('ol');
+    steps.className = 'ios-pwa-steps';
+
+    const stepItems = [
+      () => {
+        const li = document.createElement('li');
+        li.append('Safariの');
+        const icon = document.createElement('img');
+        icon.src = 'icons/share_icon.png';
+        icon.alt = '共有アイコン';
+        icon.className = 'ios-pwa-step-icon';
+        li.appendChild(icon);
+        li.append('をタップします。');
+        return li;
+      },
+      () => {
+        const li = document.createElement('li');
+        li.append('表示されたメニューの下の');
+        const icon = document.createElement('img');
+        icon.src = 'icons/3point_icon.png';
+        icon.alt = 'その他アイコン';
+        icon.className = 'ios-pwa-step-icon';
+        li.appendChild(icon);
+        const label = document.createElement('strong');
+        label.textContent = 'その他';
+        li.appendChild(label);
+        li.append('をタップします。');
+        return li;
+      },
+      () => {
+        const li = document.createElement('li');
+        li.append('広がったメニューの中に');
+        const icon = document.createElement('img');
+        icon.src = 'icons/plus_icon.png';
+        icon.alt = 'ホーム画面に追加アイコン';
+        icon.className = 'ios-pwa-step-icon';
+        li.appendChild(icon);
+        const label = document.createElement('strong');
+        label.textContent = 'ホーム画面に追加';
+        li.appendChild(label);
+        li.append('をタップします。');
+        return li;
+      },
+      () => {
+        const li = document.createElement('li');
+        li.append('Webアプリとして開くを');
+        const labelOn = document.createElement('strong');
+        labelOn.textContent = 'オン';
+        li.appendChild(labelOn);
+        li.append('にしたまま');
+        const labelAdd = document.createElement('strong');
+        labelAdd.textContent = '追加';
+        li.appendChild(labelAdd);
+        li.append('をタップします。');
+        return li;
+      }
+    ];
+
+    stepItems.forEach(createStep => {
+      steps.appendChild(createStep());
+    });
+    dialog.appendChild(steps);
+
+    const footer = document.createElement('div');
+    footer.className = 'ios-pwa-footer';
+
+    const checkboxLabel = document.createElement('label');
+    checkboxLabel.className = 'ios-pwa-checkbox';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'ios-pwa-dismiss-checkbox';
+    checkboxLabel.appendChild(checkbox);
+
+    const checkboxText = document.createElement('span');
+    checkboxText.textContent = '再び表示しない';
+    checkboxLabel.appendChild(checkboxText);
+
+    footer.appendChild(checkboxLabel);
+
+    const actions = document.createElement('div');
+    actions.className = 'ios-pwa-actions';
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'ios-pwa-close';
+    closeButton.textContent = '閉じる';
+    actions.appendChild(closeButton);
+    footer.appendChild(actions);
+
+    dialog.appendChild(footer);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    function closePrompt() {
+      if (checkbox.checked) {
+        setPwaPromptDismissed();
+      }
+      window.removeEventListener('keydown', onKeyDown, true);
+      overlay.remove();
+    }
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closePrompt();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown, true);
+
+    closeButton.addEventListener('click', closePrompt);
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) {
+        closePrompt();
+      }
+    });
+
+    setTimeout(() => {
+      closeButton.focus();
+    }, 0);
+  }
+
+  if (isIos() && !isStandaloneMode() && !isPwaPromptDismissed()) {
+    showIosPwaPrompt();
+  }
 
   function getLastSelectedStoreKey(stores) {
     if (!stores) {

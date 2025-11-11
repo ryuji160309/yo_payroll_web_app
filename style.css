@@ -590,6 +590,101 @@ th, td {
   flex-shrink: 0;
 }
 
+#ios-pwa-overlay {
+  position: fixed;
+  inset: 0;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 965;
+}
+
+.ios-pwa-dialog {
+  background: #fff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 26rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ios-pwa-title {
+  margin: 0;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.ios-pwa-description {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.ios-pwa-steps {
+  margin: 0;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.ios-pwa-steps li {
+  line-height: 1.6;
+}
+
+.ios-pwa-step-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0 0.35rem;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+.ios-pwa-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ios-pwa-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.ios-pwa-checkbox input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.ios-pwa-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ios-pwa-close {
+  min-width: 6rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 1rem;
+  background: #0f4a73;
+  color: #fff;
+  border-color: #0f4a73;
+}
+
+.ios-pwa-close:hover,
+.ios-pwa-close:focus {
+  background: #0c3a59;
+  border-color: #0c3a59;
+}
+
 #update-overlay {
   position: fixed;
   inset: 0;
