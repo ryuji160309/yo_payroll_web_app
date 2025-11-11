@@ -84,12 +84,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     openSourceBtn.disabled = true;
   }
   try {
-    const workbookResults = await Promise.all(
-      sheetIndices.map(idx => fetchWorkbook(store.url, idx, { allowOffline: offlineMode }))
+    const fetchPromises = sheetIndices.map(idx =>
+      fetchWorkbook(store.url, idx, { allowOffline: offlineMode })
     );
+    const settledResults = await Promise.allSettled(fetchPromises);
+    const workbookResults = [];
+    const failedSheets = [];
+    settledResults.forEach((res, idx) => {
+      const sheetIndex = sheetIndices[idx];
+      if (res.status === 'fulfilled') {
+        workbookResults.push(res.value);
+      } else {
+        failedSheets.push({ sheetIndex, reason: res.reason });
+      }
+    });
+    if (workbookResults.length === 0) {
+      throw new Error('シートの読み込みに失敗しました');
+    }
+
     stopLoading(statusEl);
 
-    const summaries = workbookResults.map(result => {
+    const processingFailures = [];
+    const summaries = [];
+    workbookResults.forEach(result => {
       const data = result.data;
       const rawYear = data[1] && data[1][2];
       const year = Number.parseInt(rawYear, 10);
@@ -108,22 +125,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         periodLabel = result.sheetName || `シート${result.sheetIndex + 1}`;
       }
-      const payrollResult = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
-      const nameRow = data[36] || [];
-      const sheetStoreName = nameRow[14];
-      return {
-        result,
-        data,
-        payrollResult,
-        startDate,
-        endDate,
-        periodLabel,
-        startMonthRaw: startMonthRaw !== undefined && startMonthRaw !== null ? String(startMonthRaw) : '',
-        year: Number.isFinite(year) ? year : null,
-        sheetStoreName,
-        sheetId: result.sheetId,
-      };
+      try {
+        const payrollResult = calculatePayroll(data, store.baseWage, store.overtime, store.excludeWords || []);
+        const nameRow = data[36] || [];
+        const sheetStoreName = nameRow[14];
+        summaries.push({
+          result,
+          data,
+          payrollResult,
+          startDate,
+          endDate,
+          periodLabel,
+          startMonthRaw: startMonthRaw !== undefined && startMonthRaw !== null ? String(startMonthRaw) : '',
+          year: Number.isFinite(year) ? year : null,
+          sheetStoreName,
+          sheetId: result.sheetId,
+        });
+      } catch (err) {
+        processingFailures.push({ sheetIndex: result.sheetIndex, reason: err });
+      }
     });
+
+    if (summaries.length === 0) {
+      throw new Error('有効なシートがありません');
+    }
 
     const resolvedStoreName = summaries.map(s => s.sheetStoreName).find(name => !!name) || store.name;
     const displayTitleEl = document.getElementById('store-name');
@@ -138,32 +163,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     const periodEl = document.getElementById('period');
     if (periodEl) {
       if (isMultiSheetMode) {
-        const labels = summaries.map(s => s.periodLabel).filter(Boolean);
-        let mergedRangeLabel = '';
-        if (summaries.length > 0) {
-          const chronologicalSummaries = summaries
-            .filter(summary => isValidDate(summary.startDate) && isValidDate(summary.endDate))
-            .slice()
-            .sort((a, b) => a.startDate - b.startDate);
-          if (chronologicalSummaries.length === summaries.length) {
-            const isConsecutive = chronologicalSummaries.every((summary, idx) => {
-              if (idx === 0) {
-                return true;
-              }
-              const previous = chronologicalSummaries[idx - 1];
-              return summary.startDate.getTime() - previous.endDate.getTime() === DAY_IN_MS;
-            });
-            if (isConsecutive) {
-              const firstRange = chronologicalSummaries[0];
-              const lastRange = chronologicalSummaries[chronologicalSummaries.length - 1];
-              mergedRangeLabel = formatPeriodRange(firstRange.startDate, lastRange.endDate);
-            }
+        const chronologicalSummaries = summaries
+          .filter(summary => isValidDate(summary.startDate) && isValidDate(summary.endDate))
+          .slice()
+          .sort((a, b) => a.startDate - b.startDate);
+
+        const mergedRanges = [];
+        chronologicalSummaries.forEach(summary => {
+          const lastRange = mergedRanges[mergedRanges.length - 1];
+          if (!lastRange) {
+            mergedRanges.push({ start: summary.startDate, end: summary.endDate });
+            return;
           }
-        }
-        if (mergedRangeLabel) {
-          periodEl.textContent = `選択した月：${mergedRangeLabel}`;
+          const gap = summary.startDate.getTime() - lastRange.end.getTime();
+          if (gap <= DAY_IN_MS) {
+            if (summary.endDate.getTime() > lastRange.end.getTime()) {
+              lastRange.end = summary.endDate;
+            }
+          } else {
+            mergedRanges.push({ start: summary.startDate, end: summary.endDate });
+          }
+        });
+
+        const mergedLabels = mergedRanges
+          .map(range => formatPeriodRange(range.start, range.end))
+          .filter(Boolean);
+
+        if (mergedLabels.length > 0) {
+          periodEl.textContent = `選択した月：${mergedLabels.join(' ／ ')}`;
         } else {
-          periodEl.textContent = labels.length ? `選択した月：${labels.join(' ／ ')}` : '選択した月：複数シート';
+          const fallbackLabels = summaries.map(s => s.periodLabel).filter(Boolean);
+          periodEl.textContent = fallbackLabels.length
+            ? `選択した月：${fallbackLabels.join(' ／ ')}`
+            : '選択した月：複数シート';
         }
       } else {
         periodEl.textContent = summaries[0] ? summaries[0].periodLabel : '';
@@ -466,6 +498,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     recalc();
     stopLoading(statusEl);
+    if (failedSheets.length > 0 || processingFailures.length > 0) {
+      const messages = [];
+      if (failedSheets.length > 0) {
+        messages.push('一部のシートが読み込めなかったため除外しました。');
+      }
+      if (processingFailures.length > 0) {
+        messages.push('一部のシートで計算エラーが発生したため除外しました。');
+      }
+      statusEl.textContent = messages.join('\n');
+    }
 
     const baseWageInput = document.getElementById('base-wage-input');
     baseWageInput.value = store.baseWage;
