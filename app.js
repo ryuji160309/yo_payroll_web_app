@@ -38,26 +38,50 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
       }
     };
 
+    let removalStarted = false;
+    let fallbackRemoval = null;
+
+    const cleanupAfterTransition = () => {
+      removeToastElement();
+    };
+
     const onTransitionEnd = event => {
-      if (event.propertyName === 'opacity' && !toast.classList.contains('is-visible')) {
-        toast.removeEventListener('transitionend', onTransitionEnd);
-        clearTimeout(fallbackRemoval);
-        removeToastElement();
+      if (!removalStarted || event.propertyName !== 'opacity') {
+        return;
       }
+      toast.removeEventListener('transitionend', onTransitionEnd);
+      if (fallbackRemoval !== null) {
+        clearTimeout(fallbackRemoval);
+        fallbackRemoval = null;
+      }
+      cleanupAfterTransition();
     };
 
-    const fallbackRemoval = setTimeout(() => {
-      toast.removeEventListener('transitionend', onTransitionEnd);
-      removeToastElement();
-    }, 400);
-
-    toast.addEventListener('transitionend', onTransitionEnd);
-
-    return () => {
-      clearTimeout(fallbackRemoval);
-      toast.removeEventListener('transitionend', onTransitionEnd);
-      removeToastElement();
+    const startRemoval = () => {
+      if (removalStarted) {
+        return;
+      }
+      removalStarted = true;
+      toast.addEventListener('transitionend', onTransitionEnd);
+      fallbackRemoval = setTimeout(() => {
+        toast.removeEventListener('transitionend', onTransitionEnd);
+        cleanupAfterTransition();
+      }, 700);
     };
+
+    const forceRemove = () => {
+      if (!removalStarted) {
+        removalStarted = true;
+      }
+      toast.removeEventListener('transitionend', onTransitionEnd);
+      if (fallbackRemoval !== null) {
+        clearTimeout(fallbackRemoval);
+        fallbackRemoval = null;
+      }
+      cleanupAfterTransition();
+    };
+
+    return { startRemoval, forceRemove };
   }
 
   window.showToast = function showToast(message, options = {}) {
@@ -74,13 +98,14 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
       ? options.duration
       : DEFAULT_DURATION;
 
-    const removeToastElement = scheduleRemoval(toast, container);
+    const { startRemoval, forceRemove } = scheduleRemoval(toast, container);
 
     requestAnimationFrame(() => {
       toast.classList.add('is-visible');
     });
 
     const hide = () => {
+      startRemoval();
       toast.classList.remove('is-visible');
     };
 
@@ -97,7 +122,10 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
         clearTimeout(hideTimer);
         hide();
       },
-      remove: removeToastElement
+      remove: () => {
+        clearTimeout(hideTimer);
+        forceRemove();
+      }
     };
   };
 })();

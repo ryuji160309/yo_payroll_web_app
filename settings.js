@@ -31,6 +31,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   select.value = Object.keys(DEFAULT_STORES)[0];
   load(select.value);
 
+  if (typeof window.showToast === 'function') {
+    const message = window.settingsError
+      ? '設定を読み込めませんでした。デフォルトの値を表示しています。'
+      : '店舗設定を読み込みました。';
+    window.showToast(message, { duration: 3200 });
+  }
+
   const urlInput = document.getElementById('url');
   if (urlInput) {
     let isCopying = false;

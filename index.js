@@ -345,6 +345,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.settingsError && err) {
     err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
   }
+  if (typeof window.showToast === 'function') {
+    const storeKeysForToast = stores ? Object.keys(stores) : [];
+    const offlineActiveNow = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
+    let toastMessage = '';
+    if (window.settingsError) {
+      toastMessage = '設定を読み込めませんでした。デフォルトの店舗一覧を表示します。';
+    } else if (storeKeysForToast.length === 0) {
+      toastMessage = '店舗情報が見つかりませんでした。設定から店舗を登録してください。';
+    } else if (offlineActiveNow) {
+      toastMessage = '店舗一覧を読み込みました。ローカルファイルを利用できます。';
+    } else {
+      toastMessage = '店舗一覧の読み込みが完了しました。';
+    }
+    window.showToast(toastMessage, { duration: 3200 });
+  }
   const storeKeys = Object.keys(stores);
   if (list && storeKeys.length > 0) {
     if (!document.getElementById('multi-store-overlay')) {
