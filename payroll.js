@@ -85,11 +85,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   initializeHelp('help/payroll.txt', {
+    pageKey: 'payroll',
+    showPrompt: false,
+    autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
+    onFinish: () => {
+      closeDownloadOverlay();
+    },
     steps: {
       back: '#payroll-back',
       restart: '#payroll-home',
       setBase: '#set-base-wage',
       setTransport: '#set-transport',
+      firstEmployee: {
+        getElement: () => document.querySelector('#employees tbody tr') || document.getElementById('employees')
+      },
       download: '#download',
       downloadOptions: {
         selector: '#download-result-xlsx',

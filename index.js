@@ -6,6 +6,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offlineInfo = document.getElementById('offline-workbook-info');
   const LAST_STORE_STORAGE_KEY = 'lastSelectedStore';
   const IOS_PWA_PROMPT_DISMISSED_KEY = 'iosPwaPromptDismissed';
+  let showMultiStoreOverlayForTutorial = () => {
+    const overlay = document.getElementById('multi-store-overlay');
+    if (overlay && overlay.style.display !== 'flex') {
+      overlay.style.display = 'flex';
+      return;
+    }
+    const button = document.getElementById('multi-store-mode-button');
+    if (button) {
+      button.click();
+    }
+  };
+  let hideMultiStoreOverlayForTutorial = () => {
+    const closeButton = document.getElementById('multi-store-close');
+    if (closeButton) {
+      closeButton.click();
+      return;
+    }
+    const overlay = document.getElementById('multi-store-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+  };
 
   function isIos() {
     const ua = window.navigator.userAgent.toLowerCase();
@@ -317,16 +339,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   startLoading(status, '読込中・・・');
 
-  initializeHelp('help/top.txt', {
-    steps: {
-      mode1: '#multi-store-mode-button',
-      stores: () => document.querySelector('#store-list button.store-button') || document.getElementById('store-list'),
-      local: '#offline-load-button',
-      setting: '#settings',
-      help: () => document.getElementById('help-button')
-    }
-  });
-
   try {
     await ensureSettingsLoaded();
   } catch (e) {
@@ -427,6 +439,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       function toggleOverlay(show) {
         overlay.style.display = show ? 'flex' : 'none';
       }
+
+      showMultiStoreOverlayForTutorial = () => toggleOverlay(true);
+      hideMultiStoreOverlayForTutorial = () => toggleOverlay(false);
 
       closeBtn.addEventListener('click', () => {
         toggleOverlay(false);
@@ -596,6 +611,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         messageDiv.textContent = 'お知らせを取得できませんでした。';
       });
   }
+
+  initializeHelp('help/top.txt', {
+    pageKey: 'top',
+    showPrompt: true,
+    enableAutoStartOnComplete: true,
+    onFinish: () => {
+      hideMultiStoreOverlayForTutorial();
+    },
+    steps: {
+      mode1: '#multi-store-mode-button',
+      modePopup: {
+        selector: '#multi-store-popup',
+        onEnter: () => showMultiStoreOverlayForTutorial()
+      },
+      modeOptions: {
+        getElement: () => document.querySelector('#multi-store-list .multi-store-option') || document.getElementById('multi-store-list'),
+        onEnter: () => showMultiStoreOverlayForTutorial()
+      },
+      modeStart: {
+        selector: '#multi-store-start',
+        onEnter: () => showMultiStoreOverlayForTutorial()
+      },
+      modeClose: {
+        selector: '#multi-store-close',
+        onEnter: () => showMultiStoreOverlayForTutorial(),
+        onExit: () => hideMultiStoreOverlayForTutorial()
+      },
+      stores: () => document.querySelector('#store-list button.store-button') || document.getElementById('store-list'),
+      local: '#offline-load-button',
+      setting: '#settings',
+      announcements: {
+        selectors: ['#announcements select', '#announcements']
+      },
+      help: () => document.getElementById('help-button')
+    }
+  });
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready

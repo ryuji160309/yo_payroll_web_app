@@ -2,6 +2,8 @@ const TUTORIAL_ACTIVE_KEY = 'tutorial-active';
 const TUTORIAL_PROMPT_KEY = 'tutorial-prompt-dismissed';
 const TUTORIAL_PADDING = 12;
 const TUTORIAL_RETRY_LIMIT = 15;
+const TUTORIAL_COMPLETED_PREFIX = 'tutorial-completed:';
+const TUTORIAL_AUTO_START_KEY = 'tutorial-auto-start';
 
 function readStorage(key) {
   try {
@@ -35,6 +37,49 @@ function escapeHTML(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function sanitizeTutorialKey(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+  return trimmed.replace(/[^a-zA-Z0-9:_-]+/g, '_');
+}
+
+function getCompletionKey(key) {
+  const sanitized = sanitizeTutorialKey(key);
+  if (!sanitized) {
+    return '';
+  }
+  return `${TUTORIAL_COMPLETED_PREFIX}${sanitized}`;
+}
+
+function isTutorialCompleted(key) {
+  const storageKey = getCompletionKey(key);
+  if (!storageKey) {
+    return false;
+  }
+  return readStorage(storageKey) === '1';
+}
+
+function setTutorialCompleted(key) {
+  const storageKey = getCompletionKey(key);
+  if (!storageKey) {
+    return;
+  }
+  writeStorage(storageKey, '1');
+}
+
+function isAutoStartEnabled() {
+  return readStorage(TUTORIAL_AUTO_START_KEY) === '1';
+}
+
+function enableAutoStart() {
+  writeStorage(TUTORIAL_AUTO_START_KEY, '1');
 }
 
 function parseTutorialSteps(rawText) {
@@ -90,13 +135,32 @@ function formatStepText(text) {
   return escaped.replace(/\n/g, '<br>');
 }
 
-function createHelpButton() {
-  const button = document.createElement('button');
-  button.id = 'help-button';
-  button.type = 'button';
-  button.textContent = 'ヘルプ';
-  document.body.appendChild(button);
-  return button;
+function createHelpControls() {
+  const helpButton = document.createElement('button');
+  helpButton.id = 'help-button';
+  helpButton.type = 'button';
+  helpButton.textContent = 'ヘルプ';
+  document.body.appendChild(helpButton);
+
+  const exitButton = document.createElement('button');
+  exitButton.id = 'tutorial-exit-button';
+  exitButton.type = 'button';
+  exitButton.textContent = 'チュートリアルを終了';
+  exitButton.hidden = true;
+  exitButton.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(exitButton);
+
+  const setExitVisible = visible => {
+    if (visible) {
+      exitButton.hidden = false;
+      exitButton.setAttribute('aria-hidden', 'false');
+    } else {
+      exitButton.hidden = true;
+      exitButton.setAttribute('aria-hidden', 'true');
+    }
+  };
+
+  return { helpButton, exitButton, setExitVisible };
 }
 
 function createTutorialOverlay() {
@@ -268,8 +332,35 @@ function initializeHelp(path, options = {}) {
   }
 
   const stepConfigs = options.steps || {};
-  const helpButton = createHelpButton();
+  const { helpButton, exitButton, setExitVisible } = createHelpControls();
   const overlay = createTutorialOverlay();
+
+  const rawPageKey = options.pageKey || path;
+  const pageKey = sanitizeTutorialKey(rawPageKey);
+  const showPrompt = options.showPrompt === true;
+  const autoStartIf = typeof options.autoStartIf === 'function' ? options.autoStartIf : null;
+  const enableAutoStartOnComplete = options.enableAutoStartOnComplete === true;
+  const onFinishCallback = typeof options.onFinish === 'function' ? options.onFinish : null;
+  const onFirstCompleteCallback = typeof options.onFirstComplete === 'function' ? options.onFirstComplete : null;
+
+  const isCompleted = () => (pageKey ? isTutorialCompleted(pageKey) : false);
+
+  const shouldAutoStart = () => {
+    if (!autoStartIf || isCompleted()) {
+      return false;
+    }
+    try {
+      return !!autoStartIf({
+        pageKey,
+        path,
+        isCompleted,
+        hasAutoStartFlag: isAutoStartEnabled()
+      });
+    } catch (error) {
+      console.warn('Failed to evaluate tutorial auto-start condition', error);
+      return false;
+    }
+  };
 
   let steps = [];
   let stepsReady = false;
@@ -449,7 +540,8 @@ function initializeHelp(path, options = {}) {
     currentIndex = nextIndex;
     currentStep = steps[currentIndex];
     overlay.bubbleText.innerHTML = formatStepText(currentStep.text);
-    overlay.prevBtn.disabled = currentIndex === 0;
+    overlay.prevBtn.disabled = false;
+    overlay.prevBtn.textContent = currentIndex === 0 ? '閉じる' : '戻る';
     overlay.nextBtn.textContent = currentIndex === steps.length - 1 ? '終了' : '進む';
 
     currentConfig = resolveStepConfig(currentStep.id);
@@ -470,6 +562,7 @@ function initializeHelp(path, options = {}) {
   const finishTutorial = () => {
     pendingStart = false;
     setTutorialActive(false);
+    setExitVisible(false);
     cleanupRetryTimer();
     if (currentConfig && typeof currentConfig.onExit === 'function') {
       try {
@@ -482,6 +575,28 @@ function initializeHelp(path, options = {}) {
     cleanupCurrentTarget();
     overlay.hide();
     detachListeners();
+    const completedThisRun = Array.isArray(steps) && steps.length > 0 && currentIndex >= steps.length - 1;
+    const alreadyCompleted = isCompleted();
+    if (completedThisRun && !alreadyCompleted && pageKey) {
+      setTutorialCompleted(pageKey);
+      if (typeof onFirstCompleteCallback === 'function') {
+        try {
+          onFirstCompleteCallback();
+        } catch (error) {
+          console.warn('tutorial onFirstComplete failed', error);
+        }
+      }
+      if (enableAutoStartOnComplete) {
+        enableAutoStart();
+      }
+    }
+    if (typeof onFinishCallback === 'function') {
+      try {
+        onFinishCallback();
+      } catch (error) {
+        console.warn('tutorial onFinish failed', error);
+      }
+    }
   };
 
   const startTutorialInternal = () => {
@@ -493,10 +608,12 @@ function initializeHelp(path, options = {}) {
     if (!Array.isArray(steps) || steps.length === 0) {
       pendingStart = false;
       console.warn('No tutorial steps were loaded for', path);
+      setExitVisible(false);
       return;
     }
     pendingStart = false;
     setTutorialActive(true);
+    setExitVisible(true);
     overlay.show();
     attachListeners();
     showStep(0);
@@ -527,8 +644,14 @@ function initializeHelp(path, options = {}) {
     startTutorialInternal();
   };
 
+  exitButton.addEventListener('click', () => {
+    finishTutorial();
+  });
+
   overlay.prevBtn.addEventListener('click', () => {
-    if (currentIndex > 0) {
+    if (currentIndex <= 0) {
+      finishTutorial();
+    } else {
       showStep(currentIndex - 1);
     }
   });
@@ -665,7 +788,11 @@ function initializeHelp(path, options = {}) {
       startTutorial();
       return;
     }
-    if (!isPromptDismissed()) {
+    if (!isCompleted() && shouldAutoStart()) {
+      startTutorial();
+      return;
+    }
+    if (showPrompt && !isCompleted() && !isPromptDismissed()) {
       showTutorialPrompt();
     }
   };
