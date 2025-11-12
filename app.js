@@ -241,6 +241,93 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
   };
 })();
 
+(function setupButtonPressFeedback() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const PRESSABLE_SELECTOR = 'button, input[type="button"], input[type="submit"], input[type="reset"]';
+  const PRESSED_ATTRIBUTE = 'data-pressed';
+  const activePresses = new Map();
+
+  function setPressedState(button, isPressed) {
+    if (!button) {
+      return;
+    }
+    if (isPressed) {
+      button.setAttribute(PRESSED_ATTRIBUTE, 'true');
+    } else if (button.hasAttribute(PRESSED_ATTRIBUTE)) {
+      button.removeAttribute(PRESSED_ATTRIBUTE);
+    }
+  }
+
+  function clearPress(pointerId) {
+    const record = activePresses.get(pointerId);
+    if (!record) {
+      return;
+    }
+
+    const { button, onPointerLeave, onPointerEnter } = record;
+    if (button) {
+      button.removeEventListener('pointerleave', onPointerLeave);
+      button.removeEventListener('pointerenter', onPointerEnter);
+      setPressedState(button, false);
+    }
+    activePresses.delete(pointerId);
+  }
+
+  function handlePointerDown(event) {
+    if (typeof event.button === 'number' && event.button !== 0) {
+      return;
+    }
+
+    const button = event.target && event.target.closest
+      ? event.target.closest(PRESSABLE_SELECTOR)
+      : null;
+
+    if (!button || button.disabled) {
+      return;
+    }
+
+    const pointerId = event.pointerId;
+    if (activePresses.has(pointerId)) {
+      clearPress(pointerId);
+    }
+
+    const onPointerLeave = leaveEvent => {
+      if (leaveEvent.pointerId !== pointerId) {
+        return;
+      }
+      setPressedState(button, false);
+    };
+
+    const onPointerEnter = enterEvent => {
+      if (enterEvent.pointerId !== pointerId || (enterEvent.buttons & 1) === 0) {
+        return;
+      }
+      setPressedState(button, true);
+    };
+
+    setPressedState(button, true);
+    button.addEventListener('pointerleave', onPointerLeave);
+    button.addEventListener('pointerenter', onPointerEnter);
+
+    activePresses.set(pointerId, {
+      button,
+      onPointerLeave,
+      onPointerEnter
+    });
+  }
+
+  function handlePointerEnd(event) {
+    clearPress(event.pointerId);
+  }
+
+  document.addEventListener('pointerdown', handlePointerDown, { passive: true });
+  window.addEventListener('pointerup', handlePointerEnd);
+  window.addEventListener('pointercancel', handlePointerEnd);
+})();
+
 (function setupUpdateChecker() {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return;
