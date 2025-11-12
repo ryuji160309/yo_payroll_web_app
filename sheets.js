@@ -38,17 +38,23 @@ function showToastWithNativeNotice(message, options) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const statusEl = document.getElementById('status');
+  if (typeof window !== 'undefined') {
+    window.isPageTutorialDataReady = false;
+    window.pageTutorialLoadingPromise = null;
+  }
 
-  const params = new URLSearchParams(location.search);
-  const storesParamRaw = params.get('stores');
-  const crossStoreMode = storesParamRaw !== null;
+  const run = async () => {
+    const statusEl = document.getElementById('status');
 
-  const ensureMultiMonthOverlayOpen = () => {
-    const overlay = document.getElementById('multi-month-overlay');
-    if (!overlay) {
-      return;
-    }
+    const params = new URLSearchParams(location.search);
+    const storesParamRaw = params.get('stores');
+    const crossStoreMode = storesParamRaw !== null;
+
+    const ensureMultiMonthOverlayOpen = () => {
+      const overlay = document.getElementById('multi-month-overlay');
+      if (!overlay) {
+        return;
+      }
     const style = window.getComputedStyle(overlay);
     if (style.display !== 'flex') {
       const modeBtn = document.getElementById('multi-month-mode-button');
@@ -74,34 +80,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  startLoading(
-    statusEl,
-    crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
-    { disableSlowNote: crossStoreMode }
-  );
-  initializeHelp('help/sheets.txt', {
-    steps: {
-      back: '#sheets-back',
-      restart: '#sheets-home',
-      mode: '#multi-month-mode-button',
-      selectAll: {
-        selector: '#multi-month-select-all',
-        onEnter: ensureMultiMonthOverlayOpen
+    startLoading(
+      statusEl,
+      crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
+      { disableSlowNote: crossStoreMode }
+    );
+    initializeHelp('help/sheets.txt', {
+      pageKey: 'sheets',
+      prompt: false,
+      autoStart: {
+        enabled: true,
+        requireCompleted: 'top'
       },
-      start: {
-        selector: '#multi-month-start',
-        onEnter: ensureMultiMonthOverlayOpen
+      loading: {
+        isLoading: () => typeof window !== 'undefined' && window.isPageTutorialDataReady === false,
+        waitFor: () => (typeof window !== 'undefined' && window.pageTutorialLoadingPromise) || Promise.resolve()
       },
-      close: {
-        selector: '#multi-month-close',
-        onEnter: ensureMultiMonthOverlayOpen,
-        onExit: closeMultiMonthOverlay
-      },
-      sheets: () => document.querySelector('#sheet-list .sheet-button') || document.getElementById('sheet-list'),
-      help: () => document.getElementById('help-button')
-    }
-  });
-  await ensureSettingsLoaded();
+      steps: {
+        back: '#sheets-back',
+        restart: '#sheets-home',
+        mode: '#multi-month-mode-button',
+        selectAll: {
+          selector: '#multi-month-select-all',
+          onEnter: ensureMultiMonthOverlayOpen
+        },
+        start: {
+          selector: '#multi-month-start',
+          onEnter: ensureMultiMonthOverlayOpen
+        },
+        close: {
+          selector: '#multi-month-close',
+          onEnter: ensureMultiMonthOverlayOpen,
+          onExit: closeMultiMonthOverlay
+        },
+        sheets: () => document.querySelector('#sheet-list .sheet-button') || document.getElementById('sheet-list'),
+        help: () => document.getElementById('help-button')
+      }
+    });
+    await ensureSettingsLoaded();
 
   const storeParamRaw = params.get('store');
   const offlineRequested = params.get('offline') === '1';
@@ -576,4 +592,18 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
       });
     }
   }
-}
+  };
+
+  const runPromise = run();
+  if (typeof window !== 'undefined') {
+    const trackingPromise = runPromise
+      .catch(() => {})
+      .finally(() => {
+        window.isPageTutorialDataReady = true;
+        window.pageTutorialLoadingPromise = null;
+      });
+    window.pageTutorialLoadingPromise = trackingPromise;
+  }
+
+  await runPromise;
+});
