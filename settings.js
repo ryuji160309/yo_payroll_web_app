@@ -19,11 +19,37 @@ function showToastWithNativeNotice(message, options) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const getFieldWithLabel = id => {
+    const field = document.getElementById(id);
+    if (!field) {
+      return null;
+    }
+    const parent = field.parentElement;
+    if (parent && parent.tagName === 'LABEL') {
+      return parent;
+    }
+    if (typeof field.closest === 'function') {
+      const label = field.closest('label');
+      if (label) {
+        return label;
+      }
+    }
+    return field;
+  };
+
   initializeHelp('help/settings.txt', {
+    pageKey: 'settings',
+    showPrompt: false,
+    autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
     steps: {
       back: '#settings-back',
       restart: '#settings-home',
       openSheet: '#open-settings-sheet',
+      storeSelect: { getElement: () => getFieldWithLabel('store-select') },
+      sheetUrl: { getElement: () => getFieldWithLabel('url') },
+      baseWage: { getElement: () => getFieldWithLabel('baseWage') },
+      overtime: { getElement: () => getFieldWithLabel('overtime') },
+      excludeWords: { getElement: () => getFieldWithLabel('excludeWords') },
       help: () => document.getElementById('help-button')
     }
   });

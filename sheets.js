@@ -80,6 +80,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     { disableSlowNote: crossStoreMode }
   );
   initializeHelp('help/sheets.txt', {
+    pageKey: 'sheets',
+    showPrompt: false,
+    autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
+    onFinish: () => {
+      closeMultiMonthOverlay();
+    },
     steps: {
       back: '#sheets-back',
       restart: '#sheets-home',
