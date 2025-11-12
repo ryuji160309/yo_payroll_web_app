@@ -1,3 +1,23 @@
+function showToastWithNativeNotice(message, options) {
+  if (!message) {
+    return null;
+  }
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  if (typeof window.showToastWithFeedback === 'function') {
+    return window.showToastWithFeedback(message, options);
+  }
+  let toastHandle = null;
+  if (typeof window.showToast === 'function') {
+    toastHandle = window.showToast(message, options);
+  }
+  if (typeof window.notifyPlatformFeedback === 'function') {
+    window.notifyPlatformFeedback(message, options);
+  }
+  return toastHandle;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   initializeHelp('help/settings.txt');
   await ensureSettingsLoaded();
@@ -31,12 +51,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   select.value = Object.keys(DEFAULT_STORES)[0];
   load(select.value);
 
-  if (typeof window.showToast === 'function') {
-    const message = window.settingsError
-      ? '設定を読み込めませんでした。デフォルトの値を表示しています。'
-      : '店舗設定を読み込みました。';
-    window.showToast(message, { duration: 3200 });
-  }
+  const message = window.settingsError
+    ? '設定を読み込めませんでした。デフォルトの値を表示しています。'
+    : '店舗設定を読み込みました。';
+  showToastWithNativeNotice(message, { duration: 3200 });
 
   const urlInput = document.getElementById('url');
   if (urlInput) {
@@ -95,8 +113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         isCopying = false;
       }
 
-      if (copied && typeof window.showToast === 'function') {
-        window.showToast('シートURLをコピーしました。');
+      if (copied) {
+        showToastWithNativeNotice('シートURLをコピーしました。');
       }
     };
 
