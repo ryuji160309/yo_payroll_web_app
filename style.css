@@ -652,11 +652,38 @@ th, td {
   outline-offset: 2px;
 }
 
+#tutorial-exit-button {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 1301;
+  padding: 0.75rem 1.25rem;
+  border-radius: 9999px;
+  border: none;
+  background: #0f4a73;
+  color: #fff;
+  font-size: 1rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  display: none;
+}
+
+#tutorial-exit-button.is-visible {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#tutorial-exit-button:focus {
+  outline: 2px solid #89c2ff;
+  outline-offset: 2px;
+}
+
 #tutorial-overlay {
   position: fixed;
   inset: 0;
   display: none;
-  z-index: 980;
+  z-index: 1300;
   pointer-events: none;
 }
 
