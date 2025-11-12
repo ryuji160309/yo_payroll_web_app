@@ -98,18 +98,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     steps: {
       back: '#payroll-back',
       restart: '#payroll-home',
-      setBase: '#set-base-wage',
-      setTransport: '#set-transport',
+      setBase: '#base-wage-control',
+      setTransport: '#transport-control',
       firstEmployee: {
-        getElement: () => document.querySelector('#employees tbody tr') || document.getElementById('employees')
+        getElement: () => {
+          const firstRow = document.querySelector('#employees tbody tr');
+          if (!firstRow) {
+            return document.getElementById('employees');
+          }
+          return firstRow.querySelector('td, th') || firstRow;
+        }
       },
       detailPopup: {
         getElement: () => resolveEmployeeDetailPopup(),
         onEnter: () => {
           showEmployeeDetailOverlayForTutorial();
         },
-        onExit: () => {
-          hideEmployeeDetailOverlayForTutorial();
+        onExit: context => {
+          if (!context || context.direction !== 'next') {
+            hideEmployeeDetailOverlayForTutorial();
+          }
+        }
+      },
+      detailTable: {
+        selector: '#employee-detail-table-wrapper',
+        onEnter: () => {
+          showEmployeeDetailOverlayForTutorial();
+        },
+        onExit: context => {
+          if (!context || (context.direction !== 'next' && context.direction !== 'prev')) {
+            hideEmployeeDetailOverlayForTutorial();
+          }
+        }
+      },
+      detailDownloadButton: {
+        selector: '#employee-detail-download',
+        onEnter: () => {
+          showEmployeeDetailOverlayForTutorial();
+        },
+        onExit: context => {
+          if (!context || (context.direction !== 'next' && context.direction !== 'prev')) {
+            hideEmployeeDetailOverlayForTutorial();
+          }
+        }
+      },
+      detailCloseButton: {
+        selector: '#employee-detail-close',
+        onEnter: () => {
+          showEmployeeDetailOverlayForTutorial();
+        },
+        onExit: context => {
+          if (!context || context.direction !== 'prev') {
+            hideEmployeeDetailOverlayForTutorial();
+          }
         }
       },
       download: {

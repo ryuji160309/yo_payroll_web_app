@@ -18,6 +18,7 @@ const CROSS_STORE_LOADING_MESSAGE = [
 ].join('\n');
 
 let sheetButtonsHighlightTarget = null;
+let multiMonthTutorialState = null;
 
 function showToastWithNativeNotice(message, options) {
   if (!message) {
@@ -63,6 +64,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const closeMultiMonthOverlay = () => {
     const overlay = document.getElementById('multi-month-overlay');
     if (!overlay) {
+      if (multiMonthTutorialState && typeof multiMonthTutorialState.restorePreview === 'function') {
+        multiMonthTutorialState.restorePreview();
+      }
       return;
     }
     const style = window.getComputedStyle(overlay);
@@ -73,6 +77,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         overlay.style.display = 'none';
       }
+    }
+    if (multiMonthTutorialState && typeof multiMonthTutorialState.restorePreview === 'function') {
+      multiMonthTutorialState.restorePreview();
     }
   };
 
@@ -107,11 +114,55 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
       modePopup: {
         selector: '#multi-month-popup',
-        onEnter: ensureMultiMonthOverlayOpen
+        onEnter: ensureMultiMonthOverlayOpen,
+        onExit: context => {
+          if (!context || context.direction !== 'next') {
+            closeMultiMonthOverlay();
+          }
+        }
+      },
+      modeSelection: {
+        selector: '#multi-month-list',
+        onEnter: () => {
+          ensureMultiMonthOverlayOpen();
+        },
+        onExit: context => {
+          if (!context || context.direction !== 'next') {
+            closeMultiMonthOverlay();
+          }
+        }
       },
       selectAll: {
         selector: '#multi-month-select-all',
-        onEnter: ensureMultiMonthOverlayOpen
+        onEnter: () => {
+          ensureMultiMonthOverlayOpen();
+          if (multiMonthTutorialState && typeof multiMonthTutorialState.previewClearSelection === 'function') {
+            multiMonthTutorialState.previewClearSelection();
+          }
+        },
+        onExit: context => {
+          if (multiMonthTutorialState && typeof multiMonthTutorialState.previewSelectAll === 'function' && context && context.direction === 'next') {
+            multiMonthTutorialState.previewSelectAll();
+            return;
+          }
+          if (multiMonthTutorialState && typeof multiMonthTutorialState.restorePreview === 'function') {
+            multiMonthTutorialState.restorePreview();
+          }
+        }
+      },
+      selectAllToggle: {
+        selector: '#multi-month-select-all',
+        onEnter: () => {
+          ensureMultiMonthOverlayOpen();
+          if (multiMonthTutorialState && typeof multiMonthTutorialState.previewSelectAll === 'function') {
+            multiMonthTutorialState.previewSelectAll();
+          }
+        },
+        onExit: () => {
+          if (multiMonthTutorialState && typeof multiMonthTutorialState.previewClearSelection === 'function') {
+            multiMonthTutorialState.previewClearSelection();
+          }
+        }
       },
       start: {
         selector: '#multi-month-start',
@@ -120,7 +171,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       close: {
         selector: '#multi-month-close',
         onEnter: ensureMultiMonthOverlayOpen,
-        onExit: closeMultiMonthOverlay
+        onExit: () => {
+          closeMultiMonthOverlay();
+        }
       },
       sheets: () => resolveSheetButtonsHighlightTarget(),
       help: () => document.getElementById('help-button')
@@ -365,6 +418,73 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
 
   const selectedSheets = new Set();
   const popupButtons = [];
+  const popupButtonMap = new Map();
+  let tutorialSnapshot = null;
+  let tutorialPreviewActive = false;
+
+  function setSheetSelectedByKey(key, selected) {
+    const btn = popupButtonMap.get(key);
+    if (!btn) {
+      return;
+    }
+    if (selected) {
+      selectedSheets.add(key);
+      btn.classList.add('is-selected');
+    } else {
+      selectedSheets.delete(key);
+      btn.classList.remove('is-selected');
+    }
+  }
+
+  function clearAllSheets() {
+    selectedSheets.clear();
+    popupButtons.forEach(btn => btn.classList.remove('is-selected'));
+  }
+
+  function selectAllSheets() {
+    popupButtons.forEach(btn => {
+      const key = `${btn.dataset.storeKey}|${btn.dataset.sheetIndex}`;
+      selectedSheets.add(key);
+      btn.classList.add('is-selected');
+    });
+  }
+
+  function ensureTutorialSnapshot() {
+    if (!tutorialPreviewActive) {
+      tutorialSnapshot = new Set(selectedSheets);
+      tutorialPreviewActive = true;
+    }
+  }
+
+  function restoreTutorialPreview() {
+    if (!tutorialPreviewActive) {
+      return;
+    }
+    clearAllSheets();
+    if (tutorialSnapshot) {
+      tutorialSnapshot.forEach(key => {
+        setSheetSelectedByKey(key, true);
+      });
+    }
+    tutorialSnapshot = null;
+    tutorialPreviewActive = false;
+    updateStartButton();
+    updateSelectAllState();
+  }
+
+  function previewClearSelection() {
+    ensureTutorialSnapshot();
+    clearAllSheets();
+    updateStartButton();
+    updateSelectAllState();
+  }
+
+  function previewSelectAll() {
+    ensureTutorialSnapshot();
+    selectAllSheets();
+    updateStartButton();
+    updateSelectAllState();
+  }
 
   function updateStartButton() {
     const count = selectedSheets.size;
@@ -374,6 +494,9 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
 
   function toggleOverlay(show) {
     overlay.style.display = show ? 'flex' : 'none';
+    if (!show) {
+      restoreTutorialPreview();
+    }
   }
 
   closeBtn.addEventListener('click', () => {
@@ -401,17 +524,13 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
       popupBtn.dataset.sheetId = meta.sheetId !== undefined && meta.sheetId !== null ? String(meta.sheetId) : '';
       popupBtn.dataset.storeOrder = String(storeOrder);
       popupBtn.addEventListener('click', () => {
-        if (selectedSheets.has(key)) {
-          selectedSheets.delete(key);
-          popupBtn.classList.remove('is-selected');
-        } else {
-          selectedSheets.add(key);
-          popupBtn.classList.add('is-selected');
-        }
+        const nextSelected = !selectedSheets.has(key);
+        setSheetSelectedByKey(key, nextSelected);
         updateStartButton();
         updateSelectAllState();
       });
       popupButtons.push(popupBtn);
+      popupButtonMap.set(key, popupBtn);
       popupList.appendChild(popupBtn);
     });
   });
@@ -432,14 +551,9 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
 
   selectAllBtn.addEventListener('click', () => {
     if (areAllSelected()) {
-      selectedSheets.clear();
-      popupButtons.forEach(btn => btn.classList.remove('is-selected'));
+      clearAllSheets();
     } else {
-      popupButtons.forEach(btn => {
-        const key = `${btn.dataset.storeKey}|${btn.dataset.sheetIndex}`;
-        selectedSheets.add(key);
-        btn.classList.add('is-selected');
-      });
+      selectAllSheets();
     }
     updateStartButton();
     updateSelectAllState();
@@ -516,6 +630,12 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
     toggleOverlay(false);
     window.location.href = `payroll.html?${query.toString()}`;
   });
+
+  multiMonthTutorialState = {
+    previewClearSelection,
+    previewSelectAll,
+    restorePreview: restoreTutorialPreview
+  };
 
   const modeButton = document.createElement('button');
   modeButton.type = 'button';
