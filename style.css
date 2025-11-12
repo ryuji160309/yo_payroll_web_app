@@ -64,6 +64,57 @@ select {
   border-radius: 0.5rem;
 }
 
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease, transform 0.1s ease;
+}
+
+button:hover,
+button:focus-visible,
+input[type="button"]:hover,
+input[type="button"]:focus-visible,
+input[type="submit"]:hover,
+input[type="submit"]:focus-visible,
+input[type="reset"]:hover,
+input[type="reset"]:focus-visible {
+  background-color: #e7e7e7;
+  border-color: #9e9e9e;
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.12);
+  outline: none;
+}
+
+button:focus-visible,
+input[type="button"]:focus-visible,
+input[type="submit"]:focus-visible,
+input[type="reset"]:focus-visible {
+  outline: 0.15rem solid rgba(33, 150, 243, 0.35);
+  outline-offset: 0.1rem;
+}
+
+button:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active {
+  background-color: #d6d6d6;
+  border-color: #8c8c8c;
+  transform: translateY(1px);
+  box-shadow: inset 0 0.15rem 0.35rem rgba(0, 0, 0, 0.2);
+}
+
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+  transform: none;
+}
+
 #store-list button, #sheet-list button {
   display: block;
   width: 90%;
@@ -78,8 +129,17 @@ select {
 }
 
 #multi-store-mode-button:hover,
-#multi-store-mode-button:focus {
+#multi-store-mode-button:focus-visible {
   background: #bbdefb;
+  border-color: #5aa4e6;
+  color: #0c3d7f;
+  box-shadow: 0 0.35rem 1rem rgba(13, 71, 161, 0.22);
+}
+
+#multi-store-mode-button:active {
+  background: #9fcaf0;
+  border-color: #4c8ecf;
+  color: #072c5c;
 }
 
 #multi-month-mode-button {
@@ -90,8 +150,17 @@ select {
 }
 
 #multi-month-mode-button:hover,
-#multi-month-mode-button:focus {
+#multi-month-mode-button:focus-visible {
   background: #ffe9b3;
+  border-color: #e4a93f;
+  color: #684700;
+  box-shadow: 0 0.35rem 1rem rgba(122, 86, 0, 0.2);
+}
+
+#multi-month-mode-button:active {
+  background: #ffd889;
+  border-color: #cf8d1f;
+  color: #4a3400;
 }
 
 #multi-month-overlay {
@@ -146,6 +215,20 @@ select {
   background: #0f4a73;
   color: #fff;
   border-color: #0f4a73;
+}
+
+.multi-month-option:hover,
+.multi-month-option:focus-visible {
+  background: #0d3f62;
+  border-color: #0d3f62;
+  color: #fff;
+  box-shadow: 0 0.35rem 1rem rgba(7, 34, 52, 0.25);
+}
+
+.multi-month-option:active {
+  background: #0b344f;
+  border-color: #0b344f;
+  color: #fff;
 }
 
 #multi-month-select-all {
