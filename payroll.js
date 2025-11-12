@@ -4,6 +4,26 @@ const CROSS_STORE_LOADING_MESSAGE = [
   'しばらくお待ち下さい。'
 ].join('\n');
 
+function showToastWithNativeNotice(message, options) {
+  if (!message) {
+    return null;
+  }
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  if (typeof window.showToastWithFeedback === 'function') {
+    return window.showToastWithFeedback(message, options);
+  }
+  let toastHandle = null;
+  if (typeof window.showToast === 'function') {
+    toastHandle = window.showToast(message, options);
+  }
+  if (typeof window.notifyPlatformFeedback === 'function') {
+    window.notifyPlatformFeedback(message, options);
+  }
+  return toastHandle;
+}
+
 function isValidDate(value) {
   return value instanceof Date && !Number.isNaN(value.getTime());
 }
@@ -198,27 +218,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     stopLoading(statusEl);
 
-    if (typeof window.showToast === 'function') {
-      const downloadedStoreNames = workbookResults
-        .map(result => (result && result.selection && result.selection.store && result.selection.store.name
-          ? result.selection.store.name
-          : ''))
-        .filter(name => !!name);
-      let downloadMessage = '';
-      if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
-        downloadMessage = `${offlineInfo.fileName} のシートを読み込みました。`;
-      } else if (downloadedStoreNames.length === 0) {
-        downloadMessage = 'シートの読み込みが完了しました。';
-      } else if (downloadedStoreNames.length <= 3) {
-        downloadMessage = `${downloadedStoreNames.join('・')} のシートを読み込みました。`;
-      } else {
-        downloadMessage = `${downloadedStoreNames.length}件のシートを読み込みました。`;
-      }
-      if (failedSheets.length > 0) {
-        downloadMessage += '（一部のシートは取得できませんでした）';
-      }
-      window.showToast(downloadMessage, { duration: 3200 });
+    const downloadedStoreNames = workbookResults
+      .map(result => (result && result.selection && result.selection.store && result.selection.store.name
+        ? result.selection.store.name
+        : ''))
+      .filter(name => !!name);
+    let downloadMessage = '';
+    if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
+      downloadMessage = `${offlineInfo.fileName} のシートを読み込みました。`;
+    } else if (downloadedStoreNames.length === 0) {
+      downloadMessage = 'シートの読み込みが完了しました。';
+    } else if (downloadedStoreNames.length <= 3) {
+      downloadMessage = `${downloadedStoreNames.join('・')} のシートを読み込みました。`;
+    } else {
+      downloadMessage = `${downloadedStoreNames.length}件のシートを読み込みました。`;
     }
+    if (failedSheets.length > 0) {
+      downloadMessage += '（一部のシートは取得できませんでした）';
+    }
+    showToastWithNativeNotice(downloadMessage, { duration: 3200 });
 
     const processingFailures = [];
     const summaries = [];
@@ -768,21 +786,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     recalc();
     stopLoading(statusEl);
-    if (typeof window.showToast === 'function') {
-      const toastOptions = { duration: 3200 };
-      window.showToast('計算が完了しました。', toastOptions);
-      if (failedSheets.length > 0) {
-        window.showToast(
-          `${failedSheets.length}件のシートを読み込めなかったため除外しました。`,
-          toastOptions,
-        );
-      }
-      if (processingFailures.length > 0) {
-        window.showToast(
-          `${processingFailures.length}件のシートにエラーがあったため除外されました。`,
-          toastOptions,
-        );
-      }
+    const toastOptions = { duration: 3200 };
+    showToastWithNativeNotice('計算が完了しました。', toastOptions);
+    if (failedSheets.length > 0) {
+      showToastWithNativeNotice(
+        `${failedSheets.length}件のシートを読み込めなかったため除外しました。`,
+        toastOptions,
+      );
+    }
+    if (processingFailures.length > 0) {
+      showToastWithNativeNotice(
+        `${processingFailures.length}件のシートにエラーがあったため除外されました。`,
+        toastOptions,
+      );
     }
     if (failedSheets.length > 0 || processingFailures.length > 0) {
       const messages = [];
@@ -1228,20 +1244,21 @@ async function downloadResults(storeName, period, results, options = {}) {
   }
 
   const normalizedFormat = typeof format === 'string' ? format.toLowerCase() : 'xlsx';
-  if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
-    const formatLabelMap = { xlsx: 'EXCEL', csv: 'CSV', txt: 'テキスト' };
-    const formatLabel = formatLabelMap[normalizedFormat] || normalizedFormat.toUpperCase();
-    const subjectParts = [];
-    if (period) {
-      subjectParts.push(String(period));
-    }
-    if (storeName) {
-      subjectParts.push(String(storeName));
-    }
-    const subjectPrefix = subjectParts.length > 0 ? `${subjectParts.join('・')}の` : '';
-    const detailSuffix = includeDetails ? '（詳細付き）' : '';
-    window.showToast(`${subjectPrefix}計算結果${detailSuffix}の${formatLabel}ダウンロードを開始しました。`, { duration: 3200 });
+  const formatLabelMap = { xlsx: 'EXCEL', csv: 'CSV', txt: 'テキスト' };
+  const formatLabel = formatLabelMap[normalizedFormat] || normalizedFormat.toUpperCase();
+  const subjectParts = [];
+  if (period) {
+    subjectParts.push(String(period));
   }
+  if (storeName) {
+    subjectParts.push(String(storeName));
+  }
+  const subjectPrefix = subjectParts.length > 0 ? `${subjectParts.join('・')}の` : '';
+  const detailSuffix = includeDetails ? '（詳細付き）' : '';
+  showToastWithNativeNotice(
+    `${subjectPrefix}計算結果${detailSuffix}の${formatLabel}ダウンロードを開始しました。`,
+    { duration: 3200 },
+  );
   const aoa = [
     ['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'],
     ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.transport, r.salary])
@@ -1298,21 +1315,22 @@ function downloadEmployeeDetail(storeName, period, detailInfo, format) {
   }
 
   const aoa = detailInfoToAoa(detailInfo);
-  if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
-    const normalizedFormat = typeof format === 'string' ? format.toLowerCase() : 'xlsx';
-    const formatLabelMap = { txt: 'テキスト', csv: 'CSV', xlsx: 'EXCEL' };
-    const formatLabel = formatLabelMap[normalizedFormat] || normalizedFormat.toUpperCase();
-    const subjectParts = [];
-    if (period) {
-      subjectParts.push(String(period));
-    }
-    if (storeName) {
-      subjectParts.push(String(storeName));
-    }
-    const subjectPrefix = subjectParts.length > 0 ? `${subjectParts.join('・')}の` : '';
-    const employeePrefix = detailInfo.employeeName ? `${detailInfo.employeeName}さんの` : '';
-    window.showToast(`${subjectPrefix}${employeePrefix}勤務詳細の${formatLabel}ダウンロードを開始しました。`, { duration: 3200 });
+  const normalizedFormat = typeof format === 'string' ? format.toLowerCase() : 'xlsx';
+  const formatLabelMap = { txt: 'テキスト', csv: 'CSV', xlsx: 'EXCEL' };
+  const formatLabel = formatLabelMap[normalizedFormat] || normalizedFormat.toUpperCase();
+  const subjectParts = [];
+  if (period) {
+    subjectParts.push(String(period));
   }
+  if (storeName) {
+    subjectParts.push(String(storeName));
+  }
+  const subjectPrefix = subjectParts.length > 0 ? `${subjectParts.join('・')}の` : '';
+  const employeePrefix = detailInfo.employeeName ? `${detailInfo.employeeName}さんの` : '';
+  showToastWithNativeNotice(
+    `${subjectPrefix}${employeePrefix}勤務詳細の${formatLabel}ダウンロードを開始しました。`,
+    { duration: 3200 },
+  );
 
   const baseParts = [];
   const periodPart = sanitizeFileNameComponent(period || '');
