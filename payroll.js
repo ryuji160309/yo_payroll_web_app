@@ -175,22 +175,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     openSourceBtn.disabled = true;
   }
   try {
-    const fetchPromises = targetSelections.map(selection =>
-      fetchWorkbook(selection.store.url, selection.sheetIndex, { allowOffline: !isCrossStoreMode && offlineMode })
-    );
+    const allowOfflineFetch = !isCrossStoreMode && offlineMode;
+    const shouldShowPerStoreNotification = isCrossStoreMode && typeof window.showToast === 'function';
+    const fetchPromises = targetSelections.map(selection => (async () => {
+      const storeName = selection && selection.store && selection.store.name
+        ? selection.store.name
+        : '';
+      try {
+        const workbook = await fetchWorkbook(selection.store.url, selection.sheetIndex, { allowOffline: allowOfflineFetch });
+        if (shouldShowPerStoreNotification) {
+          const message = storeName
+            ? `${storeName} のシートをダウンロードしました。`
+            : 'シートをダウンロードしました。';
+          window.showToast(message, { duration: 2600 });
+        }
+        return { selection, workbook };
+      } catch (error) {
+        if (shouldShowPerStoreNotification) {
+          const failureMessage = storeName
+            ? `${storeName} のシートをダウンロードできませんでした。`
+            : '一部のシートをダウンロードできませんでした。';
+          window.showToast(failureMessage, { duration: 3200 });
+        }
+        throw { selection, reason: error };
+      }
+    })());
     const settledResults = await Promise.allSettled(fetchPromises);
     const workbookResults = [];
     const failedSheets = [];
     settledResults.forEach((res, idx) => {
-      const selection = targetSelections[idx];
-      if (!selection) {
+      if (res.status === 'fulfilled') {
+        workbookResults.push(res.value);
         return;
       }
-      if (res.status === 'fulfilled') {
-        workbookResults.push({ selection, workbook: res.value });
-      } else {
-        failedSheets.push({ selection, reason: res.reason });
-      }
+      const failure = res.reason || {};
+      const selection = failure.selection || targetSelections[idx];
+      failedSheets.push({ selection, reason: failure.reason || res.reason });
     });
     if (workbookResults.length === 0) {
       throw new Error('シートの読み込みに失敗しました');
@@ -199,25 +219,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     stopLoading(statusEl);
 
     if (typeof window.showToast === 'function') {
-      const downloadedStoreNames = workbookResults
-        .map(result => (result && result.selection && result.selection.store && result.selection.store.name
-          ? result.selection.store.name
-          : ''))
-        .filter(name => !!name);
-      let downloadMessage = '';
-      if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
-        downloadMessage = `${offlineInfo.fileName} のシートを読み込みました。`;
-      } else if (downloadedStoreNames.length === 0) {
-        downloadMessage = 'シートのダウンロードが完了しました。';
-      } else if (downloadedStoreNames.length <= 3) {
-        downloadMessage = `${downloadedStoreNames.join('・')} のシートをダウンロードしました。`;
+      if (isCrossStoreMode) {
+        if (failedSheets.length > 0) {
+          window.showToast('一部のシートは取得できませんでした。', { duration: 3200 });
+        }
       } else {
-        downloadMessage = `${downloadedStoreNames.length}店舗のシートをダウンロードしました。`;
+        const downloadedStoreNames = workbookResults
+          .map(result => (result && result.selection && result.selection.store && result.selection.store.name
+            ? result.selection.store.name
+            : ''))
+          .filter(name => !!name);
+        let downloadMessage = '';
+        if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
+          downloadMessage = `${offlineInfo.fileName} のシートを読み込みました。`;
+        } else if (downloadedStoreNames.length === 0) {
+          downloadMessage = 'シートのダウンロードが完了しました。';
+        } else if (downloadedStoreNames.length <= 3) {
+          downloadMessage = `${downloadedStoreNames.join('・')} のシートをダウンロードしました。`;
+        } else {
+          downloadMessage = `${downloadedStoreNames.length}店舗のシートをダウンロードしました。`;
+        }
+        if (failedSheets.length > 0) {
+          downloadMessage += '（一部のシートは取得できませんでした）';
+        }
+        window.showToast(downloadMessage, { duration: 3200 });
       }
-      if (failedSheets.length > 0) {
-        downloadMessage += '（一部のシートは取得できませんでした）';
-      }
-      window.showToast(downloadMessage, { duration: 3200 });
     }
 
     const processingFailures = [];
