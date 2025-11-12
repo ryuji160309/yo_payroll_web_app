@@ -45,26 +45,20 @@ function formatPeriodRange(startDate, endDate) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (typeof window !== 'undefined') {
-    window.isPageTutorialDataReady = false;
-    window.pageTutorialLoadingPromise = null;
-  }
-
-  const run = async () => {
-    const statusEl = document.getElementById('status');
-    const params = new URLSearchParams(location.search);
-    const selectionsParamRaw = params.get('selections');
-    const isCrossStoreMode = selectionsParamRaw !== null && selectionsParamRaw.trim() !== '';
-    startLoading(
-      statusEl,
-      isCrossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
-      { disableSlowNote: isCrossStoreMode }
-    );
-    const ensureDownloadOverlayOpen = () => {
-      const overlay = document.getElementById('download-overlay');
-      if (!overlay) {
-        return;
-      }
+  const statusEl = document.getElementById('status');
+  const params = new URLSearchParams(location.search);
+  const selectionsParamRaw = params.get('selections');
+  const isCrossStoreMode = selectionsParamRaw !== null && selectionsParamRaw.trim() !== '';
+  startLoading(
+    statusEl,
+    isCrossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
+    { disableSlowNote: isCrossStoreMode }
+  );
+  const ensureDownloadOverlayOpen = () => {
+    const overlay = document.getElementById('download-overlay');
+    if (!overlay) {
+      return;
+    }
     const style = window.getComputedStyle(overlay);
     if (style.display !== 'flex') {
       const button = document.getElementById('download');
@@ -90,34 +84,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-    initializeHelp('help/payroll.txt', {
-      pageKey: 'payroll',
-      prompt: false,
-      autoStart: {
-        enabled: true,
-        requireCompleted: 'top'
+  initializeHelp('help/payroll.txt', {
+    steps: {
+      back: '#payroll-back',
+      restart: '#payroll-home',
+      setBase: '#set-base-wage',
+      setTransport: '#set-transport',
+      download: '#download',
+      downloadOptions: {
+        selector: '#download-result-xlsx',
+        onEnter: ensureDownloadOverlayOpen,
+        onExit: closeDownloadOverlay
       },
-      loading: {
-        isLoading: () => typeof window !== 'undefined' && window.isPageTutorialDataReady === false,
-        waitFor: () => (typeof window !== 'undefined' && window.pageTutorialLoadingPromise) || Promise.resolve()
-      },
-      steps: {
-        back: '#payroll-back',
-        restart: '#payroll-home',
-        setBase: '#set-base-wage',
-        setTransport: '#set-transport',
-        download: '#download',
-        downloadOptions: {
-          selector: '#download-result-xlsx',
-          onEnter: ensureDownloadOverlayOpen,
-          onExit: closeDownloadOverlay
-        },
-        firstEmployee: () => document.querySelector('#employees tbody tr'),
-        source: '#open-source',
-        help: () => document.getElementById('help-button')
-      }
-    });
-    await ensureSettingsLoaded();
+      source: '#open-source',
+      help: () => document.getElementById('help-button')
+    }
+  });
+  await ensureSettingsLoaded();
 
   let downloadPeriodId = 'result';
   let currentDetailDownloadInfo = null;
@@ -1419,18 +1402,4 @@ function downloadEmployeeDetail(storeName, period, detailInfo, format) {
     XLSX.utils.book_append_sheet(wb, ws, '詳細');
     XLSX.writeFile(wb, `${baseName}.xlsx`);
   }
-  };
-
-  const runPromise = run();
-  if (typeof window !== 'undefined') {
-    const trackingPromise = runPromise
-      .catch(() => {})
-      .finally(() => {
-        window.isPageTutorialDataReady = true;
-        window.pageTutorialLoadingPromise = null;
-      });
-    window.pageTutorialLoadingPromise = trackingPromise;
-  }
-
-  await runPromise;
-});
+}
