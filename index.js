@@ -185,31 +185,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 0);
   }
 
-  if (typeof window !== 'undefined') {
-    window.isPageTutorialDataReady = false;
-    window.pageTutorialLoadingPromise = null;
-  }
-
-  let openMultiStoreOverlay = () => {
-    const button = document.getElementById('multi-store-mode-button');
-    if (button) {
-      button.click();
-    }
-  };
-
-  let closeMultiStoreOverlay = () => {
-    const closeBtn = document.getElementById('multi-store-close');
-    if (closeBtn) {
-      closeBtn.click();
-      return;
-    }
-    const overlayEl = document.getElementById('multi-store-overlay');
-    if (overlayEl) {
-      overlayEl.style.display = 'none';
-    }
-  };
-
-  const run = async () => {
   if (isIos() && !isStandaloneMode() && !isPwaPromptDismissed()) {
     showIosPwaPrompt();
   }
@@ -343,32 +318,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   startLoading(status, '読込中・・・');
 
   initializeHelp('help/top.txt', {
-    pageKey: 'top',
-    prompt: { enabled: true },
-    loading: {
-      isLoading: () => typeof window !== 'undefined' && window.isPageTutorialDataReady === false,
-      waitFor: () => (typeof window !== 'undefined' && window.pageTutorialLoadingPromise) || Promise.resolve()
-    },
     steps: {
       mode1: '#multi-store-mode-button',
-      multiList: {
-        selector: '#multi-store-list',
-        onEnter: () => openMultiStoreOverlay(),
-        onExit: () => closeMultiStoreOverlay()
-      },
-      multiClose: {
-        selector: '#multi-store-close',
-        onEnter: () => openMultiStoreOverlay(),
-        onExit: () => closeMultiStoreOverlay()
-      },
-      multiStart: {
-        selector: '#multi-store-start',
-        onEnter: () => openMultiStoreOverlay(),
-        onExit: () => closeMultiStoreOverlay()
-      },
       stores: () => document.querySelector('#store-list button.store-button') || document.getElementById('store-list'),
       local: '#offline-load-button',
-      announcements: '#announcements-select',
       setting: '#settings',
       help: () => document.getElementById('help-button')
     }
@@ -474,9 +427,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       function toggleOverlay(show) {
         overlay.style.display = show ? 'flex' : 'none';
       }
-
-      openMultiStoreOverlay = () => toggleOverlay(true);
-      closeMultiStoreOverlay = () => toggleOverlay(false);
 
       closeBtn.addEventListener('click', () => {
         toggleOverlay(false);
@@ -594,7 +544,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         controlWrapper.textContent = '';
         const select = document.createElement('select');
-        select.id = 'announcements-select';
         const latestOpt = document.createElement('option');
         latestOpt.value = '';
         latestOpt.textContent = '最新3件';
@@ -675,18 +624,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Ignore failures warming the cache; navigation will still work without it.
       });
   }
-  };
-
-  const runPromise = run();
-  if (typeof window !== 'undefined') {
-    const trackingPromise = runPromise
-      .catch(() => {})
-      .finally(() => {
-        window.isPageTutorialDataReady = true;
-        window.pageTutorialLoadingPromise = null;
-      });
-    window.pageTutorialLoadingPromise = trackingPromise;
-  }
-
-  await runPromise;
 });
