@@ -171,6 +171,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    if (typeof window.showToast === 'function') {
+      const availableStoreNames = targetStores
+        .map(entry => (entry && entry.store && entry.store.name ? entry.store.name : ''))
+        .filter(name => !!name);
+      let toastMessage = '';
+      if (offlineMode && offlineActive && info && info.fileName) {
+        toastMessage = `${info.fileName} のシートを読み込みました。`;
+      } else if (crossStoreMode) {
+        if (availableStoreNames.length === 0) {
+          toastMessage = 'シート一覧の読み込みが完了しました。';
+        } else if (availableStoreNames.length <= 3) {
+          toastMessage = `${availableStoreNames.join('・')} のシート一覧を読み込みました。`;
+        } else {
+          toastMessage = `${availableStoreNames.length}店舗のシート一覧を読み込みました。`;
+        }
+      } else {
+        const primaryName = availableStoreNames[0] || '';
+        toastMessage = primaryName
+          ? `${primaryName} のシートを読み込みました。`
+          : 'シート一覧の読み込みが完了しました。';
+      }
+      if (failures.length > 0) {
+        toastMessage += '（一部の店舗は読み込めませんでした）';
+      }
+      window.showToast(toastMessage, { duration: 3200 });
+    }
+
     if (failures.length > 0 && statusEl) {
       statusEl.textContent = '一部の店舗のシート一覧を読み込めませんでした。';
     } else if (statusEl) {

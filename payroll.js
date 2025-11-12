@@ -198,6 +198,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     stopLoading(statusEl);
 
+    if (typeof window.showToast === 'function') {
+      const downloadedStoreNames = workbookResults
+        .map(result => (result && result.selection && result.selection.store && result.selection.store.name
+          ? result.selection.store.name
+          : ''))
+        .filter(name => !!name);
+      let downloadMessage = '';
+      if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
+        downloadMessage = `${offlineInfo.fileName} のシートを読み込みました。`;
+      } else if (downloadedStoreNames.length === 0) {
+        downloadMessage = 'シートのダウンロードが完了しました。';
+      } else if (downloadedStoreNames.length <= 3) {
+        downloadMessage = `${downloadedStoreNames.join('・')} のシートをダウンロードしました。`;
+      } else {
+        downloadMessage = `${downloadedStoreNames.length}店舗のシートをダウンロードしました。`;
+      }
+      if (failedSheets.length > 0) {
+        downloadMessage += '（一部のシートは取得できませんでした）';
+      }
+      window.showToast(downloadMessage, { duration: 3200 });
+    }
+
     const processingFailures = [];
     const summaries = [];
     workbookResults.forEach(({ selection, workbook }) => {
@@ -746,6 +768,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     recalc();
     stopLoading(statusEl);
+    if (typeof window.showToast === 'function') {
+      let calculationMessage = '計算が完了しました。';
+      if (failedSheets.length > 0 || processingFailures.length > 0) {
+        calculationMessage = '計算が完了しました（一部のシートは除外されました）。';
+      }
+      window.showToast(calculationMessage, { duration: 3200 });
+    }
     if (failedSheets.length > 0 || processingFailures.length > 0) {
       const messages = [];
       if (failedSheets.length > 0) {
@@ -1190,6 +1219,20 @@ async function downloadResults(storeName, period, results, options = {}) {
   }
 
   const normalizedFormat = typeof format === 'string' ? format.toLowerCase() : 'xlsx';
+  if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
+    const formatLabelMap = { xlsx: 'EXCEL', csv: 'CSV', txt: 'テキスト' };
+    const formatLabel = formatLabelMap[normalizedFormat] || normalizedFormat.toUpperCase();
+    const subjectParts = [];
+    if (period) {
+      subjectParts.push(String(period));
+    }
+    if (storeName) {
+      subjectParts.push(String(storeName));
+    }
+    const subjectPrefix = subjectParts.length > 0 ? `${subjectParts.join('・')}の` : '';
+    const detailSuffix = includeDetails ? '（詳細付き）' : '';
+    window.showToast(`${subjectPrefix}計算結果${detailSuffix}の${formatLabel}ダウンロードを開始しました。`, { duration: 3200 });
+  }
   const aoa = [
     ['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'],
     ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.transport, r.salary])
@@ -1246,6 +1289,21 @@ function downloadEmployeeDetail(storeName, period, detailInfo, format) {
   }
 
   const aoa = detailInfoToAoa(detailInfo);
+  if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
+    const normalizedFormat = typeof format === 'string' ? format.toLowerCase() : 'xlsx';
+    const formatLabelMap = { txt: 'テキスト', csv: 'CSV', xlsx: 'EXCEL' };
+    const formatLabel = formatLabelMap[normalizedFormat] || normalizedFormat.toUpperCase();
+    const subjectParts = [];
+    if (period) {
+      subjectParts.push(String(period));
+    }
+    if (storeName) {
+      subjectParts.push(String(storeName));
+    }
+    const subjectPrefix = subjectParts.length > 0 ? `${subjectParts.join('・')}の` : '';
+    const employeePrefix = detailInfo.employeeName ? `${detailInfo.employeeName}さんの` : '';
+    window.showToast(`${subjectPrefix}${employeePrefix}勤務詳細の${formatLabel}ダウンロードを開始しました。`, { duration: 3200 });
+  }
 
   const baseParts = [];
   const periodPart = sanitizeFileNameComponent(period || '');
