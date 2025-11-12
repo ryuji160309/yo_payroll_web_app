@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .filter(name => !!name);
       let toastMessage = '';
       if (offlineMode && offlineActive && info && info.fileName) {
-        toastMessage = `${info.fileName} のシートを読み込みました。`;
+        toastMessage = `${info.fileName} のシート一覧を読み込みました。`;
       } else if (crossStoreMode) {
         if (availableStoreNames.length === 0) {
           toastMessage = 'シート一覧の読み込みが完了しました。';
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         const primaryName = availableStoreNames[0] || '';
         toastMessage = primaryName
-          ? `${primaryName} のシートを読み込みました。`
+          ? `${primaryName} のシート一覧を読み込みました。`
           : 'シート一覧の読み込みが完了しました。';
       }
       if (failures.length > 0) {
