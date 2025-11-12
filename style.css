@@ -656,7 +656,7 @@ th, td {
   position: fixed;
   bottom: 1rem;
   left: 1rem;
-  z-index: 1600;
+  z-index: 10001;
   padding: 0.75rem 1.25rem;
   border-radius: 9999px;
   border: none;
@@ -718,6 +718,7 @@ th, td {
   pointer-events: auto;
   line-height: 1.6;
   z-index: 10002;
+  transition: top 0.2s ease, left 0.2s ease;
 }
 
 #tutorial-bubble::before {
@@ -727,22 +728,28 @@ th, td {
   height: 0;
   border-left: 12px solid transparent;
   border-right: 12px solid transparent;
+  transition: left 0.2s ease, top 0.2s ease;
 }
 
 #tutorial-bubble.tutorial-bubble--below::before {
-  top: -12px;
-  border-bottom: 12px solid #fff;
+  top: -13px;
+  border-bottom: 13px solid #fff;
   left: var(--arrow-left, 1.5rem);
 }
 
 #tutorial-bubble.tutorial-bubble--above::before {
-  bottom: -12px;
-  border-top: 12px solid #fff;
+  bottom: -13px;
+  border-top: 13px solid #fff;
   left: var(--arrow-left, 1.5rem);
 }
 
 #tutorial-bubble.tutorial-bubble--center::before {
   display: none;
+}
+
+#tutorial-bubble.tutorial-bubble--no-transition,
+#tutorial-bubble.tutorial-bubble--no-transition::before {
+  transition: none;
 }
 
 #tutorial-bubble-text {

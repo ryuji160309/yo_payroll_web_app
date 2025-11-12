@@ -206,8 +206,22 @@ function createTutorialOverlay() {
   document.body.appendChild(overlay);
 
   let visible = false;
+  let bubbleInitialized = false;
+
+  const scheduleBubbleTransitionActivation = needsInit => {
+    if (!needsInit) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      bubble.classList.remove('tutorial-bubble--no-transition');
+      bubbleInitialized = true;
+    });
+  };
 
   function show() {
+    bubbleInitialized = false;
+    bubble.classList.add('tutorial-bubble--no-transition');
+    bubble.style.visibility = 'hidden';
     overlay.classList.add('is-visible');
     overlay.setAttribute('aria-hidden', 'false');
     visible = true;
@@ -217,6 +231,10 @@ function createTutorialOverlay() {
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
     visible = false;
+    bubbleInitialized = false;
+    bubble.classList.add('tutorial-bubble--no-transition');
+    bubble.style.visibility = 'hidden';
+    bubble.style.removeProperty('--arrow-left');
   }
 
   function setHighlightRect(rect) {
@@ -237,7 +255,10 @@ function createTutorialOverlay() {
     bubble.classList.remove('tutorial-bubble--center');
     bubble.classList.remove('tutorial-bubble--above');
     bubble.classList.remove('tutorial-bubble--below');
-    bubble.style.visibility = 'hidden';
+    const needsInit = !bubbleInitialized;
+    if (needsInit) {
+      bubble.style.visibility = 'hidden';
+    }
     requestAnimationFrame(() => {
       const margin = 16;
       const bubbleWidth = bubble.offsetWidth;
@@ -257,6 +278,7 @@ function createTutorialOverlay() {
       const clampedArrow = Math.max(24, Math.min(arrowCenter, bubbleWidth - 24));
       bubble.style.setProperty('--arrow-left', `${clampedArrow}px`);
       bubble.style.visibility = 'visible';
+      scheduleBubbleTransitionActivation(needsInit);
     });
   }
 
@@ -265,7 +287,10 @@ function createTutorialOverlay() {
     bubble.classList.remove('tutorial-bubble--above');
     bubble.classList.remove('tutorial-bubble--below');
     bubble.classList.add('tutorial-bubble--center');
-    bubble.style.visibility = 'hidden';
+    const needsInit = !bubbleInitialized;
+    if (needsInit) {
+      bubble.style.visibility = 'hidden';
+    }
     requestAnimationFrame(() => {
       const margin = 16;
       const bubbleWidth = bubble.offsetWidth;
@@ -276,6 +301,7 @@ function createTutorialOverlay() {
       bubble.style.left = `${left}px`;
       bubble.style.removeProperty('--arrow-left');
       bubble.style.visibility = 'visible';
+      scheduleBubbleTransitionActivation(needsInit);
     });
   }
 
@@ -589,6 +615,13 @@ function initializeHelp(path, options = {}) {
     cleanupCurrentTarget();
     overlay.hide();
     detachListeners();
+    requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (error) {
+        window.scrollTo(0, 0);
+      }
+    });
     const completedThisRun = Array.isArray(steps) && steps.length > 0 && currentIndex >= steps.length - 1;
     const alreadyCompleted = isCompleted();
     if (completedThisRun && !alreadyCompleted && pageKey) {
