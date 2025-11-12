@@ -21,13 +21,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeButton = document.getElementById('multi-store-close');
     if (closeButton) {
       closeButton.click();
+      if (multiStoreTutorialState && typeof multiStoreTutorialState.clearPreview === 'function') {
+        multiStoreTutorialState.clearPreview();
+      }
       return;
     }
     const overlay = document.getElementById('multi-store-overlay');
     if (overlay) {
       overlay.style.display = 'none';
     }
+    if (multiStoreTutorialState && typeof multiStoreTutorialState.clearPreview === 'function') {
+      multiStoreTutorialState.clearPreview();
+    }
   };
+  let multiStoreTutorialState = null;
+  let storeButtonsHighlightTarget = null;
 
   function isIos() {
     const ua = window.navigator.userAgent.toLowerCase();
@@ -361,6 +369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     list.style.color = '';
     list.style.whiteSpace = '';
   }
+  storeButtonsHighlightTarget = null;
   const err = document.getElementById('settings-error');
   if (window.settingsError && err) {
     err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
@@ -427,6 +436,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.body.appendChild(overlay);
 
       const selectedStores = new Set();
+      const optionButtons = new Map();
+      let tutorialPreviousSelection = null;
 
       function updateStartButton() {
         const count = selectedStores.size;
@@ -438,6 +449,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       function toggleOverlay(show) {
         overlay.style.display = show ? 'flex' : 'none';
+        if (!show && tutorialPreviousSelection) {
+          restoreTutorialSelection();
+        }
       }
 
       showMultiStoreOverlayForTutorial = () => toggleOverlay(true);
@@ -453,6 +467,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
 
+      function setOptionSelected(key, selected) {
+        const button = optionButtons.get(key);
+        if (!button) {
+          return;
+        }
+        if (selected) {
+          selectedStores.add(key);
+          button.classList.add('is-selected');
+        } else {
+          selectedStores.delete(key);
+          button.classList.remove('is-selected');
+        }
+        updateStartButton();
+      }
+
+      function applyTutorialSelection() {
+        if (tutorialPreviousSelection) {
+          return;
+        }
+        tutorialPreviousSelection = new Set(selectedStores);
+        optionButtons.forEach(button => button.classList.remove('is-selected'));
+        selectedStores.clear();
+        const previewKeys = storeKeys.slice(0, 2);
+        previewKeys.forEach(key => {
+          const button = optionButtons.get(key);
+          if (button) {
+            button.classList.add('is-selected');
+            selectedStores.add(key);
+          }
+        });
+        updateStartButton();
+      }
+
+      function restoreTutorialSelection() {
+        if (!tutorialPreviousSelection) {
+          return;
+        }
+        optionButtons.forEach(button => button.classList.remove('is-selected'));
+        selectedStores.clear();
+        tutorialPreviousSelection.forEach(key => {
+          const button = optionButtons.get(key);
+          if (button) {
+            button.classList.add('is-selected');
+            selectedStores.add(key);
+          }
+        });
+        tutorialPreviousSelection = null;
+        updateStartButton();
+      }
+
       storeKeys.forEach(key => {
         const storeInfo = stores[key];
         if (!storeInfo) {
@@ -464,15 +528,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         optionBtn.textContent = storeInfo.name;
         optionBtn.dataset.storeKey = key;
         optionBtn.addEventListener('click', () => {
-          if (selectedStores.has(key)) {
-            selectedStores.delete(key);
-            optionBtn.classList.remove('is-selected');
-          } else {
-            selectedStores.add(key);
-            optionBtn.classList.add('is-selected');
+          const nextSelected = !selectedStores.has(key);
+          setOptionSelected(key, nextSelected);
+          if (tutorialPreviousSelection) {
+            tutorialPreviousSelection = new Set(selectedStores);
           }
-          updateStartButton();
         });
+        optionButtons.set(key, optionBtn);
         optionList.appendChild(optionBtn);
       });
 
@@ -496,6 +558,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       list.appendChild(modeButton);
       updateStartButton();
+
+      multiStoreTutorialState = {
+        getFocusElement: () => optionList,
+        showPreview: applyTutorialSelection,
+        clearPreview: restoreTutorialSelection
+      };
+    }
+
+    if (!storeButtonsHighlightTarget) {
+      const container = document.createElement('div');
+      container.id = 'store-buttons-container';
+      list.appendChild(container);
+      storeButtonsHighlightTarget = container;
     }
 
     storeKeys.forEach(key => {
@@ -513,7 +588,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         window.location.href = `sheets.html?store=${key}`;
       });
-      list.appendChild(btn);
+      const targetContainer = storeButtonsHighlightTarget || list;
+      targetContainer.appendChild(btn);
     });
   }
 
@@ -626,8 +702,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         onEnter: () => showMultiStoreOverlayForTutorial()
       },
       modeOptions: {
-        getElement: () => document.querySelector('#multi-store-list .multi-store-option') || document.getElementById('multi-store-list'),
-        onEnter: () => showMultiStoreOverlayForTutorial()
+        getElement: () => {
+          if (multiStoreTutorialState && typeof multiStoreTutorialState.getFocusElement === 'function') {
+            const element = multiStoreTutorialState.getFocusElement();
+            if (element instanceof Element) {
+              return element;
+            }
+          }
+          return document.getElementById('multi-store-list');
+        },
+        onEnter: () => {
+          showMultiStoreOverlayForTutorial();
+          if (multiStoreTutorialState && typeof multiStoreTutorialState.showPreview === 'function') {
+            multiStoreTutorialState.showPreview();
+          }
+        }
       },
       modeStart: {
         selector: '#multi-store-start',
@@ -638,7 +727,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         onEnter: () => showMultiStoreOverlayForTutorial(),
         onExit: () => hideMultiStoreOverlayForTutorial()
       },
-      stores: () => document.querySelector('#store-list button.store-button') || document.getElementById('store-list'),
+      stores: () => {
+        if (storeButtonsHighlightTarget instanceof Element) {
+          return storeButtonsHighlightTarget;
+        }
+        return document.querySelector('#store-list button.store-button') || document.getElementById('store-list');
+      },
       local: '#offline-load-button',
       setting: '#settings',
       announcements: {

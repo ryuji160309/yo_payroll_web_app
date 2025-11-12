@@ -854,7 +854,7 @@ th, td {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 965;
+  z-index: 1700;
 }
 
 .ios-pwa-dialog {
