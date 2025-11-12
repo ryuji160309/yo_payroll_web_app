@@ -84,6 +84,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  let showEmployeeDetailOverlayForTutorial = () => {};
+  let hideEmployeeDetailOverlayForTutorial = () => {};
+  const resolveEmployeeDetailPopup = () => document.getElementById('employee-detail-popup');
+
   initializeHelp('help/payroll.txt', {
     pageKey: 'payroll',
     showPrompt: false,
@@ -99,9 +103,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       firstEmployee: {
         getElement: () => document.querySelector('#employees tbody tr') || document.getElementById('employees')
       },
-      download: '#download',
+      detailPopup: {
+        getElement: () => resolveEmployeeDetailPopup(),
+        onEnter: () => {
+          showEmployeeDetailOverlayForTutorial();
+        },
+        onExit: () => {
+          hideEmployeeDetailOverlayForTutorial();
+        }
+      },
+      download: {
+        selector: '#download',
+        onEnter: closeDownloadOverlay
+      },
+      downloadPopup: {
+        selector: '#download-popup',
+        onEnter: ensureDownloadOverlayOpen
+      },
       downloadOptions: {
-        selector: '#download-result-xlsx',
+        selector: '#download-options',
         onEnter: ensureDownloadOverlayOpen,
         onExit: closeDownloadOverlay
       },
@@ -695,6 +715,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       detailDownloadBtn.disabled = false;
       detailOverlay.style.display = 'flex';
     }
+
+    showEmployeeDetailOverlayForTutorial = () => {
+      if (Array.isArray(results) && results.length > 0) {
+        showEmployeeDetail(0);
+      }
+    };
+
+    hideEmployeeDetailOverlayForTutorial = () => {
+      hideEmployeeDetail();
+    };
 
     detailClose.addEventListener('click', hideEmployeeDetail);
     detailOverlay.addEventListener('click', e => {

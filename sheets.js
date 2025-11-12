@@ -17,6 +17,8 @@ const CROSS_STORE_LOADING_MESSAGE = [
   'しばらくお待ち下さい。'
 ].join('\n');
 
+let sheetButtonsHighlightTarget = null;
+
 function showToastWithNativeNotice(message, options) {
   if (!message) {
     return null;
@@ -74,6 +76,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  const resolveSheetButtonsHighlightTarget = () => {
+    if (sheetButtonsHighlightTarget instanceof Element) {
+      return sheetButtonsHighlightTarget;
+    }
+    return document.getElementById('sheet-buttons-container')
+      || document.querySelector('.store-sheet-buttons')
+      || document.querySelector('#sheet-list .sheet-button')
+      || document.getElementById('sheet-list');
+  };
+
   startLoading(
     statusEl,
     crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
@@ -89,7 +101,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     steps: {
       back: '#sheets-back',
       restart: '#sheets-home',
-      mode: '#multi-month-mode-button',
+      mode: {
+        selector: '#multi-month-mode-button',
+        onEnter: closeMultiMonthOverlay
+      },
+      modePopup: {
+        selector: '#multi-month-popup',
+        onEnter: ensureMultiMonthOverlayOpen
+      },
       selectAll: {
         selector: '#multi-month-select-all',
         onEnter: ensureMultiMonthOverlayOpen
@@ -103,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         onEnter: ensureMultiMonthOverlayOpen,
         onExit: closeMultiMonthOverlay
       },
-      sheets: () => document.querySelector('#sheet-list .sheet-button') || document.getElementById('sheet-list'),
+      sheets: () => resolveSheetButtonsHighlightTarget(),
       help: () => document.getElementById('help-button')
     }
   });
@@ -291,6 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMode }) {
   list.innerHTML = '';
+  sheetButtonsHighlightTarget = null;
 
   const overlay = document.createElement('div');
   overlay.id = 'multi-month-overlay';
@@ -548,6 +568,9 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
           buttonWrapper.appendChild(btn);
         });
         section.appendChild(buttonWrapper);
+        if (!(sheetButtonsHighlightTarget instanceof Element)) {
+          sheetButtonsHighlightTarget = buttonWrapper;
+        }
       }
 
       sectionsContainer.appendChild(section);
@@ -556,6 +579,7 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
     const sheetButtonsContainer = document.createElement('div');
     sheetButtonsContainer.id = 'sheet-buttons-container';
     list.appendChild(sheetButtonsContainer);
+    sheetButtonsHighlightTarget = sheetButtonsContainer;
 
     const sheetMeta = Array.isArray(stores[0].sheets) ? stores[0].sheets : [];
     if (sheetMeta.length === 0) {
