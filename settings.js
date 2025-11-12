@@ -19,7 +19,14 @@ function showToastWithNativeNotice(message, options) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initializeHelp('help/settings.txt');
+  initializeHelp('help/settings.txt', {
+    steps: {
+      back: '#settings-back',
+      restart: '#settings-home',
+      openSheet: '#open-settings-sheet',
+      help: () => document.getElementById('help-button')
+    }
+  });
   await ensureSettingsLoaded();
   if (window.settingsError) {
     const err = document.getElementById('settings-error');

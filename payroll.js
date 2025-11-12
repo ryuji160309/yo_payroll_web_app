@@ -54,7 +54,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     isCrossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
     { disableSlowNote: isCrossStoreMode }
   );
-  initializeHelp('help/payroll.txt');
+  const ensureDownloadOverlayOpen = () => {
+    const overlay = document.getElementById('download-overlay');
+    if (!overlay) {
+      return;
+    }
+    const style = window.getComputedStyle(overlay);
+    if (style.display !== 'flex') {
+      const button = document.getElementById('download');
+      if (button) {
+        button.click();
+      }
+    }
+  };
+
+  const closeDownloadOverlay = () => {
+    const overlay = document.getElementById('download-overlay');
+    if (!overlay) {
+      return;
+    }
+    const style = window.getComputedStyle(overlay);
+    if (style.display === 'flex') {
+      const closeBtn = document.getElementById('download-close');
+      if (closeBtn) {
+        closeBtn.click();
+      } else {
+        overlay.style.display = 'none';
+      }
+    }
+  };
+
+  initializeHelp('help/payroll.txt', {
+    steps: {
+      back: '#payroll-back',
+      restart: '#payroll-home',
+      setBase: '#set-base-wage',
+      setTransport: '#set-transport',
+      download: '#download',
+      downloadOptions: {
+        selector: '#download-result-xlsx',
+        onEnter: ensureDownloadOverlayOpen,
+        onExit: closeDownloadOverlay
+      },
+      source: '#open-source',
+      help: () => document.getElementById('help-button')
+    }
+  });
   await ensureSettingsLoaded();
 
   let downloadPeriodId = 'result';
@@ -917,10 +962,13 @@ function setupDownload(storeName, period, results) {
   includeDetail.appendChild(includeLabel);
 
   const txtBtn = document.createElement('button');
+  txtBtn.id = 'download-result-txt';
   txtBtn.textContent = 'テキスト形式（.txt）';
   const xlsxBtn = document.createElement('button');
+  xlsxBtn.id = 'download-result-xlsx';
   xlsxBtn.textContent = 'EXCEL形式（.xlsx）';
   const csvBtn = document.createElement('button');
+  csvBtn.id = 'download-result-csv';
   csvBtn.textContent = 'CSV形式（.csv）';
 
   options.appendChild(includeDetail);

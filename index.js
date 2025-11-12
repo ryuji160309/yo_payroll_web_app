@@ -317,7 +317,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   startLoading(status, '読込中・・・');
 
-  initializeHelp('help/top.txt');
+  initializeHelp('help/top.txt', {
+    steps: {
+      mode1: '#multi-store-mode-button',
+      stores: () => document.querySelector('#store-list button.store-button') || document.getElementById('store-list'),
+      local: '#offline-load-button',
+      setting: '#settings',
+      help: () => document.getElementById('help-button')
+    }
+  });
 
   try {
     await ensureSettingsLoaded();
@@ -477,6 +485,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     storeKeys.forEach(key => {
       const btn = document.createElement('button');
+      btn.classList.add('store-button');
       btn.textContent = stores[key].name;
       btn.addEventListener('click', () => {
         setLastSelectedStoreKey(key);

@@ -44,12 +44,63 @@ document.addEventListener('DOMContentLoaded', async () => {
   const storesParamRaw = params.get('stores');
   const crossStoreMode = storesParamRaw !== null;
 
+  const ensureMultiMonthOverlayOpen = () => {
+    const overlay = document.getElementById('multi-month-overlay');
+    if (!overlay) {
+      return;
+    }
+    const style = window.getComputedStyle(overlay);
+    if (style.display !== 'flex') {
+      const modeBtn = document.getElementById('multi-month-mode-button');
+      if (modeBtn) {
+        modeBtn.click();
+      }
+    }
+  };
+
+  const closeMultiMonthOverlay = () => {
+    const overlay = document.getElementById('multi-month-overlay');
+    if (!overlay) {
+      return;
+    }
+    const style = window.getComputedStyle(overlay);
+    if (style.display === 'flex') {
+      const closeBtn = document.getElementById('multi-month-close');
+      if (closeBtn) {
+        closeBtn.click();
+      } else {
+        overlay.style.display = 'none';
+      }
+    }
+  };
+
   startLoading(
     statusEl,
     crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
     { disableSlowNote: crossStoreMode }
   );
-  initializeHelp('help/sheets.txt');
+  initializeHelp('help/sheets.txt', {
+    steps: {
+      back: '#sheets-back',
+      restart: '#sheets-home',
+      mode: '#multi-month-mode-button',
+      selectAll: {
+        selector: '#multi-month-select-all',
+        onEnter: ensureMultiMonthOverlayOpen
+      },
+      start: {
+        selector: '#multi-month-start',
+        onEnter: ensureMultiMonthOverlayOpen
+      },
+      close: {
+        selector: '#multi-month-close',
+        onEnter: ensureMultiMonthOverlayOpen,
+        onExit: closeMultiMonthOverlay
+      },
+      sheets: () => document.querySelector('#sheet-list .sheet-button') || document.getElementById('sheet-list'),
+      help: () => document.getElementById('help-button')
+    }
+  });
   await ensureSettingsLoaded();
 
   const storeParamRaw = params.get('store');
@@ -479,6 +530,7 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
       } else {
         sheetMeta.forEach(meta => {
           const btn = document.createElement('button');
+          btn.classList.add('sheet-button');
           btn.textContent = formatSheetName(meta.name);
           btn.addEventListener('click', () => {
             const params = new URLSearchParams({ store: entry.key, sheet: meta.index });
@@ -508,6 +560,7 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
     } else {
       sheetMeta.forEach(meta => {
         const btn = document.createElement('button');
+        btn.classList.add('sheet-button');
         btn.textContent = formatSheetName(meta.name);
         btn.addEventListener('click', () => {
           const params = new URLSearchParams({ store: stores[0].key, sheet: meta.index });
