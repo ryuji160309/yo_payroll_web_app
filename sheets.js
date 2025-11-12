@@ -38,49 +38,25 @@ function showToastWithNativeNotice(message, options) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  let resolveTutorialReady = null;
+  const statusEl = document.getElementById('status');
 
-  const markTutorialDataReady = () => {
-    if (typeof window === 'undefined') {
+  const params = new URLSearchParams(location.search);
+  const storesParamRaw = params.get('stores');
+  const crossStoreMode = storesParamRaw !== null;
+
+  const ensureMultiMonthOverlayOpen = () => {
+    const overlay = document.getElementById('multi-month-overlay');
+    if (!overlay) {
       return;
     }
-    if (!window.isPageTutorialDataReady) {
-      window.isPageTutorialDataReady = true;
+    const style = window.getComputedStyle(overlay);
+    if (style.display !== 'flex') {
+      const modeBtn = document.getElementById('multi-month-mode-button');
+      if (modeBtn) {
+        modeBtn.click();
+      }
     }
-    if (typeof resolveTutorialReady === 'function') {
-      resolveTutorialReady();
-      resolveTutorialReady = null;
-    }
-    window.pageTutorialLoadingPromise = null;
   };
-
-  if (typeof window !== 'undefined') {
-    window.isPageTutorialDataReady = false;
-    window.pageTutorialLoadingPromise = new Promise(resolve => {
-      resolveTutorialReady = resolve;
-    });
-  }
-
-  const run = async () => {
-    const statusEl = document.getElementById('status');
-
-    const params = new URLSearchParams(location.search);
-    const storesParamRaw = params.get('stores');
-    const crossStoreMode = storesParamRaw !== null;
-
-    const ensureMultiMonthOverlayOpen = () => {
-      const overlay = document.getElementById('multi-month-overlay');
-      if (!overlay) {
-        return;
-      }
-      const style = window.getComputedStyle(overlay);
-      if (style.display !== 'flex') {
-        const modeBtn = document.getElementById('multi-month-mode-button');
-        if (modeBtn) {
-          modeBtn.click();
-        }
-      }
-    };
 
   const closeMultiMonthOverlay = () => {
     const overlay = document.getElementById('multi-month-overlay');
@@ -98,44 +74,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-    startLoading(
-      statusEl,
-      crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
-      { disableSlowNote: crossStoreMode }
-    );
-    initializeHelp('help/sheets.txt', {
-      pageKey: 'sheets',
-      prompt: false,
-      autoStart: {
-        enabled: true,
-        requireCompleted: 'top'
+  startLoading(
+    statusEl,
+    crossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
+    { disableSlowNote: crossStoreMode }
+  );
+  initializeHelp('help/sheets.txt', {
+    steps: {
+      back: '#sheets-back',
+      restart: '#sheets-home',
+      mode: '#multi-month-mode-button',
+      selectAll: {
+        selector: '#multi-month-select-all',
+        onEnter: ensureMultiMonthOverlayOpen
       },
-      loading: {
-        isLoading: () => typeof window !== 'undefined' && window.isPageTutorialDataReady === false,
-        waitFor: () => (typeof window !== 'undefined' && window.pageTutorialLoadingPromise) || Promise.resolve()
+      start: {
+        selector: '#multi-month-start',
+        onEnter: ensureMultiMonthOverlayOpen
       },
-      steps: {
-        back: '#sheets-back',
-        restart: '#sheets-home',
-        mode: '#multi-month-mode-button',
-        selectAll: {
-          selector: '#multi-month-select-all',
-          onEnter: ensureMultiMonthOverlayOpen
-        },
-        start: {
-          selector: '#multi-month-start',
-          onEnter: ensureMultiMonthOverlayOpen
-        },
-        close: {
-          selector: '#multi-month-close',
-          onEnter: ensureMultiMonthOverlayOpen,
-          onExit: closeMultiMonthOverlay
-        },
-        sheets: () => document.querySelector('#sheet-list .sheet-button') || document.getElementById('sheet-list'),
-        help: () => document.getElementById('help-button')
-      }
-    });
-    await ensureSettingsLoaded();
+      close: {
+        selector: '#multi-month-close',
+        onEnter: ensureMultiMonthOverlayOpen,
+        onExit: closeMultiMonthOverlay
+      },
+      sheets: () => document.querySelector('#sheet-list .sheet-button') || document.getElementById('sheet-list'),
+      help: () => document.getElementById('help-button')
+    }
+  });
+  await ensureSettingsLoaded();
 
   const storeParamRaw = params.get('store');
   const offlineRequested = params.get('offline') === '1';
@@ -187,7 +153,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (normalizedKeys.length === 0) {
     stopLoading(statusEl);
     statusEl.textContent = '店舗が選択されていません。トップページに戻ってやり直してください。';
-    markTutorialDataReady();
     return;
   }
 
@@ -198,14 +163,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (storeRecords.length === 0) {
     stopLoading(statusEl);
     statusEl.textContent = '店舗情報を取得できませんでした。設定を確認してください。';
-    markTutorialDataReady();
     return;
   }
 
   if (offlineMode && !offlineActive) {
     stopLoading(statusEl);
     statusEl.textContent = 'ローカルファイルを利用できません。もう一度トップに戻って読み込み直してください。';
-    markTutorialDataReady();
     return;
   }
 
@@ -278,7 +241,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         offlineMode,
       });
     }
-    markTutorialDataReady();
 
     const availableStoreNames = targetStores
       .map(entry => (entry && entry.store && entry.store.name ? entry.store.name : ''))
@@ -312,7 +274,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (e) {
     stopLoading(statusEl);
-    markTutorialDataReady();
     const listEl = document.getElementById('sheet-list');
     if (listEl) {
       listEl.style.color = 'red';
@@ -615,11 +576,4 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
       });
     }
   }
-  };
-
-  try {
-    await run();
-  } finally {
-    markTutorialDataReady();
-  }
-});
+}
