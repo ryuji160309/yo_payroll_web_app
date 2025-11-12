@@ -208,11 +208,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (offlineMode && offlineActive && offlineInfo && offlineInfo.fileName) {
         downloadMessage = `${offlineInfo.fileName} のシートを読み込みました。`;
       } else if (downloadedStoreNames.length === 0) {
-        downloadMessage = 'シートのダウンロードが完了しました。';
+        downloadMessage = 'シートの読み込みが完了しました。';
       } else if (downloadedStoreNames.length <= 3) {
-        downloadMessage = `${downloadedStoreNames.join('・')} のシートをダウンロードしました。`;
+        downloadMessage = `${downloadedStoreNames.join('・')} のシートを読み込みました。`;
       } else {
-        downloadMessage = `${downloadedStoreNames.length}店舗のシートをダウンロードしました。`;
+        downloadMessage = `${downloadedStoreNames.length}件のシートを読み込みました。`;
       }
       if (failedSheets.length > 0) {
         downloadMessage += '（一部のシートは取得できませんでした）';
@@ -769,11 +769,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     recalc();
     stopLoading(statusEl);
     if (typeof window.showToast === 'function') {
-      let calculationMessage = '計算が完了しました。';
-      if (failedSheets.length > 0 || processingFailures.length > 0) {
-        calculationMessage = '計算が完了しました（一部のシートは除外されました）。';
+      const toastOptions = { duration: 3200 };
+      window.showToast('計算が完了しました。', toastOptions);
+      if (failedSheets.length > 0) {
+        window.showToast(
+          `${failedSheets.length}件のシートを読み込めなかったため除外しました。`,
+          toastOptions,
+        );
       }
-      window.showToast(calculationMessage, { duration: 3200 });
+      if (processingFailures.length > 0) {
+        window.showToast(
+          `${processingFailures.length}件のシートにエラーがあったため除外されました。`,
+          toastOptions,
+        );
+      }
     }
     if (failedSheets.length > 0 || processingFailures.length > 0) {
       const messages = [];
