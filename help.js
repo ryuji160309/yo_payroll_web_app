@@ -2,8 +2,6 @@ const TUTORIAL_ACTIVE_KEY = 'tutorial-active';
 const TUTORIAL_PROMPT_KEY = 'tutorial-prompt-dismissed';
 const TUTORIAL_PADDING = 12;
 const TUTORIAL_RETRY_LIMIT = 15;
-const TUTORIAL_COMPLETED_PREFIX = 'tutorial-completed:';
-const DEFAULT_LOADING_MESSAGE = '読み込み完了までお待ち下さい。';
 
 function readStorage(key) {
   try {
@@ -28,29 +26,6 @@ function removeStorage(key) {
   } catch (error) {
     console.warn('Failed to remove localStorage value', error);
   }
-}
-
-function getCompletionKey(pageKey) {
-  if (!pageKey) {
-    return null;
-  }
-  return `${TUTORIAL_COMPLETED_PREFIX}${pageKey}`;
-}
-
-function isTutorialCompletedFor(pageKey) {
-  const key = getCompletionKey(pageKey);
-  if (!key) {
-    return false;
-  }
-  return readStorage(key) === '1';
-}
-
-function markTutorialCompleted(pageKey) {
-  const key = getCompletionKey(pageKey);
-  if (!key) {
-    return;
-  }
-  writeStorage(key, '1');
 }
 
 function escapeHTML(str) {
@@ -122,32 +97,6 @@ function createHelpButton() {
   button.textContent = 'ヘルプ';
   document.body.appendChild(button);
   return button;
-}
-
-function createTutorialExitButton() {
-  const button = document.createElement('button');
-  button.id = 'tutorial-exit-button';
-  button.type = 'button';
-  button.textContent = 'チュートリアルを終了';
-  button.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(button);
-  let visible = false;
-
-  const show = () => {
-    button.setAttribute('aria-hidden', 'false');
-    button.classList.add('is-visible');
-    visible = true;
-  };
-
-  const hide = () => {
-    button.setAttribute('aria-hidden', 'true');
-    button.classList.remove('is-visible');
-    visible = false;
-  };
-
-  hide();
-
-  return { button, show, hide, isVisible: () => visible };
 }
 
 function createTutorialOverlay() {
@@ -321,41 +270,17 @@ function initializeHelp(path, options = {}) {
   const stepConfigs = options.steps || {};
   const helpButton = createHelpButton();
   const overlay = createTutorialOverlay();
-  const exitControl = createTutorialExitButton();
-
-  const rawPageKey = typeof options.pageKey === 'string' ? options.pageKey.trim() : '';
-  const pageKey = rawPageKey || null;
-  const promptOption = options.prompt;
-  const promptEnabled = promptOption === undefined
-    ? true
-    : (typeof promptOption === 'object' ? promptOption.enabled !== false : promptOption !== false);
-  const loadingConfig = options.loading || null;
-  const loadingMessage = loadingConfig && typeof loadingConfig.message === 'string' && loadingConfig.message.trim() !== ''
-    ? loadingConfig.message
-    : DEFAULT_LOADING_MESSAGE;
-  const autoStartConfig = options.autoStart || {};
-  const autoStartEnabled = !!autoStartConfig.enabled;
-  const requiredCompletionsRaw = autoStartConfig.requireCompleted;
-  const requiredCompletions = Array.isArray(requiredCompletionsRaw)
-    ? requiredCompletionsRaw.filter(Boolean)
-    : (requiredCompletionsRaw ? [requiredCompletionsRaw] : []);
-  const extraAutoStartCondition = typeof autoStartConfig.condition === 'function' ? autoStartConfig.condition : null;
 
   let steps = [];
   let stepsReady = false;
   let loadingPromise = null;
   let pendingStart = false;
-  let waitingForLoading = false;
-  let loadingWaitToken = 0;
-  let showingLoadingMessage = false;
   let currentIndex = 0;
   let currentStep = null;
   let currentTarget = null;
   let currentConfig = null;
   let retryTimer = null;
   let listenersAttached = false;
-  let reachedLastStep = false;
-  let autoStartTriggered = false;
 
   const resolveStepConfig = id => {
     const config = stepConfigs[id];
@@ -461,7 +386,7 @@ function initializeHelp(path, options = {}) {
   const handleKeyDown = event => {
     if (event.key === 'Escape') {
       event.preventDefault();
-      finishTutorial({ aborted: true });
+      finishTutorial();
     }
   };
 
@@ -505,54 +430,6 @@ function initializeHelp(path, options = {}) {
     }, 250);
   };
 
-  const isLoadingActive = () => {
-    if (!loadingConfig) {
-      return false;
-    }
-    if (typeof loadingConfig.isLoading === 'function') {
-      try {
-        return !!loadingConfig.isLoading();
-      } catch (error) {
-        console.warn('tutorial loading state check failed', error);
-      }
-    }
-    return false;
-  };
-
-  const getLoadingPromise = () => {
-    if (!loadingConfig || typeof loadingConfig.waitFor !== 'function') {
-      return Promise.resolve();
-    }
-    try {
-      const result = loadingConfig.waitFor();
-      if (result && typeof result.then === 'function') {
-        return result;
-      }
-    } catch (error) {
-      console.warn('tutorial loading wait promise failed', error);
-    }
-    return Promise.resolve();
-  };
-
-  const showLoadingNotice = () => {
-    showingLoadingMessage = true;
-    overlay.show();
-    exitControl.show();
-    overlay.bubbleText.innerHTML = formatStepText(loadingMessage);
-    overlay.prevBtn.style.display = 'none';
-    overlay.nextBtn.style.display = 'none';
-    overlay.centerBubble();
-  };
-
-  const clearLoadingNotice = () => {
-    if (!showingLoadingMessage) {
-      return;
-    }
-    showingLoadingMessage = false;
-    overlay.prevBtn.style.display = '';
-    overlay.nextBtn.style.display = '';
-  };
-
   const showStep = index => {
     if (!Array.isArray(steps) || steps.length === 0) {
       return;
@@ -572,14 +449,8 @@ function initializeHelp(path, options = {}) {
     currentIndex = nextIndex;
     currentStep = steps[currentIndex];
     overlay.bubbleText.innerHTML = formatStepText(currentStep.text);
-    const isFirstStep = currentIndex === 0;
-    const isLastStep = currentIndex === steps.length - 1;
-    overlay.prevBtn.textContent = isFirstStep ? '閉じる' : '戻る';
-    overlay.prevBtn.disabled = false;
-    overlay.nextBtn.textContent = isLastStep ? '終了' : '進む';
-    if (isLastStep) {
-      reachedLastStep = true;
-    }
+    overlay.prevBtn.disabled = currentIndex === 0;
+    overlay.nextBtn.textContent = currentIndex === steps.length - 1 ? '終了' : '進む';
 
     currentConfig = resolveStepConfig(currentStep.id);
     if (currentConfig && typeof currentConfig.onEnter === 'function') {
@@ -596,11 +467,8 @@ function initializeHelp(path, options = {}) {
     });
   };
 
-  function finishTutorial({ aborted = false } = {}) {
+  const finishTutorial = () => {
     pendingStart = false;
-    waitingForLoading = false;
-    loadingWaitToken += 1;
-    clearLoadingNotice();
     setTutorialActive(false);
     cleanupRetryTimer();
     if (currentConfig && typeof currentConfig.onExit === 'function') {
@@ -611,26 +479,12 @@ function initializeHelp(path, options = {}) {
       }
     }
     currentConfig = null;
-    currentStep = null;
-    currentIndex = 0;
     cleanupCurrentTarget();
     overlay.hide();
-    exitControl.hide();
     detachListeners();
-    if (!aborted && pageKey && reachedLastStep && Array.isArray(steps) && steps.length > 0) {
-      markTutorialCompleted(pageKey);
-    }
-    reachedLastStep = false;
-  }
-
-  exitControl.button.addEventListener('click', () => {
-    finishTutorial({ aborted: true });
-  });
+  };
 
   const startTutorialInternal = () => {
-    if (overlay.isVisible() && !showingLoadingMessage && currentStep) {
-      return;
-    }
     if (!stepsReady) {
       pendingStart = true;
       loadSteps();
@@ -641,39 +495,8 @@ function initializeHelp(path, options = {}) {
       console.warn('No tutorial steps were loaded for', path);
       return;
     }
-    if (isLoadingActive()) {
-      pendingStart = true;
-      const token = ++loadingWaitToken;
-      waitingForLoading = true;
-      showLoadingNotice();
-      Promise.resolve(getLoadingPromise())
-        .catch(error => {
-          console.warn('tutorial loading wait failed', error);
-        })
-        .then(() => {
-          if (loadingWaitToken !== token) {
-            return;
-          }
-          waitingForLoading = false;
-          if (!pendingStart) {
-            clearLoadingNotice();
-            return;
-          }
-          if (isLoadingActive()) {
-            startTutorialInternal();
-            return;
-          }
-          clearLoadingNotice();
-          startTutorialInternal();
-        });
-      return;
-    }
     pendingStart = false;
-    waitingForLoading = false;
-    clearLoadingNotice();
-    reachedLastStep = false;
     setTutorialActive(true);
-    exitControl.show();
     overlay.show();
     attachListeners();
     showStep(0);
@@ -701,32 +524,22 @@ function initializeHelp(path, options = {}) {
   };
 
   const startTutorial = () => {
-    if (overlay.isVisible() && !showingLoadingMessage && currentStep) {
-      return;
-    }
-    pendingStart = true;
     startTutorialInternal();
   };
 
   overlay.prevBtn.addEventListener('click', () => {
-    if (!Array.isArray(steps) || steps.length === 0) {
-      finishTutorial({ aborted: true });
-      return;
-    }
-    if (currentIndex === 0) {
-      finishTutorial({ aborted: true });
-    } else if (currentIndex > 0) {
+    if (currentIndex > 0) {
       showStep(currentIndex - 1);
     }
   });
 
   overlay.nextBtn.addEventListener('click', () => {
     if (!Array.isArray(steps) || steps.length === 0) {
-      finishTutorial({ aborted: true });
+      finishTutorial();
       return;
     }
     if (currentIndex >= steps.length - 1) {
-      finishTutorial({ aborted: false });
+      finishTutorial();
     } else {
       showStep(currentIndex + 1);
     }
@@ -852,50 +665,11 @@ function initializeHelp(path, options = {}) {
       startTutorial();
       return;
     }
-    if (!promptEnabled) {
-      return;
-    }
-    if (pageKey && isTutorialCompletedFor(pageKey)) {
-      return;
-    }
     if (!isPromptDismissed()) {
       showTutorialPrompt();
     }
   };
 
-  const shouldAutoStart = () => {
-    if (!autoStartEnabled || autoStartTriggered) {
-      return false;
-    }
-    if (overlay.isVisible() && !showingLoadingMessage && currentStep) {
-      return false;
-    }
-    if (pageKey && isTutorialCompletedFor(pageKey)) {
-      return false;
-    }
-    if (requiredCompletions.length > 0) {
-      const satisfied = requiredCompletions.every(key => isTutorialCompletedFor(key));
-      if (!satisfied) {
-        return false;
-      }
-    }
-    if (extraAutoStartCondition && !extraAutoStartCondition()) {
-      return false;
-    }
-    return true;
-  };
-
-  const maybeAutoStart = () => {
-    if (!shouldAutoStart()) {
-      return;
-    }
-    autoStartTriggered = true;
-    startTutorial();
-  };
-
   loadSteps();
-  window.setTimeout(() => {
-    maybeShowPrompt();
-    maybeAutoStart();
-  }, 200);
+  window.setTimeout(maybeShowPrompt, 200);
 }

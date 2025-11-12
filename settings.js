@@ -19,36 +19,15 @@ function showToastWithNativeNotice(message, options) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (typeof window !== 'undefined') {
-    window.isPageTutorialDataReady = false;
-    window.pageTutorialLoadingPromise = null;
-  }
-
-  const run = async () => {
-    initializeHelp('help/settings.txt', {
-      pageKey: 'settings',
-      prompt: false,
-      autoStart: {
-        enabled: true,
-        requireCompleted: 'top'
-      },
-      loading: {
-        isLoading: () => typeof window !== 'undefined' && window.isPageTutorialDataReady === false,
-        waitFor: () => (typeof window !== 'undefined' && window.pageTutorialLoadingPromise) || Promise.resolve()
-      },
-      steps: {
-        back: '#settings-back',
-        restart: '#settings-home',
-        openSheet: '#open-settings-sheet',
-        storeLabel: '#store-select-label',
-        urlField: '#settings-url-label',
-        baseWageField: '#settings-basewage-label',
-        overtimeField: '#settings-overtime-label',
-        excludeField: '#settings-exclude-label',
-        help: () => document.getElementById('help-button')
-      }
-    });
-    await ensureSettingsLoaded();
+  initializeHelp('help/settings.txt', {
+    steps: {
+      back: '#settings-back',
+      restart: '#settings-home',
+      openSheet: '#open-settings-sheet',
+      help: () => document.getElementById('help-button')
+    }
+  });
+  await ensureSettingsLoaded();
   if (window.settingsError) {
     const err = document.getElementById('settings-error');
     if (err) {
@@ -157,18 +136,4 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
-  };
-
-  const runPromise = run();
-  if (typeof window !== 'undefined') {
-    const trackingPromise = runPromise
-      .catch(() => {})
-      .finally(() => {
-        window.isPageTutorialDataReady = true;
-        window.pageTutorialLoadingPromise = null;
-      });
-    window.pageTutorialLoadingPromise = trackingPromise;
-  }
-
-  await runPromise;
 });
