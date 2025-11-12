@@ -334,6 +334,7 @@ function initializeHelp(path, options = {}) {
   const stepConfigs = options.steps || {};
   const { helpButton, exitButton, setExitVisible } = createHelpControls();
   const overlay = createTutorialOverlay();
+  let pendingNavigationDirection = null;
 
   const rawPageKey = options.pageKey || path;
   const pageKey = sanitizeTutorialKey(rawPageKey);
@@ -526,13 +527,20 @@ function initializeHelp(path, options = {}) {
       return;
     }
     const nextIndex = Math.min(Math.max(index, 0), steps.length - 1);
+    const previousStep = currentStep;
+    const exitContext = {
+      direction: pendingNavigationDirection,
+      previousStepId: previousStep ? previousStep.id : null,
+      nextStepId: steps[nextIndex] ? steps[nextIndex].id : null
+    };
     if (currentConfig && typeof currentConfig.onExit === 'function') {
       try {
-        currentConfig.onExit();
+        currentConfig.onExit(exitContext);
       } catch (error) {
         console.warn('tutorial step onExit failed', error);
       }
     }
+    pendingNavigationDirection = null;
     cleanupRetryTimer();
     cleanupCurrentTarget();
     currentConfig = null;
@@ -559,14 +567,20 @@ function initializeHelp(path, options = {}) {
     });
   };
 
-  const finishTutorial = () => {
+  const finishTutorial = (direction = 'finish') => {
+    pendingNavigationDirection = null;
     pendingStart = false;
     setTutorialActive(false);
     setExitVisible(false);
     cleanupRetryTimer();
+    const exitContext = {
+      direction,
+      previousStepId: currentStep ? currentStep.id : null,
+      nextStepId: null
+    };
     if (currentConfig && typeof currentConfig.onExit === 'function') {
       try {
-        currentConfig.onExit();
+        currentConfig.onExit(exitContext);
       } catch (error) {
         console.warn('tutorial step onExit failed', error);
       }
@@ -645,25 +659,27 @@ function initializeHelp(path, options = {}) {
   };
 
   exitButton.addEventListener('click', () => {
-    finishTutorial();
+    finishTutorial('exit-button');
   });
 
   overlay.prevBtn.addEventListener('click', () => {
     if (currentIndex <= 0) {
-      finishTutorial();
+      finishTutorial('prev');
     } else {
+      pendingNavigationDirection = 'prev';
       showStep(currentIndex - 1);
     }
   });
 
   overlay.nextBtn.addEventListener('click', () => {
     if (!Array.isArray(steps) || steps.length === 0) {
-      finishTutorial();
+      finishTutorial('next');
       return;
     }
     if (currentIndex >= steps.length - 1) {
-      finishTutorial();
+      finishTutorial('next');
     } else {
+      pendingNavigationDirection = 'next';
       showStep(currentIndex + 1);
     }
   });

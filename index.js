@@ -699,7 +699,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       mode1: '#multi-store-mode-button',
       modePopup: {
         selector: '#multi-store-popup',
-        onEnter: () => showMultiStoreOverlayForTutorial()
+        onEnter: () => showMultiStoreOverlayForTutorial(),
+        onExit: context => {
+          if (!context || context.direction !== 'next') {
+            hideMultiStoreOverlayForTutorial();
+            if (multiStoreTutorialState && typeof multiStoreTutorialState.clearPreview === 'function') {
+              multiStoreTutorialState.clearPreview();
+            }
+          }
+        }
       },
       modeOptions: {
         getElement: () => {
@@ -716,11 +724,27 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (multiStoreTutorialState && typeof multiStoreTutorialState.showPreview === 'function') {
             multiStoreTutorialState.showPreview();
           }
+        },
+        onExit: context => {
+          if (!context || context.direction !== 'next') {
+            hideMultiStoreOverlayForTutorial();
+            if (multiStoreTutorialState && typeof multiStoreTutorialState.clearPreview === 'function') {
+              multiStoreTutorialState.clearPreview();
+            }
+          }
         }
       },
       modeStart: {
         selector: '#multi-store-start',
-        onEnter: () => showMultiStoreOverlayForTutorial()
+        onEnter: () => showMultiStoreOverlayForTutorial(),
+        onExit: context => {
+          if (!context || context.direction !== 'next') {
+            hideMultiStoreOverlayForTutorial();
+            if (multiStoreTutorialState && typeof multiStoreTutorialState.clearPreview === 'function') {
+              multiStoreTutorialState.clearPreview();
+            }
+          }
+        }
       },
       modeClose: {
         selector: '#multi-store-close',
