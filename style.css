@@ -740,8 +740,11 @@ th, td {
   background: rgba(16, 20, 24, 0.82);
   color: var(--color-body-text);
 }
-#help-button,
-.theme-toggle {
+#help-button {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 900;
   padding: 0.75rem 1.25rem;
   border-radius: 9999px;
   border: none;
@@ -750,41 +753,40 @@ th, td {
   font-size: 1rem;
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  transition: background-color 0.2s ease, color 0.2s ease,
-    box-shadow 0.2s ease, transform 0.18s ease;
-}
-
-#help-button {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  z-index: 900;
 }
 
 .theme-toggle {
   position: fixed;
   bottom: 1rem;
   left: 1rem;
-  min-width: 3.25rem;
-  z-index: 1500;
-  font-size: 1.2rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.85rem;
+  border: 2px solid #111;
+  background: #fff;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
   font-weight: 600;
+  cursor: pointer;
+  z-index: 1500;
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.12);
 }
 
 .theme-toggle:hover,
 .theme-toggle:focus-visible {
   transform: translateY(-1px);
-  box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.2);
   outline: none;
 }
 
 .theme-toggle:active {
   transform: translateY(1px);
-  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.18);
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.15);
 }
 
 .theme-toggle:focus-visible {
@@ -793,14 +795,15 @@ th, td {
 }
 
 :root[data-theme="dark"] .theme-toggle {
-  background: #135a8d;
-  color: #f5f7fa;
-  box-shadow: 0 0.65rem 1.85rem rgba(0, 0, 0, 0.5);
+  background: #111;
+  color: #fff;
+  border-color: #f0f0f0;
+  box-shadow: 0 0.65rem 1.85rem rgba(0, 0, 0, 0.4);
 }
 
 :root[data-theme="dark"] .theme-toggle:hover,
 :root[data-theme="dark"] .theme-toggle:focus-visible {
-  box-shadow: 0 0.85rem 2.1rem rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0.85rem 2.1rem rgba(0, 0, 0, 0.5);
 }
 
 #help-button:focus {
@@ -1174,23 +1177,19 @@ th, td {
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  border: 1px solid var(--color-danger);
+  border: 1px solid #d33;
   background: var(--color-surface);
-  color: var(--color-danger);
+  color: #d33;
 }
 
 #update-continue:hover,
 #update-continue:focus {
-  background: rgba(211, 47, 47, 0.12);
-}
-
-:root[data-theme="dark"] #update-continue {
-  background: rgba(239, 154, 154, 0.08);
+  background: #ffecec;
 }
 
 :root[data-theme="dark"] #update-continue:hover,
 :root[data-theme="dark"] #update-continue:focus {
-  background: rgba(239, 154, 154, 0.2);
+  background: rgba(221, 51, 51, 0.2);
 }
 
 #update-dismiss-option {
