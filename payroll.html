@@ -19,35 +19,53 @@
     <div class="header-left">
       <button class="back-btn" id="payroll-back" onclick="history.back()">＜月選択</button>
     </div>
-    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-center">
+      <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+      <h1 class="page-title">給与計算</h1>
+    </div>
     <div class="header-right">
       <button class="back-btn" id="payroll-home" onclick="location.href='index.html'">はじめから</button>
     </div>
   </header>
-  <h1 id="store-name" style="text-align:center"></h1>
-  <h2 id="period" style="text-align:center"></h2>
-  <p id="status" style="text-align:center"></p>
-  <p id="total-salary" style="text-align:center"></p>
-  <div id="base-wage-control" style="text-align:center">
-    <span>時給：</span>
-    <input type="number" id="base-wage-input">
-    <button id="set-base-wage">一括設定</button>
-  </div>
-  <div id="transport-control" style="text-align:center">
-    <span>交通費：</span>
-    <input type="number" id="transport-input" value="0">
-    <button id="set-transport">一括設定</button>
-  </div>
-  <table id="employees">
-    <thead>
-      <tr><th>従業員名</th><th>基本時給</th><th>勤務時間</th><th>出勤日数</th><th>交通費</th><th>給与</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <div id="actions">
-    <button id="download">計算結果をダウンロード</button>
-    <button id="open-source">計算元を開く</button>
-  </div>
-  <p id="error" style="color:red;text-align:center"></p>
+  <main class="page-content page-content--payroll">
+    <div class="responsive-columns responsive-columns--payroll">
+      <section class="responsive-columns__primary" data-role="primary">
+        <h2 id="store-name" class="store-name"></h2>
+        <p id="period" class="page-period"></p>
+        <p id="status" class="page-status"></p>
+        <p id="total-salary" class="page-total"></p>
+        <div id="base-wage-control" class="input-group">
+          <span>時給：</span>
+          <input type="number" id="base-wage-input">
+          <button id="set-base-wage">一括設定</button>
+        </div>
+        <div id="transport-control" class="input-group">
+          <span>交通費：</span>
+          <input type="number" id="transport-input" value="0">
+          <button id="set-transport">一括設定</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="employees">
+            <thead>
+              <tr><th>従業員名</th><th>基本時給</th><th>勤務時間</th><th>出勤日数</th><th>交通費</th><th>給与</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="actions">
+          <button id="download">計算結果をダウンロード</button>
+          <button id="open-source">計算元を開く</button>
+        </div>
+        <p id="error" class="page-error" aria-live="polite"></p>
+      </section>
+      <aside class="responsive-columns__secondary" data-role="secondary">
+        <div id="employee-detail-dock" class="employee-detail-dock" aria-live="polite">
+          <p id="employee-detail-placeholder" class="employee-detail-placeholder">
+            従業員名をタップするとその従業員の詳細情報が表示されます。
+          </p>
+        </div>
+      </aside>
+    </div>
+  </main>
 </body>
 </html>
