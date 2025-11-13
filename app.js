@@ -2,6 +2,134 @@ const APP_VERSION = '1.8.1';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
 const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
+const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
+
+(function setupThemePreference() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const STORAGE_KEY = THEME_STORAGE_KEY;
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  const THEME_COLORS = {
+    light: '#f5f7fa',
+    dark: '#0b1218'
+  };
+  const systemPreference = window.matchMedia('(prefers-color-scheme: dark)');
+
+  let storedPreference = null;
+  let currentTheme = 'light';
+  let toggleButton = null;
+
+  const readStoredPreference = () => {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored === 'light' || stored === 'dark') {
+        return stored;
+      }
+    } catch (error) {
+      // Ignore access issues (private mode, etc.)
+    }
+    return null;
+  };
+
+  const persistPreference = theme => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, theme);
+      storedPreference = theme;
+    } catch (error) {
+      // Ignore persistence failures
+    }
+  };
+
+  const updateMetaThemeColor = theme => {
+    if (!metaThemeColor) {
+      return;
+    }
+    const normalized = theme === 'dark' ? 'dark' : 'light';
+    metaThemeColor.setAttribute('content', THEME_COLORS[normalized] || THEME_COLORS.light);
+  };
+
+  const updateToggleState = () => {
+    if (!toggleButton) {
+      return;
+    }
+    toggleButton.setAttribute('aria-pressed', currentTheme === 'dark' ? 'true' : 'false');
+    toggleButton.title = currentTheme === 'dark'
+      ? 'ライトモードに切り替え'
+      : 'ダークモードに切り替え';
+  };
+
+  const applyTheme = theme => {
+    currentTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    document.documentElement.style.colorScheme = currentTheme;
+    updateMetaThemeColor(currentTheme);
+    updateToggleState();
+  };
+
+  const ensureToggleButton = () => {
+    if (toggleButton && toggleButton.isConnected) {
+      return toggleButton;
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'theme-toggle';
+    button.textContent = '☼';
+    button.setAttribute('aria-label', 'テーマ切り替え');
+    button.addEventListener('click', () => {
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme);
+      persistPreference(nextTheme);
+    });
+
+    toggleButton = button;
+    const target = document.body || document.documentElement;
+    if (target) {
+      target.appendChild(button);
+    }
+    updateToggleState();
+    return button;
+  };
+
+  const initTheme = () => {
+    storedPreference = readStoredPreference();
+    const preferredTheme = storedPreference || (systemPreference.matches ? 'dark' : 'light');
+    applyTheme(preferredTheme);
+    ensureToggleButton();
+  };
+
+  const handleSystemChange = event => {
+    const persisted = readStoredPreference();
+    if (persisted) {
+      storedPreference = persisted;
+      return;
+    }
+    storedPreference = null;
+    applyTheme(event.matches ? 'dark' : 'light');
+  };
+
+  if (typeof systemPreference.addEventListener === 'function') {
+    systemPreference.addEventListener('change', handleSystemChange);
+  } else if (typeof systemPreference.addListener === 'function') {
+    systemPreference.addListener(handleSystemChange);
+  }
+
+  window.addEventListener('storage', event => {
+    if (event.key !== STORAGE_KEY) {
+      return;
+    }
+    if (event.newValue === 'light' || event.newValue === 'dark') {
+      storedPreference = event.newValue;
+      applyTheme(event.newValue);
+      return;
+    }
+    storedPreference = null;
+    applyTheme(systemPreference.matches ? 'dark' : 'light');
+  });
+
+  initTheme();
+})();
 
 (function setupToastSystem() {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
