@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showPrompt: false,
     autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
     waitForReady: () => (tutorialReady.isResolved() ? true : tutorialReady.promise),
+    onStart: closeMultiMonthOverlay,
     onFinish: () => {
       closeMultiMonthOverlay();
     },
@@ -565,6 +566,25 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
 
   function previewSelectTopTwo() {
     ensureTutorialSnapshot();
+    const focusTarget = document.activeElement instanceof HTMLElement
+      && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
+    const restoreFocus = () => {
+      if (!focusTarget || !document.contains(focusTarget)) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        if (!document.contains(focusTarget)) {
+          return;
+        }
+        try {
+          focusTarget.focus({ preventScroll: true });
+        } catch (error) {
+          focusTarget.focus();
+        }
+      });
+    };
     const applySelection = () => {
       cancelPendingTopTwo();
       clearAllSheets();
@@ -579,6 +599,7 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
       updateStartButton();
       updateSelectAllState();
       lastPreviewClearTimestamp = 0;
+      restoreFocus();
     };
 
     const now = Date.now();
