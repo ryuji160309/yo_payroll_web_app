@@ -135,13 +135,6 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
     return;
   }
 
-  const userAgent = (navigator.userAgent || '').toLowerCase();
-  const isAndroid = userAgent.includes('android');
-  const isIOS = /iphone|ipad|ipod/.test(userAgent);
-  const isWindows = userAgent.includes('windows');
-
-  let pendingPermissionRequest = null;
-
   function triggerVibration(pattern) {
     if (typeof navigator.vibrate !== 'function') {
       return;
@@ -153,75 +146,13 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
     }
   }
 
-  async function ensureNotificationPermission() {
-    if (typeof Notification === 'undefined') {
-      return false;
-    }
-    if (Notification.permission === 'granted') {
-      return true;
-    }
-    if (Notification.permission === 'denied') {
-      return false;
-    }
-    if (!pendingPermissionRequest) {
-      try {
-        pendingPermissionRequest = Notification.requestPermission();
-      } catch (error) {
-        pendingPermissionRequest = Promise.resolve('denied');
-      }
-    }
-    let status = 'denied';
-    try {
-      status = await pendingPermissionRequest;
-    } catch (error) {
-      status = 'denied';
-    } finally {
-      pendingPermissionRequest = null;
-    }
-    return status === 'granted';
-  }
-
-  async function showOsNotification(message) {
-    if (!message || typeof Notification === 'undefined') {
-      return;
-    }
-
-    const granted = await ensureNotificationPermission();
-    if (!granted) {
-      return;
-    }
-
-    try {
-      new Notification(message, { body: message });
-      return;
-    } catch (error) {
-      // Some browsers (especially iOS PWAs) require using the service worker registration.
-    }
-
-    if ('serviceWorker' in navigator && navigator.serviceWorker) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        if (registration && typeof registration.showNotification === 'function') {
-          await registration.showNotification(message, { body: message });
-        }
-      } catch (error) {
-        // Ignore failures gracefully.
-      }
-    }
-  }
-
   window.notifyPlatformFeedback = function notifyPlatformFeedback(message, options = {}) {
-    if (!message) {
-      return;
-    }
     const pattern = options && Object.prototype.hasOwnProperty.call(options, 'vibrationPattern')
       ? options.vibrationPattern
       : 50;
 
-    if (isAndroid) {
+    if (typeof navigator.vibrate === 'function') {
       triggerVibration(pattern);
-    } else if (isIOS || isWindows) {
-      showOsNotification(message);
     }
   };
 

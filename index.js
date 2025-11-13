@@ -385,6 +385,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const stores = loadStores();
   stopLoading(status);
+  if (typeof window.notifyPlatformFeedback === 'function') {
+    try {
+      window.notifyPlatformFeedback(null, { vibrationPattern: 50 });
+    } catch (error) {
+      console.warn('notifyPlatformFeedback failed', error);
+    }
+  }
   tutorialReady.resolve();
   if (status && typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive()) {
     status.textContent = '店舗を選択して続行してください。';

@@ -203,20 +203,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         onExit: context => {
           const direction = context ? context.direction : null;
-          if (downloadTutorialState) {
-            if (direction === 'next') {
-              if (typeof downloadTutorialState.previewIncludeDetail === 'function') {
-                downloadTutorialState.previewIncludeDetail(false);
-              }
-            } else if (typeof downloadTutorialState.restoreIncludeDetail === 'function') {
-              downloadTutorialState.restoreIncludeDetail();
-            }
+          if (downloadTutorialState && typeof downloadTutorialState.restoreIncludeDetail === 'function') {
+            downloadTutorialState.restoreIncludeDetail();
           }
           if (!context || direction !== 'prev') {
             closeDownloadOverlay();
-            if (direction === 'next' && downloadTutorialState && typeof downloadTutorialState.restoreIncludeDetail === 'function') {
-              downloadTutorialState.restoreIncludeDetail();
-            }
           }
         }
       },

@@ -657,6 +657,9 @@ function initializeHelp(path, options = {}) {
     overlay.bubbleText.innerHTML = WAITING_MESSAGE_HTML;
     overlay.show();
     overlay.centerBubble();
+    if (overlay.container) {
+      overlay.container.classList.add('tutorial-overlay--dimmed');
+    }
   };
 
   const hideWaitingOverlay = () => {
@@ -664,6 +667,9 @@ function initializeHelp(path, options = {}) {
     overlay.nextBtn.hidden = false;
     if (overlay.isVisible()) {
       overlay.hide();
+    }
+    if (overlay.container) {
+      overlay.container.classList.remove('tutorial-overlay--dimmed');
     }
     overlay.bubbleText.innerHTML = '';
   };
@@ -677,6 +683,9 @@ function initializeHelp(path, options = {}) {
     overlay.nextBtn.hidden = false;
     overlay.bubbleText.innerHTML = '';
     overlay.show();
+    if (overlay.container) {
+      overlay.container.classList.remove('tutorial-overlay--dimmed');
+    }
     attachListeners();
     showStep(0);
   };
@@ -783,13 +792,15 @@ function initializeHelp(path, options = {}) {
 
   const showReminder = () => {
     const { overlay: reminderOverlay, modal } = createModalOverlay();
+    modal.classList.add('tutorial-modal--bubble');
     const message = document.createElement('p');
     message.className = 'tutorial-modal-message';
     message.textContent = '右下のヘルプボタンからいつでも確認できます。';
     const actions = document.createElement('div');
-    actions.className = 'tutorial-modal-actions';
+    actions.className = 'tutorial-modal-actions tutorial-modal-actions--center';
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
+    closeBtn.className = 'tutorial-modal-button';
     closeBtn.textContent = '閉じる';
     actions.appendChild(closeBtn);
     modal.appendChild(message);
@@ -819,38 +830,23 @@ function initializeHelp(path, options = {}) {
 
   const showTutorialPrompt = () => {
     const { overlay: promptOverlay, modal } = createModalOverlay();
+    modal.classList.add('tutorial-modal--bubble');
 
     const message = document.createElement('p');
     message.className = 'tutorial-modal-message';
-    message.textContent = 'チュートリアルを行いますか？';
-
-    const checkboxLabel = document.createElement('label');
-    checkboxLabel.className = 'tutorial-modal-checkbox';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = 'tutorial-prompt-checkbox';
-    const checkboxText = document.createElement('span');
-    checkboxText.textContent = '再度表示しない';
-    checkboxLabel.appendChild(checkbox);
-    checkboxLabel.appendChild(checkboxText);
+    message.textContent = 'チュートリアルを開始します。';
 
     const actions = document.createElement('div');
-    actions.className = 'tutorial-modal-actions';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.textContent = '閉じる';
+    actions.className = 'tutorial-modal-actions tutorial-modal-actions--center';
 
     const startBtn = document.createElement('button');
     startBtn.type = 'button';
-    startBtn.className = 'tutorial-modal-primary';
+    startBtn.className = 'tutorial-modal-button tutorial-modal-button--primary';
     startBtn.textContent = '始める';
 
-    actions.appendChild(closeBtn);
     actions.appendChild(startBtn);
 
     modal.appendChild(message);
-    modal.appendChild(checkboxLabel);
     modal.appendChild(actions);
 
     const cleanup = () => {
@@ -858,36 +854,24 @@ function initializeHelp(path, options = {}) {
       window.removeEventListener('keydown', onKeyDown, true);
     };
 
-    const onKeyDown = event => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        handleClose();
-      }
-    };
-
-    const handleClose = () => {
-      if (checkbox.checked) {
-        setPromptDismissed();
-      }
-      cleanup();
-      showReminder();
-    };
-
     const handleStart = () => {
-      if (checkbox.checked) {
-        setPromptDismissed();
-      }
+      setPromptDismissed();
       cleanup();
       startTutorial();
     };
 
-    closeBtn.addEventListener('click', handleClose);
-    startBtn.addEventListener('click', handleStart);
-    promptOverlay.addEventListener('click', event => {
-      if (event.target === promptOverlay) {
-        handleClose();
+    const onKeyDown = event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        return;
       }
-    });
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        handleStart();
+      }
+    };
+
+    startBtn.addEventListener('click', handleStart);
     window.addEventListener('keydown', onKeyDown, true);
     setTimeout(() => startBtn.focus(), 0);
   };
