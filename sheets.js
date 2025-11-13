@@ -41,6 +41,29 @@ function showToastWithNativeNotice(message, options) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  function createDeferred() {
+    let resolved = false;
+    let resolver = null;
+    const promise = new Promise(resolve => {
+      resolver = value => {
+        if (!resolved) {
+          resolved = true;
+          resolve(value);
+        }
+      };
+    });
+    return {
+      promise,
+      resolve: value => {
+        if (resolver) {
+          resolver(value);
+        }
+      },
+      isResolved: () => resolved
+    };
+  }
+
+  const tutorialReady = createDeferred();
   const statusEl = document.getElementById('status');
 
   const params = new URLSearchParams(location.search);
@@ -102,6 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     pageKey: 'sheets',
     showPrompt: false,
     autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
+    waitForReady: () => (tutorialReady.isResolved() ? true : tutorialReady.promise),
     onFinish: () => {
       closeMultiMonthOverlay();
     },
@@ -125,11 +149,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         selector: '#multi-month-list',
         onEnter: () => {
           ensureMultiMonthOverlayOpen();
+          if (multiMonthTutorialState && typeof multiMonthTutorialState.previewSelectTopTwo === 'function') {
+            multiMonthTutorialState.previewSelectTopTwo();
+          }
         },
         onExit: context => {
-          if (!context || context.direction !== 'next') {
-            closeMultiMonthOverlay();
+          if (context && context.direction === 'next') {
+            if (multiMonthTutorialState && typeof multiMonthTutorialState.previewClearSelection === 'function') {
+              multiMonthTutorialState.previewClearSelection();
+            }
+            return;
           }
+          closeMultiMonthOverlay();
         }
       },
       selectAll: {
@@ -166,12 +197,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
       start: {
         selector: '#multi-month-start',
-        onEnter: ensureMultiMonthOverlayOpen
+        onEnter: () => {
+          ensureMultiMonthOverlayOpen();
+          if (multiMonthTutorialState && typeof multiMonthTutorialState.previewSelectTopTwo === 'function') {
+            multiMonthTutorialState.previewSelectTopTwo();
+          }
+        },
+        onExit: context => {
+          if (!context || context.direction !== 'next') {
+            if (multiMonthTutorialState && typeof multiMonthTutorialState.restorePreview === 'function') {
+              multiMonthTutorialState.restorePreview();
+            }
+          }
+        }
       },
       close: {
         selector: '#multi-month-close',
         onEnter: ensureMultiMonthOverlayOpen,
-        onExit: () => {
+        onExit: context => {
+          if (context && context.direction === 'next') {
+            if (multiMonthTutorialState && typeof multiMonthTutorialState.previewClearSelection === 'function') {
+              multiMonthTutorialState.previewClearSelection();
+            }
+          } else if (multiMonthTutorialState && typeof multiMonthTutorialState.restorePreview === 'function') {
+            multiMonthTutorialState.restorePreview();
+          }
           closeMultiMonthOverlay();
         }
       },
@@ -230,6 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (normalizedKeys.length === 0) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     statusEl.textContent = '店舗が選択されていません。トップページに戻ってやり直してください。';
     return;
   }
@@ -240,12 +291,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (storeRecords.length === 0) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     statusEl.textContent = '店舗情報を取得できませんでした。設定を確認してください。';
     return;
   }
 
   if (offlineMode && !offlineActive) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     statusEl.textContent = 'ローカルファイルを利用できません。もう一度トップに戻って読み込み直してください。';
     return;
   }
@@ -309,6 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     stopLoading(statusEl);
+    tutorialReady.resolve();
 
     const list = document.getElementById('sheet-list');
     if (list) {
@@ -352,6 +406,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (e) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     const listEl = document.getElementById('sheet-list');
     if (listEl) {
       listEl.style.color = 'red';
@@ -482,6 +537,21 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
   function previewSelectAll() {
     ensureTutorialSnapshot();
     selectAllSheets();
+    updateStartButton();
+    updateSelectAllState();
+  }
+
+  function previewSelectTopTwo() {
+    ensureTutorialSnapshot();
+    clearAllSheets();
+    for (let i = 0; i < popupButtons.length && i < 2; i += 1) {
+      const btn = popupButtons[i];
+      if (!btn) {
+        continue;
+      }
+      const key = `${btn.dataset.storeKey}|${btn.dataset.sheetIndex}`;
+      setSheetSelectedByKey(key, true);
+    }
     updateStartButton();
     updateSelectAllState();
   }
@@ -634,6 +704,7 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
   multiMonthTutorialState = {
     previewClearSelection,
     previewSelectAll,
+    previewSelectTopTwo,
     restorePreview: restoreTutorialPreview
   };
 

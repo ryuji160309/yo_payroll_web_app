@@ -45,6 +45,31 @@ function formatPeriodRange(startDate, endDate) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  function createDeferred() {
+    let resolved = false;
+    let resolver = null;
+    const promise = new Promise(resolve => {
+      resolver = value => {
+        if (!resolved) {
+          resolved = true;
+          resolve(value);
+        }
+      };
+    });
+    return {
+      promise,
+      resolve: value => {
+        if (resolver) {
+          resolver(value);
+        }
+      },
+      isResolved: () => resolved
+    };
+  }
+
+  const tutorialReady = createDeferred();
+  let downloadTutorialState = null;
+
   const statusEl = document.getElementById('status');
   const params = new URLSearchParams(location.search);
   const selectionsParamRaw = params.get('selections');
@@ -82,6 +107,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         overlay.style.display = 'none';
       }
     }
+    if (downloadTutorialState && typeof downloadTutorialState.restoreIncludeDetail === 'function') {
+      downloadTutorialState.restoreIncludeDetail();
+    }
   };
 
   let showEmployeeDetailOverlayForTutorial = () => {};
@@ -92,8 +120,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     pageKey: 'payroll',
     showPrompt: false,
     autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
+    waitForReady: () => (tutorialReady.isResolved() ? true : tutorialReady.promise),
     onFinish: () => {
       closeDownloadOverlay();
+      if (downloadTutorialState && typeof downloadTutorialState.restoreIncludeDetail === 'function') {
+        downloadTutorialState.restoreIncludeDetail();
+      }
     },
     steps: {
       back: '#payroll-back',
@@ -106,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (!firstRow) {
             return document.getElementById('employees');
           }
-          return firstRow.querySelector('td, th') || firstRow;
+          return firstRow;
         }
       },
       detailPopup: {
@@ -163,8 +195,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
       downloadOptions: {
         selector: '#download-options',
-        onEnter: ensureDownloadOverlayOpen,
-        onExit: closeDownloadOverlay
+        onEnter: () => {
+          ensureDownloadOverlayOpen();
+          if (downloadTutorialState && typeof downloadTutorialState.previewIncludeDetail === 'function') {
+            downloadTutorialState.previewIncludeDetail(true);
+          }
+        },
+        onExit: context => {
+          const direction = context ? context.direction : null;
+          if (downloadTutorialState) {
+            if (direction === 'next') {
+              if (typeof downloadTutorialState.previewIncludeDetail === 'function') {
+                downloadTutorialState.previewIncludeDetail(false);
+              }
+            } else if (typeof downloadTutorialState.restoreIncludeDetail === 'function') {
+              downloadTutorialState.restoreIncludeDetail();
+            }
+          }
+          if (!context || direction !== 'prev') {
+            closeDownloadOverlay();
+            if (direction === 'next' && downloadTutorialState && typeof downloadTutorialState.restoreIncludeDetail === 'function') {
+              downloadTutorialState.restoreIncludeDetail();
+            }
+          }
+        }
       },
       source: '#open-source',
       help: () => document.getElementById('help-button')
@@ -181,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offlineActive = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
   if (offlineMode && !offlineActive) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     statusEl.textContent = 'ローカルファイルを利用できません。トップに戻って読み込み直してください。';
     return;
   }
@@ -233,6 +288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const store = storeKey ? getStore(storeKey) : null;
     if (!store) {
       stopLoading(statusEl);
+      tutorialReady.resolve();
       return;
     }
     const multiSheetsParam = params.get('sheets');
@@ -270,6 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (targetSelections.length === 0) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     statusEl.textContent = '計算対象のシートが選択されていません。前の画面に戻って選び直してください。';
     return;
   }
@@ -277,6 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const store = targetSelections[0].store;
   if (!store) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     statusEl.textContent = '店舗情報を取得できませんでした。設定を確認してください。';
     return;
   }
@@ -332,6 +390,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     stopLoading(statusEl);
+    tutorialReady.resolve();
 
     const downloadedStoreNames = workbookResults
       .map(result => (result && result.selection && result.selection.store && result.selection.store.name
@@ -911,6 +970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     recalc();
     stopLoading(statusEl);
+    tutorialReady.resolve();
     const toastOptions = { duration: 3200 };
     showToastWithNativeNotice('計算が完了しました。', toastOptions);
     if (failedSheets.length > 0) {
@@ -1014,6 +1074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (e) {
     stopLoading(statusEl);
+    tutorialReady.resolve();
     document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
   }
 });
@@ -1040,6 +1101,35 @@ function setupDownload(storeName, period, results) {
   includeLabel.textContent = '詳細を含める';
   includeDetail.appendChild(includeCheckbox);
   includeDetail.appendChild(includeLabel);
+
+  let tutorialIncludeSnapshot = null;
+  let tutorialIncludePreviewActive = false;
+
+  function ensureTutorialIncludeSnapshot() {
+    if (!tutorialIncludePreviewActive) {
+      tutorialIncludeSnapshot = includeCheckbox.checked;
+      tutorialIncludePreviewActive = true;
+    }
+  }
+
+  function applyTutorialInclude(value) {
+    includeCheckbox.checked = !!value;
+    updateFormatButtons();
+  }
+
+  function previewIncludeDetail(value) {
+    ensureTutorialIncludeSnapshot();
+    applyTutorialInclude(value);
+  }
+
+  function restoreIncludeDetail() {
+    if (!tutorialIncludePreviewActive) {
+      return;
+    }
+    applyTutorialInclude(tutorialIncludeSnapshot);
+    tutorialIncludeSnapshot = null;
+    tutorialIncludePreviewActive = false;
+  }
 
   const txtBtn = document.createElement('button');
   txtBtn.id = 'download-result-txt';
@@ -1075,6 +1165,11 @@ function setupDownload(storeName, period, results) {
   });
   closeBtn.addEventListener('click', hide);
   overlay.addEventListener('click', e => { if (e.target === overlay) hide(); });
+
+  downloadTutorialState = {
+    previewIncludeDetail,
+    restoreIncludeDetail
+  };
 
   function updateFormatButtons() {
     const includeDetails = includeCheckbox.checked;

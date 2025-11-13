@@ -191,7 +191,7 @@ function createTutorialOverlay() {
   const nextBtn = document.createElement('button');
   nextBtn.id = 'tutorial-next';
   nextBtn.type = 'button';
-  nextBtn.textContent = '進む';
+  nextBtn.textContent = '次へ';
 
   controls.appendChild(prevBtn);
   controls.appendChild(nextBtn);
@@ -360,15 +360,19 @@ function initializeHelp(path, options = {}) {
   const stepConfigs = options.steps || {};
   const { helpButton, exitButton, setExitVisible } = createHelpControls();
   const overlay = createTutorialOverlay();
+  const WAITING_MESSAGE_HTML = '読み込みが終わるまでお待ち下さい。<br>読み込みが完了すると、自動でチュートリアルが始まります。';
   let pendingNavigationDirection = null;
 
   const rawPageKey = options.pageKey || path;
   const pageKey = sanitizeTutorialKey(rawPageKey);
   const showPrompt = options.showPrompt === true;
   const autoStartIf = typeof options.autoStartIf === 'function' ? options.autoStartIf : null;
+  const waitForReady = typeof options.waitForReady === 'function' ? options.waitForReady : null;
   const enableAutoStartOnComplete = options.enableAutoStartOnComplete === true;
   const onFinishCallback = typeof options.onFinish === 'function' ? options.onFinish : null;
   const onFirstCompleteCallback = typeof options.onFirstComplete === 'function' ? options.onFirstComplete : null;
+
+  let waitingForReady = false;
 
   const isCompleted = () => (pageKey ? isTutorialCompleted(pageKey) : false);
 
@@ -576,7 +580,7 @@ function initializeHelp(path, options = {}) {
     overlay.bubbleText.innerHTML = formatStepText(currentStep.text);
     overlay.prevBtn.disabled = false;
     overlay.prevBtn.textContent = currentIndex === 0 ? '閉じる' : '戻る';
-    overlay.nextBtn.textContent = currentIndex === steps.length - 1 ? '終了' : '進む';
+    overlay.nextBtn.textContent = currentIndex === steps.length - 1 ? '終了' : '次へ';
 
     currentConfig = resolveStepConfig(currentStep.id);
     if (currentConfig && typeof currentConfig.onEnter === 'function') {
@@ -646,7 +650,41 @@ function initializeHelp(path, options = {}) {
     }
   };
 
+  const showWaitingOverlay = () => {
+    setExitVisible(false);
+    overlay.prevBtn.hidden = true;
+    overlay.nextBtn.hidden = true;
+    overlay.bubbleText.innerHTML = WAITING_MESSAGE_HTML;
+    overlay.show();
+    overlay.centerBubble();
+  };
+
+  const hideWaitingOverlay = () => {
+    overlay.prevBtn.hidden = false;
+    overlay.nextBtn.hidden = false;
+    if (overlay.isVisible()) {
+      overlay.hide();
+    }
+    overlay.bubbleText.innerHTML = '';
+  };
+
+  const beginTutorial = () => {
+    pendingStart = false;
+    waitingForReady = false;
+    setTutorialActive(true);
+    setExitVisible(true);
+    overlay.prevBtn.hidden = false;
+    overlay.nextBtn.hidden = false;
+    overlay.bubbleText.innerHTML = '';
+    overlay.show();
+    attachListeners();
+    showStep(0);
+  };
+
   const startTutorialInternal = () => {
+    if (waitingForReady) {
+      return;
+    }
     if (!stepsReady) {
       pendingStart = true;
       loadSteps();
@@ -658,12 +696,34 @@ function initializeHelp(path, options = {}) {
       setExitVisible(false);
       return;
     }
-    pendingStart = false;
-    setTutorialActive(true);
-    setExitVisible(true);
-    overlay.show();
-    attachListeners();
-    showStep(0);
+    if (waitForReady) {
+      let waitResult;
+      try {
+        waitResult = waitForReady();
+      } catch (error) {
+        console.warn('tutorial waitForReady failed', error);
+        waitResult = true;
+      }
+      if (waitResult && typeof waitResult.then === 'function') {
+        waitingForReady = true;
+        pendingStart = true;
+        showWaitingOverlay();
+        Promise.resolve(waitResult)
+          .catch(error => {
+            console.warn('tutorial waitForReady failed', error);
+          })
+          .then(() => {
+            waitingForReady = false;
+            hideWaitingOverlay();
+            beginTutorial();
+          });
+        return;
+      }
+      if (waitResult === false) {
+        console.warn('tutorial waitForReady returned false; starting tutorial immediately');
+      }
+    }
+    beginTutorial();
   };
 
   const loadSteps = () => {
