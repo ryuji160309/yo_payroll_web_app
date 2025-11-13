@@ -19,14 +19,25 @@
     <div class="header-left">
       <button class="back-btn" id="sheets-back" onclick="history.back()">＜店舗選択</button>
     </div>
-    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-center">
+      <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+      <h1 class="page-title">シート選択</h1>
+    </div>
     <div class="header-right">
       <button class="back-btn" id="sheets-home" onclick="location.href='index.html'">はじめから</button>
     </div>
   </header>
-  <h1 id="store-name" style="text-align:center"></h1>
-  <h2 style="text-align:center">計算する月を選択</h2>
-  <p id="status" style="text-align:center"></p>
-  <div id="sheet-list"></div>
+  <main class="page-content page-content--sheets">
+    <div class="responsive-columns responsive-columns--sheets">
+      <section class="responsive-columns__primary" data-role="list">
+        <h2 class="page-subtitle">計算する月を選択</h2>
+        <div id="sheet-list"></div>
+      </section>
+      <aside class="responsive-columns__secondary" data-role="context">
+        <h2 id="store-name" class="store-name"></h2>
+        <p id="status" class="page-status"></p>
+      </aside>
+    </div>
+  </main>
 </body>
 </html>

@@ -19,19 +19,29 @@
     <div class="header-left">
       <span id="version"></span>
     </div>
-    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-center">
+      <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+      <h1 class="page-title" id="page-title">簡易給与計算</h1>
+    </div>
     <div class="header-right">
       <button class="back-btn" id="settings" onclick="location.href='settings.html'">設定</button>
     </div>
   </header>
-  <h1 style="text-align:center">簡易給与計算</h1>
-  <div id="settings-error" style="color:red;text-align:center;white-space:pre-line;"></div>
-  <p id="store-status" style="text-align:center"></p>
-  <div id="store-list"></div>
-  <div id="offline-controls" class="offline-controls">
-    <button id="offline-load-button" type="button">ローカルから読み込む</button>
-    <p id="offline-workbook-info" class="offline-indicator" aria-live="polite"></p>
-  </div>
-  <div class="info-box" id="announcements"></div>
+  <main class="page-content page-content--index">
+    <div id="settings-error" class="page-error" aria-live="polite"></div>
+    <p id="store-status" class="page-status"></p>
+    <div class="responsive-columns responsive-columns--index">
+      <section class="responsive-columns__primary">
+        <div id="store-list"></div>
+        <div id="offline-controls" class="offline-controls">
+          <button id="offline-load-button" type="button">ローカルから読み込む</button>
+          <p id="offline-workbook-info" class="offline-indicator" aria-live="polite"></p>
+        </div>
+      </section>
+      <aside class="responsive-columns__secondary">
+        <div class="info-box" id="announcements"></div>
+      </aside>
+    </div>
+  </main>
 </body>
 </html>

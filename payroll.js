@@ -684,6 +684,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     detailOverlay.appendChild(detailPopup);
     document.body.appendChild(detailOverlay);
 
+    const detailDock = document.getElementById('employee-detail-dock');
+    const detailPlaceholder = document.getElementById('employee-detail-placeholder');
+    let detailVisible = false;
+
+    function isLandscapeMode() {
+      return !!(document.body && document.body.classList.contains('layout-landscape'));
+    }
+
+    function ensurePopupInDock() {
+      if (!detailDock) {
+        return false;
+      }
+      if (!detailDock.contains(detailPopup)) {
+        detailPopup.classList.add('employee-detail-popup--inline');
+        detailDock.appendChild(detailPopup);
+      } else {
+        detailPopup.classList.add('employee-detail-popup--inline');
+      }
+      return true;
+    }
+
+    function ensurePopupInOverlay() {
+      if (!detailOverlay.contains(detailPopup)) {
+        detailPopup.classList.remove('employee-detail-popup--inline');
+        detailOverlay.appendChild(detailPopup);
+      } else {
+        detailPopup.classList.remove('employee-detail-popup--inline');
+      }
+    }
+
+    function setPlaceholderVisible(visible) {
+      if (!detailPlaceholder) {
+        return;
+      }
+      detailPlaceholder.hidden = !visible;
+    }
+
+    function updateDetailPlacement() {
+      if (!detailVisible) {
+        ensurePopupInOverlay();
+        setPlaceholderVisible(true);
+        detailOverlay.style.display = 'none';
+        return;
+      }
+
+      if (isLandscapeMode() && ensurePopupInDock()) {
+        setPlaceholderVisible(false);
+        detailOverlay.style.display = 'none';
+      } else {
+        ensurePopupInOverlay();
+        setPlaceholderVisible(false);
+        detailOverlay.style.display = 'flex';
+      }
+    }
+
     const detailDownloadOverlay = document.createElement('div');
     detailDownloadOverlay.id = 'employee-detail-download-overlay';
     detailDownloadOverlay.style.display = 'none';
@@ -709,7 +764,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.appendChild(detailDownloadOverlay);
 
     function hideEmployeeDetail() {
-      detailOverlay.style.display = 'none';
+      detailVisible = false;
+      updateDetailPlacement();
       detailDownloadOverlay.style.display = 'none';
       currentDetailDownloadInfo = null;
       detailDownloadBtn.disabled = true;
@@ -842,7 +898,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       currentDetailDownloadInfo = detailInfo;
       detailDownloadBtn.disabled = false;
-      detailOverlay.style.display = 'flex';
+      detailVisible = true;
+      updateDetailPlacement();
     }
 
     showEmployeeDetailOverlayForTutorial = () => {
@@ -864,6 +921,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && detailOverlay.style.display === 'flex') {
         hideEmployeeDetail();
+      }
+    });
+
+    window.addEventListener('layoutmodechange', () => {
+      if (detailVisible) {
+        updateDetailPlacement();
+      } else if (detailDock && detailDock.contains(detailPopup)) {
+        ensurePopupInOverlay();
+        setPlaceholderVisible(true);
       }
     });
 
