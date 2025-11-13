@@ -131,7 +131,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
     steps: {
       back: '#sheets-back',
-      restart: '#sheets-home',
+      restart: {
+        selector: '#sheets-home',
+        onExit: context => {
+          if (context && context.direction === 'next') {
+            closeMultiMonthOverlay();
+          }
+        }
+      },
       mode: {
         selector: '#multi-month-mode-button',
         onEnter: closeMultiMonthOverlay
@@ -476,6 +483,15 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
   const popupButtonMap = new Map();
   let tutorialSnapshot = null;
   let tutorialPreviewActive = false;
+  let lastPreviewClearTimestamp = 0;
+  let pendingTopTwoTimer = null;
+
+  function cancelPendingTopTwo() {
+    if (pendingTopTwoTimer !== null) {
+      clearTimeout(pendingTopTwoTimer);
+      pendingTopTwoTimer = null;
+    }
+  }
 
   function setSheetSelectedByKey(key, selected) {
     const btn = popupButtonMap.get(key);
@@ -515,6 +531,8 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
     if (!tutorialPreviewActive) {
       return;
     }
+    cancelPendingTopTwo();
+    lastPreviewClearTimestamp = 0;
     clearAllSheets();
     if (tutorialSnapshot) {
       tutorialSnapshot.forEach(key => {
@@ -529,31 +547,48 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
 
   function previewClearSelection() {
     ensureTutorialSnapshot();
+    cancelPendingTopTwo();
     clearAllSheets();
     updateStartButton();
     updateSelectAllState();
+    lastPreviewClearTimestamp = Date.now();
   }
 
   function previewSelectAll() {
     ensureTutorialSnapshot();
+    cancelPendingTopTwo();
     selectAllSheets();
     updateStartButton();
     updateSelectAllState();
+    lastPreviewClearTimestamp = 0;
   }
 
   function previewSelectTopTwo() {
     ensureTutorialSnapshot();
-    clearAllSheets();
-    for (let i = 0; i < popupButtons.length && i < 2; i += 1) {
-      const btn = popupButtons[i];
-      if (!btn) {
-        continue;
+    const applySelection = () => {
+      cancelPendingTopTwo();
+      clearAllSheets();
+      for (let i = 0; i < popupButtons.length && i < 2; i += 1) {
+        const btn = popupButtons[i];
+        if (!btn) {
+          continue;
+        }
+        const key = `${btn.dataset.storeKey}|${btn.dataset.sheetIndex}`;
+        setSheetSelectedByKey(key, true);
       }
-      const key = `${btn.dataset.storeKey}|${btn.dataset.sheetIndex}`;
-      setSheetSelectedByKey(key, true);
+      updateStartButton();
+      updateSelectAllState();
+      lastPreviewClearTimestamp = 0;
+    };
+
+    const now = Date.now();
+    if (lastPreviewClearTimestamp && now - lastPreviewClearTimestamp < 150) {
+      cancelPendingTopTwo();
+      pendingTopTwoTimer = setTimeout(applySelection, 320);
+      return;
     }
-    updateStartButton();
-    updateSelectAllState();
+
+    applySelection();
   }
 
   function updateStartButton() {
