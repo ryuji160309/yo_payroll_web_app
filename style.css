@@ -634,6 +634,20 @@ th, td {
   animation: l23 1s infinite steps(12);
 }
 
+:root[data-theme="dark"] .loader {
+  background:
+    linear-gradient(0deg, rgb(255 255 255 / 60%) 30%, #0000 0 70%, rgb(255 255 255 / 95%) 0) 50%/8% 100%,
+    linear-gradient(90deg, rgb(255 255 255 / 35%) 30%, #0000 0 70%, rgb(255 255 255 / 80%) 0) 50%/100% 8%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .loader {
+    background:
+      linear-gradient(0deg, rgb(255 255 255 / 60%) 30%, #0000 0 70%, rgb(255 255 255 / 95%) 0) 50%/8% 100%,
+      linear-gradient(90deg, rgb(255 255 255 / 35%) 30%, #0000 0 70%, rgb(255 255 255 / 80%) 0) 50%/100% 8%;
+  }
+}
+
 .loader::before,
 .loader::after {
   content: "";
