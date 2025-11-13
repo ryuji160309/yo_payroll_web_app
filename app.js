@@ -135,7 +135,7 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
     return;
   }
 
-  const DEFAULT_SUCCESS_PATTERN = 100;
+  const DEFAULT_SUCCESS_PATTERN = 200;
   const ERROR_PATTERN = [50, 50, 50, 50, 50];
 
   function resolvePattern(options) {
@@ -198,7 +198,7 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
 
   const PRESSABLE_SELECTOR = 'button, input[type="button"], input[type="submit"], input[type="reset"]';
   const PRESSED_ATTRIBUTE = 'data-pressed';
-  const BUTTON_PRESS_VIBRATION = 30;
+  const BUTTON_PRESS_VIBRATION = 10;
   const activePresses = new Map();
 
   function setPressedState(button, isPressed) {
