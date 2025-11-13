@@ -79,16 +79,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     isCrossStoreMode ? CROSS_STORE_LOADING_MESSAGE : '読込中・・・',
     { disableSlowNote: isCrossStoreMode }
   );
-  const ensureDownloadOverlayOpen = () => {
+  const ensureDownloadOverlayOpen = (options = {}) => {
+    const { includeDetails, resetPreview } = options;
     const overlay = document.getElementById('download-overlay');
     if (!overlay) {
       return;
     }
     const style = window.getComputedStyle(overlay);
     if (style.display !== 'flex') {
+      if (
+        downloadTutorialState &&
+        typeof downloadTutorialState.openOverlayForTutorial === 'function'
+      ) {
+        const handled = downloadTutorialState.openOverlayForTutorial({ includeDetails, resetPreview });
+        if (handled) {
+          return;
+        }
+      }
       const button = document.getElementById('download');
       if (button) {
         button.click();
+        if (
+          typeof includeDetails === 'boolean' &&
+          downloadTutorialState &&
+          typeof downloadTutorialState.applyIncludeDetail === 'function'
+        ) {
+          downloadTutorialState.applyIncludeDetail(includeDetails, { resetPreview });
+        } else if (typeof includeDetails === 'boolean') {
+          const includeCheckboxEl = document.getElementById('download-include-detail-checkbox');
+          if (includeCheckboxEl) {
+            includeCheckboxEl.checked = includeDetails;
+            includeCheckboxEl.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      }
+    } else if (
+      typeof includeDetails === 'boolean' &&
+      downloadTutorialState &&
+      typeof downloadTutorialState.applyIncludeDetail === 'function'
+    ) {
+      downloadTutorialState.applyIncludeDetail(includeDetails, { resetPreview });
+    } else if (typeof includeDetails === 'boolean') {
+      const includeCheckboxEl = document.getElementById('download-include-detail-checkbox');
+      if (includeCheckboxEl) {
+        includeCheckboxEl.checked = includeDetails;
+        includeCheckboxEl.dispatchEvent(new Event('change', { bubbles: true }));
       }
     }
   };
@@ -191,7 +226,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
       downloadPopup: {
         selector: '#download-popup',
-        onEnter: ensureDownloadOverlayOpen
+        onEnter: () => {
+          ensureDownloadOverlayOpen({ includeDetails: false, resetPreview: true });
+        }
       },
       downloadOptions: {
         selector: '#download-options',
@@ -1123,6 +1160,37 @@ function setupDownload(storeName, period, results) {
     tutorialIncludePreviewActive = false;
   }
 
+  function resetTutorialIncludePreviewState() {
+    if (tutorialIncludePreviewActive) {
+      restoreIncludeDetail();
+    } else {
+      tutorialIncludeSnapshot = null;
+      tutorialIncludePreviewActive = false;
+    }
+  }
+
+  function applyIncludeDetailForTutorial(value, options = {}) {
+    const { resetPreview = false } = options;
+    if (resetPreview) {
+      resetTutorialIncludePreviewState();
+    }
+    applyTutorialInclude(value);
+  }
+
+  function openOverlayForTutorial(options = {}) {
+    const { includeDetails, resetPreview = false } = options;
+    if (resetPreview) {
+      resetTutorialIncludePreviewState();
+    }
+    if (overlay.style.display !== 'flex') {
+      overlay.style.display = 'flex';
+    }
+    if (typeof includeDetails === 'boolean') {
+      applyTutorialInclude(includeDetails);
+    }
+    return true;
+  }
+
   const txtBtn = document.createElement('button');
   txtBtn.id = 'download-result-txt';
   txtBtn.textContent = 'テキスト形式（.txt）';
@@ -1163,7 +1231,9 @@ function setupDownload(storeName, period, results) {
 
   downloadTutorialState = {
     previewIncludeDetail,
-    restoreIncludeDetail
+    restoreIncludeDetail,
+    applyIncludeDetail: applyIncludeDetailForTutorial,
+    openOverlayForTutorial
   };
 
   function updateFormatButtons() {
