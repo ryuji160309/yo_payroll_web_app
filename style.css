@@ -759,17 +759,18 @@ th, td {
   position: fixed;
   bottom: 1rem;
   left: 1rem;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.85rem;
+  padding: 0.75rem 1.25rem;
+  min-width: 3rem;
+  border-radius: 9999px;
   border: 2px solid #111;
   background: #fff;
   color: #111;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 1.45rem;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   z-index: 1500;
   transition: background-color 0.2s ease, color 0.2s ease,
