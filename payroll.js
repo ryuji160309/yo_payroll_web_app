@@ -1147,10 +1147,13 @@ function setupDownload(storeName, period, results) {
   document.body.appendChild(overlay);
 
   function hide() {
+    includeCheckbox.checked = false;
+    updateFormatButtons();
     overlay.style.display = 'none';
   }
 
   button.addEventListener('click', () => {
+    includeCheckbox.checked = true;
     updateFormatButtons();
     overlay.style.display = 'flex';
   });

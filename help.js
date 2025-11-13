@@ -370,6 +370,7 @@ function initializeHelp(path, options = {}) {
   const waitForReady = typeof options.waitForReady === 'function' ? options.waitForReady : null;
   const enableAutoStartOnComplete = options.enableAutoStartOnComplete === true;
   const onFinishCallback = typeof options.onFinish === 'function' ? options.onFinish : null;
+  const onStartCallback = typeof options.onStart === 'function' ? options.onStart : null;
   const onFirstCompleteCallback = typeof options.onFirstComplete === 'function' ? options.onFirstComplete : null;
 
   let waitingForReady = false;
@@ -677,6 +678,13 @@ function initializeHelp(path, options = {}) {
   const beginTutorial = () => {
     pendingStart = false;
     waitingForReady = false;
+    if (onStartCallback) {
+      try {
+        onStartCallback();
+      } catch (error) {
+        console.warn('tutorial onStart failed', error);
+      }
+    }
     setTutorialActive(true);
     setExitVisible(true);
     overlay.prevBtn.hidden = false;
