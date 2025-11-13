@@ -5,7 +5,7 @@ body {
 }
 header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 0.5rem 1rem;
   background: #f0f0f0;
@@ -25,36 +25,6 @@ header {
 
 .header-right {
   justify-content: flex-end;
-}
-
-.header-center {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  justify-items: center;
-  text-align: center;
-  position: relative;
-  min-height: 2.25rem;
-}
-
-.header-center > .page-title,
-.header-center > .network-status {
-  grid-area: 1 / 1;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 1.35rem;
-  line-height: 1.4;
-  transition: opacity 0.3s ease;
-}
-
-.header-center .network-status {
-  pointer-events: none;
-}
-
-.header-center .network-status.is-visible ~ .page-title {
-  opacity: 0;
 }
 
 .header-status {
@@ -77,159 +47,6 @@ header {
 
 .network-status--online {
   color: #2e7d32;
-}
-
-body.layout-portrait,
-body.layout-landscape {
-  min-height: 100vh;
-}
-
-.page-content {
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.page-status,
-.page-error,
-.page-total,
-.page-period,
-.store-name {
-  text-align: center;
-  margin: 0.25rem 0;
-}
-
-.page-error {
-  color: #d32f2f;
-  white-space: pre-line;
-}
-
-.page-content--payroll .store-name,
-.page-content--payroll .page-period,
-.page-content--payroll .page-status,
-.page-content--payroll .page-total,
-.page-content--payroll .page-error {
-  text-align: left;
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 1.2rem;
-  text-align: center;
-}
-
-.page-content--sheets .page-subtitle {
-  text-align: left;
-}
-
-.page-error:empty,
-.page-status:empty,
-.page-total:empty,
-.page-period:empty {
-  display: none;
-}
-
-.responsive-columns {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.responsive-columns__primary,
-.responsive-columns__secondary {
-  width: 100%;
-}
-
-.responsive-columns--sheets [data-role="context"] {
-  order: -1;
-}
-
-body.layout-landscape .responsive-columns {
-  display: grid;
-  gap: 1.5rem;
-  align-items: start;
-}
-
-body.layout-landscape .responsive-columns--index {
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-}
-
-body.layout-landscape .responsive-columns--sheets {
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-}
-
-body.layout-landscape .responsive-columns--payroll {
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-}
-
-body.layout-landscape .responsive-columns--sheets [data-role="context"] {
-  order: 0;
-}
-
-.table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.employee-detail-dock {
-  border: 1px solid #d3d3d3;
-  border-radius: 0.75rem;
-  background: #fafafa;
-  padding: 1rem;
-  min-height: 16rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.employee-detail-placeholder {
-  margin: 0;
-  color: #616161;
-  line-height: 1.6;
-}
-
-.employee-detail-popup--inline {
-  width: 100%;
-  max-width: none;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
-
-.employee-detail-popup--inline #employee-detail-summary,
-.employee-detail-popup--inline #employee-detail-table-wrapper,
-.employee-detail-popup--inline #employee-detail-download,
-.employee-detail-popup--inline #employee-detail-close {
-  margin-inline: 0;
-}
-
-.employee-detail-popup--inline #employee-detail-download,
-.employee-detail-popup--inline #employee-detail-close {
-  width: 100%;
-}
-
-.employee-detail-popup--inline #employee-detail-close {
-  display: none;
-}
-
-.input-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-body.layout-landscape .input-group {
-  justify-content: flex-start;
-}
-
-.page-content--index .page-error {
-  text-align: center;
-}
-
-.page-content--index .offline-controls {
-  margin-top: 1rem;
 }
 
 button,
@@ -609,17 +426,10 @@ th, td {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: stretch;
+  align-items: center;
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
-
-body.layout-landscape #actions {
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
-}
-
 #actions button {
   margin: 0;
 }
