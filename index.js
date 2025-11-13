@@ -1,3 +1,23 @@
+function showToastWithNativeNotice(message, options) {
+  if (!message) {
+    return null;
+  }
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  if (typeof window.showToastWithFeedback === 'function') {
+    return window.showToastWithFeedback(message, options);
+  }
+  let toastHandle = null;
+  if (typeof window.showToast === 'function') {
+    toastHandle = window.showToast(message, options);
+  }
+  if (typeof window.notifyPlatformFeedback === 'function') {
+    window.notifyPlatformFeedback(message, options);
+  }
+  return toastHandle;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   function createDeferred() {
     let resolved = false;
@@ -351,6 +371,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (status) {
             status.textContent = 'ローカルファイルを保存できませんでした。';
           }
+          if (typeof window.notifyPlatformFeedback === 'function') {
+            window.notifyPlatformFeedback(null, { feedbackLevel: 'error' });
+          }
         } finally {
           offlineFileInput.value = '';
         }
@@ -363,6 +386,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           status.textContent = 'ローカルファイルの読み込みに失敗しました。';
         }
         offlineFileInput.value = '';
+        if (typeof window.notifyPlatformFeedback === 'function') {
+          window.notifyPlatformFeedback(null, { feedbackLevel: 'error' });
+        }
       };
       reader.readAsArrayBuffer(file);
     });
@@ -380,6 +406,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       list.style.whiteSpace = 'pre-line';
       list.textContent = '店舗一覧の読み込みに失敗しました。\n通信環境をご確認のうえ、再度お試しください。';
     }
+    if (typeof window.notifyPlatformFeedback === 'function') {
+      window.notifyPlatformFeedback(null, { feedbackLevel: 'error' });
+    }
     return;
   }
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
@@ -387,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   stopLoading(status);
   if (typeof window.notifyPlatformFeedback === 'function') {
     try {
-      window.notifyPlatformFeedback(null, { vibrationPattern: 50 });
+      window.notifyPlatformFeedback(null, { feedbackLevel: 'success' });
     } catch (error) {
       console.warn('notifyPlatformFeedback failed', error);
     }
@@ -406,21 +435,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.settingsError && err) {
     err.textContent = '設定が読み込めませんでした。\nデフォルトの値を使用します。\n設定からエラーを確認してください。';
   }
-  if (typeof window.showToast === 'function') {
-    const storeKeysForToast = stores ? Object.keys(stores) : [];
-    const offlineActiveNow = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
-    let toastMessage = '';
-    if (window.settingsError) {
-      toastMessage = '設定を読み込めませんでした。デフォルトの店舗一覧を表示します。';
-    } else if (storeKeysForToast.length === 0) {
-      toastMessage = '店舗情報が見つかりませんでした。設定から店舗を登録してください。';
-    } else if (offlineActiveNow) {
-      toastMessage = '店舗一覧を読み込みました。ローカルファイルを利用できます。';
-    } else {
-      toastMessage = '店舗一覧の読み込みが完了しました。';
-    }
-    window.showToast(toastMessage, { duration: 3200 });
+  const storeKeysForToast = stores ? Object.keys(stores) : [];
+  const offlineActiveNow = typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive();
+  let toastMessage = '';
+  if (window.settingsError) {
+    toastMessage = '設定を読み込めませんでした。デフォルトの店舗一覧を表示します。';
+  } else if (storeKeysForToast.length === 0) {
+    toastMessage = '店舗情報が見つかりませんでした。設定から店舗を登録してください。';
+  } else if (offlineActiveNow) {
+    toastMessage = '店舗一覧を読み込みました。ローカルファイルを利用できます。';
+  } else {
+    toastMessage = '店舗一覧の読み込みが完了しました。';
   }
+  const feedbackLevelForToast = (window.settingsError || storeKeysForToast.length === 0)
+    ? 'error'
+    : 'success';
+  showToastWithNativeNotice(toastMessage, { duration: 3200, feedbackLevel: feedbackLevelForToast });
   const storeKeys = Object.keys(stores);
   if (list && storeKeys.length > 0) {
     if (!document.getElementById('multi-store-overlay')) {

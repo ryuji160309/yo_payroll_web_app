@@ -87,7 +87,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const message = window.settingsError
     ? '設定を読み込めませんでした。デフォルトの値を表示しています。'
     : '店舗設定を読み込みました。';
-  showToastWithNativeNotice(message, { duration: 3200 });
+  const feedbackLevel = window.settingsError ? 'error' : 'success';
+  showToastWithNativeNotice(message, { duration: 3200, feedbackLevel });
 
   const urlInput = document.getElementById('url');
   if (urlInput) {
@@ -147,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       if (copied) {
-        showToastWithNativeNotice('シートURLをコピーしました。');
+        showToastWithNativeNotice('シートURLをコピーしました。', { feedbackLevel: 'success' });
       }
     };
 
