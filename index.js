@@ -1,4 +1,27 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  function createDeferred() {
+    let resolved = false;
+    let resolver = null;
+    const promise = new Promise(resolve => {
+      resolver = value => {
+        if (!resolved) {
+          resolved = true;
+          resolve(value);
+        }
+      };
+    });
+    return {
+      promise,
+      resolve: value => {
+        if (resolver) {
+          resolver(value);
+        }
+      },
+      isResolved: () => resolved
+    };
+  }
+
+  const tutorialReady = createDeferred();
   const list = document.getElementById('store-list');
   const status = document.getElementById('store-status');
   const offlineControls = document.getElementById('offline-controls');
@@ -351,6 +374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await ensureSettingsLoaded();
   } catch (e) {
     stopLoading(status);
+    tutorialReady.resolve();
     if (list) {
       list.style.color = 'red';
       list.style.whiteSpace = 'pre-line';
@@ -361,6 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('version').textContent = `ver.${APP_VERSION}`;
   const stores = loadStores();
   stopLoading(status);
+  tutorialReady.resolve();
   if (status && typeof isOfflineWorkbookActive === 'function' && isOfflineWorkbookActive()) {
     status.textContent = '店舗を選択して続行してください。';
   }
@@ -692,6 +717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     pageKey: 'top',
     showPrompt: true,
     enableAutoStartOnComplete: true,
+    waitForReady: () => (tutorialReady.isResolved() ? true : tutorialReady.promise),
     onFinish: () => {
       hideMultiStoreOverlayForTutorial();
     },
