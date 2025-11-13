@@ -401,7 +401,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (failedSheets.length > 0) {
       downloadMessage += '（一部のシートは取得できませんでした）';
     }
-    showToastWithNativeNotice(downloadMessage, { duration: 3200 });
+    const downloadFeedbackLevel = failedSheets.length > 0 ? 'error' : 'success';
+    showToastWithNativeNotice(downloadMessage, { duration: 3200, feedbackLevel: downloadFeedbackLevel });
 
     const processingFailures = [];
     const summaries = [];
@@ -967,13 +968,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (failedSheets.length > 0) {
       showToastWithNativeNotice(
         `${failedSheets.length}件のシートを読み込めなかったため除外しました。`,
-        toastOptions,
+        { ...toastOptions, feedbackLevel: 'error' },
       );
     }
     if (processingFailures.length > 0) {
       showToastWithNativeNotice(
         `${processingFailures.length}件のシートにエラーがあったため除外されました。`,
-        toastOptions,
+        { ...toastOptions, feedbackLevel: 'error' },
       );
     }
     if (failedSheets.length > 0 || processingFailures.length > 0) {

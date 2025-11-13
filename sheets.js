@@ -405,7 +405,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (failures.length > 0) {
       toastMessage += '（一部の店舗は読み込めませんでした）';
     }
-    showToastWithNativeNotice(toastMessage, { duration: 3200 });
+    const feedbackLevel = failures.length > 0 ? 'error' : 'success';
+    showToastWithNativeNotice(toastMessage, { duration: 3200, feedbackLevel });
 
     if (failures.length > 0 && statusEl) {
       statusEl.textContent = '一部の店舗のシート一覧を読み込めませんでした。';
@@ -420,6 +421,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       listEl.style.color = 'red';
       listEl.style.whiteSpace = 'pre-line';
       listEl.textContent = 'シート一覽が読み込めませんでした。\nURLが間違っていないか設定から確認ください。';
+    }
+    if (typeof window !== 'undefined' && typeof window.notifyPlatformFeedback === 'function') {
+      window.notifyPlatformFeedback(null, { feedbackLevel: 'error' });
     }
   }
 });

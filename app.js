@@ -135,6 +135,27 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
     return;
   }
 
+  const DEFAULT_SUCCESS_PATTERN = 100;
+  const ERROR_PATTERN = [50, 50, 50, 50, 50];
+
+  function resolvePattern(options) {
+    if (options && Object.prototype.hasOwnProperty.call(options, 'vibrationPattern')) {
+      return options.vibrationPattern;
+    }
+
+    const level = options && typeof options.feedbackLevel === 'string'
+      ? options.feedbackLevel.toLowerCase()
+      : 'success';
+
+    switch (level) {
+      case 'error':
+        return ERROR_PATTERN;
+      case 'success':
+      default:
+        return DEFAULT_SUCCESS_PATTERN;
+    }
+  }
+
   function triggerVibration(pattern) {
     if (typeof navigator.vibrate !== 'function') {
       return;
@@ -147,9 +168,7 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
   }
 
   window.notifyPlatformFeedback = function notifyPlatformFeedback(message, options = {}) {
-    const pattern = options && Object.prototype.hasOwnProperty.call(options, 'vibrationPattern')
-      ? options.vibrationPattern
-      : 50;
+    const pattern = resolvePattern(options);
 
     if (typeof navigator.vibrate === 'function') {
       triggerVibration(pattern);
@@ -179,6 +198,7 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
 
   const PRESSABLE_SELECTOR = 'button, input[type="button"], input[type="submit"], input[type="reset"]';
   const PRESSED_ATTRIBUTE = 'data-pressed';
+  const BUTTON_PRESS_VIBRATION = 30;
   const activePresses = new Map();
 
   function setPressedState(button, isPressed) {
@@ -240,6 +260,9 @@ const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
     };
 
     setPressedState(button, true);
+    if (typeof window.notifyPlatformFeedback === 'function') {
+      window.notifyPlatformFeedback(null, { vibrationPattern: BUTTON_PRESS_VIBRATION });
+    }
     button.addEventListener('pointerleave', onPointerLeave);
     button.addEventListener('pointerenter', onPointerEnter);
 
