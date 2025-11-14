@@ -97,6 +97,7 @@ header {
   color: var(--color-body-text);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .header-left,
@@ -641,7 +642,6 @@ th, td {
     linear-gradient(90deg, var(--loader-cross-soft) 30%, #0000 0 70%, var(--loader-cross-strong) 0) 50%/100% 8%;
   background-repeat: no-repeat;
   animation: l23 1s infinite steps(12);
-  box-shadow: 0 0 0 1px rgba(31, 41, 51, 0.1) inset;
 }
 
 :root[data-theme="dark"] .loader {
@@ -649,8 +649,6 @@ th, td {
   --loader-arc-soft: rgba(229, 233, 240, 0.55);
   --loader-cross-strong: rgba(140, 201, 255, 0.78);
   --loader-cross-soft: rgba(140, 201, 255, 0.42);
-  box-shadow: 0 0 0 1px rgba(140, 201, 255, 0.22) inset,
-    0 0 18px rgba(140, 201, 255, 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -659,8 +657,6 @@ th, td {
     --loader-arc-soft: rgba(229, 233, 240, 0.55);
     --loader-cross-strong: rgba(140, 201, 255, 0.78);
     --loader-cross-soft: rgba(140, 201, 255, 0.42);
-    box-shadow: 0 0 0 1px rgba(140, 201, 255, 0.22) inset,
-      0 0 18px rgba(140, 201, 255, 0.18);
   }
 }
 
