@@ -13,10 +13,27 @@ describe('calculateEmployee', () => {
     expect(result).toEqual({
       hours: 24,
       days: 3,
+      absentDays: 0,
       salary: 24250,
       breakdown: { regularHours: 23, overtimeHours: 1 },
       regularHours: 23,
       overtimeHours: 1
+    });
+  });
+
+  test('counts absence entries without affecting hours', () => {
+    const schedule = ['欠勤', '9-18'];
+    const baseWage = 1000;
+    const overtime = 1.25;
+    const result = calculateEmployee(schedule, baseWage, overtime);
+    expect(result).toEqual({
+      hours: 8,
+      days: 1,
+      absentDays: 1,
+      salary: 8000,
+      breakdown: { regularHours: 8, overtimeHours: 0 },
+      regularHours: 8,
+      overtimeHours: 0
     });
   });
 });
@@ -43,6 +60,7 @@ describe('calculatePayroll', () => {
         baseWage,
         hours: 12,
         days: 2,
+        absentDays: 0,
         baseSalary: 12000,
         transport: 0,
         salary: 12000,
@@ -55,6 +73,7 @@ describe('calculatePayroll', () => {
         baseWage,
         hours: 9,
         days: 1,
+        absentDays: 0,
         baseSalary: 9250,
         transport: 0,
         salary: 9250,

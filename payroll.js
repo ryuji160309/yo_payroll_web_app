@@ -558,6 +558,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const baseSalary = Number(employee.baseSalary ?? employee.salary ?? 0);
         const hours = Number(employee.hours) || 0;
         const days = Number(employee.days) || 0;
+        const absents = Number(employee.absentDays) || 0;
         const rawBreakdown = employee.breakdown && typeof employee.breakdown === 'object'
           ? employee.breakdown
           : {
@@ -583,6 +584,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             baseWage: employee.baseWage,
             hours,
             days,
+            absentDays: absents,
             baseSalary,
             transport: Number(employee.transport || 0),
             salary: baseSalary + Number(employee.transport || 0),
@@ -598,6 +600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           existing.baseWage = employee.baseWage;
           existing.hours += hours;
           existing.days += days;
+          existing.absentDays = (Number(existing.absentDays) || 0) + absents;
           existing.baseSalary += baseSalary;
           existing.salary = existing.baseSalary + Number(existing.transport || 0);
           if (!existing.breakdown || typeof existing.breakdown !== 'object') {
@@ -637,16 +640,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           overtimeHours: Number(employee.overtimeHours) || 0
         };
       } else {
-        employee.breakdown = {
-          regularHours: Number(employee.breakdown.regularHours) || 0,
-          overtimeHours: Number(employee.breakdown.overtimeHours) || 0
-        };
-      }
-      employee.regularHours = employee.breakdown.regularHours;
-      employee.overtimeHours = employee.breakdown.overtimeHours;
-      employee.transport = Number(employee.transport || 0);
-      employee.salary = employee.baseSalary + employee.transport;
-    });
+      employee.breakdown = {
+        regularHours: Number(employee.breakdown.regularHours) || 0,
+        overtimeHours: Number(employee.breakdown.overtimeHours) || 0
+      };
+    }
+    employee.regularHours = employee.breakdown.regularHours;
+    employee.overtimeHours = employee.breakdown.overtimeHours;
+    employee.absentDays = Number(employee.absentDays) || 0;
+    employee.transport = Number(employee.transport || 0);
+    employee.salary = employee.baseSalary + employee.transport;
+  });
 
     const totalSalary = results.reduce((sum, r) => sum + (Number(r.salary) || 0), 0);
     const totalSalaryEl = document.getElementById('total-salary');
@@ -974,6 +978,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const daysTd = document.createElement('td');
       daysTd.textContent = r.days;
 
+      const absentTd = document.createElement('td');
+      absentTd.textContent = r.absentDays;
+
       const transportTd = document.createElement('td');
       const transportInput = document.createElement('input');
       transportInput.type = 'number';
@@ -995,6 +1002,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       tr.appendChild(wageTd);
       tr.appendChild(hoursTd);
       tr.appendChild(daysTd);
+      tr.appendChild(absentTd);
       tr.appendChild(transportTd);
       tr.appendChild(salaryTd);
       tbody.appendChild(tr);
@@ -1364,6 +1372,8 @@ function buildEmployeeDetailDownloadInfo(employee, defaultStoreName) {
   const hoursValue = Number.isFinite(hoursValueRaw) ? hoursValueRaw : 0;
   const daysValueRaw = Number(employee.days);
   const daysValue = Number.isFinite(daysValueRaw) ? daysValueRaw : (employee.days || 0);
+  const absentValueRaw = Number(employee.absentDays);
+  const absentValue = Number.isFinite(absentValueRaw) ? absentValueRaw : 0;
   const transportValue = Number(employee.transport || 0);
   const salaryValue = Number(employee.salary || 0);
 
@@ -1371,6 +1381,7 @@ function buildEmployeeDetailDownloadInfo(employee, defaultStoreName) {
     `基本時給：${baseWageValue.toLocaleString()}円`,
     `総勤務時間：${hoursValue.toFixed(2)}時間`,
     `出勤日数：${daysValue}日`,
+    `欠勤日数：${absentValue}日`,
     `交通費：${transportValue.toLocaleString()}円`,
     `給与：${salaryValue.toLocaleString()}円`
   ];
@@ -1389,23 +1400,37 @@ function buildEmployeeDetailDownloadInfo(employee, defaultStoreName) {
       ? String(block.storeName).trim()
       : defaultStoreName;
     block.schedule.forEach((cell, dayIdx) => {
-      if (!cell) return;
-      const segments = cell.toString().split(',')
+      if (cell === null || cell === undefined) return;
+      const rawText = cell.toString();
+      const trimmed = rawText.trim();
+      if (!trimmed) return;
+      const isAbsent = trimmed === '欠勤';
+      const segments = trimmed.split(',')
         .map(s => s.trim())
         .map(seg => {
           const match = seg.match(TIME_RANGE_REGEX);
           return match ? parseTimeSegment(match) : null;
         })
         .filter(Boolean);
-      if (segments.length === 0) return;
+      if (!isAbsent && segments.length === 0) return;
       const current = new Date(baseDate);
       current.setDate(baseDate.getDate() + dayIdx);
       const dateKey = `${current.getFullYear()}-${current.getMonth()}-${current.getDate()}`;
       let entry = entriesMap.get(dateKey);
       if (!entry) {
-        entry = { date: current, segments: new Map() };
+        entry = { date: current, segments: new Map(), isAbsent: false };
         entriesMap.set(dateKey, entry);
       }
+      if (!(entry.segments instanceof Map)) {
+        entry.segments = new Map();
+      }
+      if (isAbsent && segments.length === 0) {
+        if (entry.segments.size === 0) {
+          entry.isAbsent = true;
+        }
+        return;
+      }
+      entry.isAbsent = false;
       segments.forEach(segmentInfo => {
         let segment = entry.segments.get(segmentInfo.canonical);
         if (!segment) {
@@ -1432,7 +1457,17 @@ function buildEmployeeDetailDownloadInfo(employee, defaultStoreName) {
       currentMonthLabel = monthLabel;
       rows.push({ type: 'month', label: monthLabel });
     }
-    const sortedSegments = Array.from(entry.segments.values())
+    const entrySegments = entry.segments instanceof Map ? entry.segments : new Map();
+    if (entry.isAbsent && entrySegments.size === 0) {
+      rows.push({
+        type: 'day',
+        dateLabel: `${entry.date.getDate()}日`,
+        times: ['欠勤'],
+        stores: ['']
+      });
+      return;
+    }
+    const sortedSegments = Array.from(entrySegments.values())
       .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
     const segmentDetails = sortedSegments.map(segment => {
       const storeNames = Array.from(segment.storeNames)
@@ -1550,11 +1585,19 @@ async function downloadResults(storeName, period, results, options = {}) {
     { duration: 3200 },
   );
   const aoa = [
-    ['従業員名', '基本時給', '勤務時間', '出勤日数', '交通費', '給与'],
-    ...results.map(r => [r.name, r.baseWage, r.hours, r.days, r.transport, r.salary])
+    ['従業員名', '基本時給', '勤務時間', '出勤日数', '欠勤日数', '交通費', '給与'],
+    ...results.map(r => [
+      r.name,
+      r.baseWage,
+      r.hours,
+      r.days,
+      r.absentDays,
+      r.transport,
+      r.salary
+    ])
   ];
   const total = results.reduce((sum, r) => sum + (Number(r.salary) || 0), 0);
-  aoa.push(['合計支払い給与', '', '', '', '', total]);
+  aoa.push(['合計支払い給与', '', '', '', '', '', total]);
 
   if (normalizedFormat === 'csv') {
     const ws = XLSX.utils.aoa_to_sheet(aoa);

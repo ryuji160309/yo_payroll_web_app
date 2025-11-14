@@ -20,9 +20,16 @@ function calculateEmployee(schedule, baseWage, overtime) {
   let workdays = 0;
   let regularTotal = 0;
   let overtimeTotal = 0;
+  let absentDays = 0;
   schedule.forEach(cell => {
-    if (!cell) return;
-    const segments = cell.toString().split(',');
+    if (cell === null || cell === undefined) return;
+    const text = cell.toString().trim();
+    if (!text) return;
+    if (text === '欠勤') {
+      absentDays += 1;
+      return;
+    }
+    const segments = text.split(',');
     let dayHours = 0;
     let hasValid = false;
     segments.forEach(seg => {
@@ -61,6 +68,7 @@ function calculateEmployee(schedule, baseWage, overtime) {
   return {
     hours: total,
     days: workdays,
+    absentDays,
     salary,
     breakdown,
     regularHours: regularTotal,
@@ -89,6 +97,7 @@ function calculatePayroll(data, baseWage, overtime, excludeWords = []) {
       baseWage,
       hours: r.hours,
       days: r.days,
+      absentDays: r.absentDays,
       baseSalary,
       transport: 0,
       salary: baseSalary,
