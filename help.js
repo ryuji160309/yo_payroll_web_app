@@ -510,6 +510,13 @@ function initializeHelp(path, options = {}) {
     if (event.key === 'Escape') {
       event.preventDefault();
       finishTutorial();
+      return;
+    }
+    if (event.key === 'Enter' && overlay.isVisible()) {
+      if (overlay.nextBtn && !overlay.nextBtn.hidden && !overlay.nextBtn.disabled) {
+        event.preventDefault();
+        overlay.nextBtn.click();
+      }
     }
   };
 
