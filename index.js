@@ -674,14 +674,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetch('announcements.txt', { cache: 'no-store' })
       .then(res => res.text())
       .then(text => {
-        const blocks = text.trim().split(/\n\s*\n/);
-        const notes = blocks.map(block => {
-          const lines = block.trim().split('\n');
-          const versionLine = lines.shift();
-          const version = versionLine.replace(/^ver\./i, '').trim();
-          const messages = lines.map(l => l.trim()).filter(Boolean);
-          return { version, messages };
-        }).sort((a, b) => {
+        const blocks = text
+          .split(/\n\s*\n/)
+          .map(block => block.trim())
+          .filter(Boolean);
+        const issues = [];
+        const notes = [];
+        blocks.forEach(block => {
+          const lines = block.split('\n').map(l => l.trim()).filter(line => line.length > 0);
+          if (!lines.length) {
+            return;
+          }
+          const header = lines.shift();
+          if (/^ver\./i.test(header)) {
+            const version = header.replace(/^ver\./i, '').trim();
+            notes.push({
+              type: 'version',
+              version,
+              messages: lines
+            });
+            return;
+          }
+          if (header === '現在確認できている不具合') {
+            issues.push({
+              type: 'issues',
+              title: header,
+              messages: lines
+            });
+          }
+        });
+
+        notes.sort((a, b) => {
           const pa = a.version.split('.').map(Number);
           const pb = b.version.split('.').map(Number);
           for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -690,7 +713,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           return 0;
         });
-        if (!notes.length) {
+
+        if (!notes.length && !issues.length) {
           controlWrapper.textContent = '';
           messageDiv.textContent = '現在お知らせはありません。';
           return;
@@ -701,6 +725,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         latestOpt.value = '';
         latestOpt.textContent = '最新3件';
         select.appendChild(latestOpt);
+        if (issues.length) {
+          const issuesOpt = document.createElement('option');
+          issuesOpt.value = '__issues__';
+          issuesOpt.textContent = '現在確認できている不具合';
+          select.appendChild(issuesOpt);
+        }
         notes.forEach(n => {
           const opt = document.createElement('option');
           opt.value = n.version;
@@ -724,9 +754,42 @@ document.addEventListener('DOMContentLoaded', async () => {
           return frag;
         }
 
+        function buildIssuesFragment(block) {
+          const frag = document.createDocumentFragment();
+          const strong = document.createElement('strong');
+          strong.textContent = block.title;
+          frag.appendChild(strong);
+          if (!block.messages.length) {
+            return frag;
+          }
+          block.messages.forEach(msg => {
+            frag.appendChild(document.createElement('br'));
+            const span = document.createElement('span');
+            span.textContent = msg;
+            frag.appendChild(span);
+          });
+          return frag;
+        }
+
         function render(ver) {
           messageDiv.textContent = '';
           if (!ver) {
+            if (!latestNotes.length) {
+              if (issues.length) {
+                issues.forEach((block, idx) => {
+                  messageDiv.appendChild(buildIssuesFragment(block));
+                  if (idx < issues.length - 1) {
+                    messageDiv.appendChild(document.createElement('br'));
+                    messageDiv.appendChild(document.createElement('br'));
+                  }
+                });
+              } else {
+                const span = document.createElement('span');
+                span.textContent = '現在お知らせはありません。';
+                messageDiv.appendChild(span);
+              }
+              return;
+            }
             latestNotes.forEach((n, idx) => {
               messageDiv.appendChild(buildNoteFragment(n));
               if (idx < latestNotes.length - 1) {
@@ -734,6 +797,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 messageDiv.appendChild(document.createElement('br'));
               }
             });
+            return;
+          }
+          if (ver === '__issues__') {
+            issues.forEach((block, idx) => {
+              messageDiv.appendChild(buildIssuesFragment(block));
+              if (idx < issues.length - 1) {
+                messageDiv.appendChild(document.createElement('br'));
+                messageDiv.appendChild(document.createElement('br'));
+              }
+            });
+            if (!issues.length) {
+              const span = document.createElement('span');
+              span.textContent = '現在確認できている不具合はありません。';
+              messageDiv.appendChild(span);
+            }
             return;
           }
           const note = notes.find(n => n.version === ver);
