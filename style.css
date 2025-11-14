@@ -86,37 +86,12 @@ a {
 }
 header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 0.5rem 1rem;
   background: var(--color-surface-muted);
   gap: 0.5rem;
   color: var(--color-body-text);
-}
-
-.header-center {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 0.2rem;
-  min-height: 2.25rem;
-}
-
-.header-title {
-  font-size: 1.05rem;
-  font-weight: 600;
-  text-align: center;
-  display: none;
-  line-height: 1.25;
-}
-
-.landscape-mode .header-title {
-  display: block;
-}
-
-.landscape-mode [data-header-title-source] {
-  display: none !important;
 }
 
 .header-left,
@@ -246,57 +221,6 @@ textarea:focus {
   display: block;
   width: 90%;
   margin: 0.5rem auto;
-}
-
-.home-layout {
-  width: 90%;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.home-stores {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.home-stores #store-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.landscape-mode .home-layout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: flex-start;
-  gap: 1.5rem;
-  width: min(95%, 72rem);
-}
-
-.landscape-mode .home-stores {
-  height: 100%;
-}
-
-.landscape-mode .home-stores #store-list,
-.landscape-mode .home-stores #offline-controls {
-  width: 100%;
-  margin: 0;
-}
-
-.landscape-mode #store-list button,
-.landscape-mode #sheet-list button {
-  width: 100%;
-  margin: 0;
-}
-
-.landscape-mode .info-box {
-  width: 100%;
-  margin: 0;
-  height: 100%;
-  box-sizing: border-box;
 }
 
 #multi-store-mode-button {
@@ -537,22 +461,6 @@ textarea:focus {
   flex-direction: column;
 }
 
-.landscape-mode #sheet-buttons-container,
-.landscape-mode .store-sheet-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 0.75rem;
-}
-
-.landscape-mode .store-section {
-  width: 100%;
-  margin: 1rem 0;
-}
-
-.landscape-mode .store-section-title {
-  text-align: left;
-}
-
 .store-section-empty {
   text-align: center;
   color: var(--color-muted-text);
@@ -622,93 +530,6 @@ th, td {
 }
 #actions button {
   margin: 0;
-}
-#payroll-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  width: 95%;
-  margin: 0 auto 2rem;
-}
-
-#payroll-main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.landscape-mode #payroll-layout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
-  align-items: flex-start;
-}
-
-.landscape-mode #payroll-main {
-  width: 100%;
-}
-
-#employee-detail-panel {
-  display: none;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  box-shadow: 0 0.75rem 2.5rem rgba(15, 23, 42, 0.08);
-  color: var(--color-body-text);
-  min-height: 18rem;
-  box-sizing: border-box;
-}
-
-.landscape-mode #employee-detail-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-#employee-detail-panel-placeholder {
-  color: var(--color-muted-text);
-  line-height: 1.6;
-  text-align: center;
-}
-
-#employee-detail-panel.is-active #employee-detail-panel-placeholder {
-  display: none;
-}
-
-#employee-detail-popup.is-panel-mode {
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-  padding: 0;
-  max-width: none;
-  width: 100%;
-  max-height: none;
-}
-
-#employee-detail-popup.is-panel-mode #employee-detail-title {
-  text-align: left;
-}
-
-#employee-detail-popup.is-panel-mode #employee-detail-summary {
-  align-items: flex-start;
-}
-
-#employee-detail-popup.is-panel-mode #employee-detail-table-wrapper {
-  margin-bottom: 1rem;
-  max-height: none;
-}
-
-#employee-detail-popup.is-panel-mode #employee-detail-download {
-  margin-bottom: 0.5rem;
-}
-
-#employee-detail-popup.is-panel-mode #employee-detail-close {
-  display: none;
-}
-
-.landscape-mode #actions {
-  align-items: flex-start;
 }
 #recalc {
   margin: 1rem;
