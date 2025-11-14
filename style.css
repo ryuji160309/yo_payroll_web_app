@@ -20,6 +20,10 @@
   --color-success: #2e7d32;
   --color-danger: #d32f2f;
   --color-toast-bg: rgba(19, 28, 38, 0.92);
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
 }
 
 :root[data-theme="dark"] {
@@ -75,7 +79,8 @@
 body {
   font-family: sans-serif;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--safe-area-inset-right, 0px) var(--safe-area-inset-bottom, 0px)
+    var(--safe-area-inset-left, 0px);
   background-color: var(--color-body-bg);
   color: var(--color-body-text);
   transition: background-color 0.25s ease, color 0.25s ease;
@@ -91,7 +96,7 @@ header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 0.5rem 1rem;
+  padding: calc(0.5rem + var(--safe-area-inset-top, 0px)) 1rem 0.5rem;
   background: var(--color-surface-muted);
   gap: 0.5rem;
   color: var(--color-body-text);
@@ -562,16 +567,17 @@ th, td {
 
 #toast-container {
   position: fixed;
-  inset: auto 0 1.5rem;
+  inset: calc(var(--safe-area-inset-top, 0px) + 1rem) 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
   pointer-events: none;
   width: 100%;
-  padding: 0 1rem;
+  padding: 0 calc(1rem + var(--safe-area-inset-right, 0px)) 0
+    calc(1rem + var(--safe-area-inset-left, 0px));
   box-sizing: border-box;
-  z-index: 1200;
+  z-index: 12000;
 }
 
 .toast {
@@ -584,7 +590,7 @@ th, td {
   font-size: 0.95rem;
   line-height: 1.2;
   opacity: 0;
-  transform: translateY(0.75rem);
+  transform: translateY(-0.75rem);
   transition: opacity 0.2s ease, transform 0.2s ease;
   max-width: calc(100% - 2rem);
   text-align: center;
@@ -641,7 +647,6 @@ th, td {
     linear-gradient(90deg, var(--loader-cross-soft) 30%, #0000 0 70%, var(--loader-cross-strong) 0) 50%/100% 8%;
   background-repeat: no-repeat;
   animation: l23 1s infinite steps(12);
-  box-shadow: 0 0 0 1px rgba(31, 41, 51, 0.1) inset;
 }
 
 :root[data-theme="dark"] .loader {
@@ -649,8 +654,6 @@ th, td {
   --loader-arc-soft: rgba(229, 233, 240, 0.55);
   --loader-cross-strong: rgba(140, 201, 255, 0.78);
   --loader-cross-soft: rgba(140, 201, 255, 0.42);
-  box-shadow: 0 0 0 1px rgba(140, 201, 255, 0.22) inset,
-    0 0 18px rgba(140, 201, 255, 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -659,8 +662,6 @@ th, td {
     --loader-arc-soft: rgba(229, 233, 240, 0.55);
     --loader-cross-strong: rgba(140, 201, 255, 0.78);
     --loader-cross-soft: rgba(140, 201, 255, 0.42);
-    box-shadow: 0 0 0 1px rgba(140, 201, 255, 0.22) inset,
-      0 0 18px rgba(140, 201, 255, 0.18);
   }
 }
 
