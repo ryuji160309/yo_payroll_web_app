@@ -228,20 +228,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         selector: '#download-popup',
         onEnter: () => {
           ensureDownloadOverlayOpen({ includeDetails: false, resetPreview: true });
+        },
+        onExit: context => {
+          if (context && context.direction === 'next') {
+            ensureDownloadOverlayOpen({ includeDetails: true, resetPreview: true });
+          }
         }
       },
       downloadOptions: {
         selector: '#download-options',
         onEnter: () => {
           ensureDownloadOverlayOpen();
-          if (downloadTutorialState && typeof downloadTutorialState.previewIncludeDetail === 'function') {
-            downloadTutorialState.previewIncludeDetail(true);
-          }
         },
         onExit: context => {
           const direction = context ? context.direction : null;
-          if (downloadTutorialState && typeof downloadTutorialState.restoreIncludeDetail === 'function') {
-            downloadTutorialState.restoreIncludeDetail();
+          if (direction === 'next') {
+            ensureDownloadOverlayOpen({ includeDetails: false, resetPreview: true });
           }
           if (!context || direction !== 'prev') {
             closeDownloadOverlay();
