@@ -388,9 +388,6 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     };
 
     setPressedState(button, true);
-    if (typeof window.notifyPlatformFeedback === 'function') {
-      window.notifyPlatformFeedback(null, { vibrationPattern: BUTTON_PRESS_VIBRATION });
-    }
     button.addEventListener('pointerleave', onPointerLeave);
     button.addEventListener('pointerenter', onPointerEnter);
 
@@ -405,9 +402,83 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     clearPress(event.pointerId);
   }
 
+  function handleButtonActivation(event) {
+    const button = event.target && event.target.closest
+      ? event.target.closest(PRESSABLE_SELECTOR)
+      : null;
+
+    if (!button || button.disabled) {
+      return;
+    }
+
+    if (typeof window.notifyPlatformFeedback === 'function') {
+      window.notifyPlatformFeedback(null, { vibrationPattern: BUTTON_PRESS_VIBRATION });
+    }
+  }
+
   document.addEventListener('pointerdown', handlePointerDown, { passive: true });
   window.addEventListener('pointerup', handlePointerEnd);
   window.addEventListener('pointercancel', handlePointerEnd);
+  document.addEventListener('click', handleButtonActivation, true);
+})();
+
+(function setupHeaderScrollToTop() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, label, [role="button"], [role="link"]';
+
+  function scrollToTop() {
+    if (typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (typeof document.documentElement !== 'undefined') {
+      document.documentElement.scrollTop = 0;
+    }
+    if (typeof document.body !== 'undefined') {
+      document.body.scrollTop = 0;
+    }
+  }
+
+  function handleHeaderClick(event) {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    const header = event.currentTarget;
+    if (!header || !header.contains(event.target)) {
+      return;
+    }
+
+    if (event.target && event.target.closest(INTERACTIVE_SELECTOR)) {
+      return;
+    }
+
+    if (window.scrollY <= 0) {
+      return;
+    }
+
+    scrollToTop();
+  }
+
+  function init() {
+    const header = document.querySelector('header');
+    if (!header || header.dataset.scrollToTopBound === 'true') {
+      return;
+    }
+
+    header.dataset.scrollToTopBound = 'true';
+    header.addEventListener('click', handleHeaderClick);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
 })();
 
 (function setupUpdateChecker() {

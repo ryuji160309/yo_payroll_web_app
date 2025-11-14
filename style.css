@@ -85,6 +85,9 @@ a {
   color: var(--color-link);
 }
 header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -92,6 +95,8 @@ header {
   background: var(--color-surface-muted);
   gap: 0.5rem;
   color: var(--color-body-text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
 }
 
 .header-left,
