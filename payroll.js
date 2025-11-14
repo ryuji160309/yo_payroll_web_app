@@ -684,67 +684,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     detailOverlay.appendChild(detailPopup);
     document.body.appendChild(detailOverlay);
 
-    const detailPanel = document.getElementById('employee-detail-panel');
-    const detailPanelPlaceholder = document.getElementById('employee-detail-panel-placeholder');
-    let activeDetailIndex = null;
-
-    const usePanelLayout = () => {
-      if (!detailPanel) {
-        return;
-      }
-      if (detailPopup.parentElement !== detailPanel) {
-        detailPanel.appendChild(detailPopup);
-      }
-      detailPopup.classList.add('is-panel-mode');
-    };
-
-    const useOverlayLayout = () => {
-      if (detailPopup.parentElement !== detailOverlay) {
-        detailOverlay.appendChild(detailPopup);
-      }
-      detailPopup.classList.remove('is-panel-mode');
-    };
-
-    const updatePanelPlaceholderState = isActive => {
-      if (!detailPanelPlaceholder) {
-        return;
-      }
-      detailPanelPlaceholder.hidden = !!isActive;
-    };
-
-    const syncDetailLayout = hasContent => {
-      const isLandscape = document.documentElement.classList.contains('landscape-mode');
-      if (isLandscape) {
-        if (hasContent) {
-          usePanelLayout();
-          if (detailPanel) {
-            detailPanel.classList.add('is-active');
-          }
-          updatePanelPlaceholderState(true);
-        } else {
-          if (detailPanel) {
-            detailPanel.classList.remove('is-active');
-          }
-          updatePanelPlaceholderState(false);
-          useOverlayLayout();
-        }
-        detailOverlay.style.display = 'none';
-      } else {
-        useOverlayLayout();
-        if (hasContent) {
-          detailOverlay.style.display = 'flex';
-        } else {
-          detailOverlay.style.display = 'none';
-        }
-        if (detailPanel) {
-          detailPanel.classList.remove('is-active');
-        }
-        updatePanelPlaceholderState(false);
-      }
-    };
-
-    syncDetailLayout(false);
-
     const detailDownloadOverlay = document.createElement('div');
     detailDownloadOverlay.id = 'employee-detail-download-overlay';
     detailDownloadOverlay.style.display = 'none';
@@ -770,11 +709,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.appendChild(detailDownloadOverlay);
 
     function hideEmployeeDetail() {
-      hideDetailDownload();
+      detailOverlay.style.display = 'none';
+      detailDownloadOverlay.style.display = 'none';
       currentDetailDownloadInfo = null;
       detailDownloadBtn.disabled = true;
-      activeDetailIndex = null;
-      syncDetailLayout(false);
     }
 
     function hideDetailDownload() {
@@ -902,10 +840,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       }
 
-      activeDetailIndex = idx;
       currentDetailDownloadInfo = detailInfo;
       detailDownloadBtn.disabled = false;
-      syncDetailLayout(true);
+      detailOverlay.style.display = 'flex';
     }
 
     showEmployeeDetailOverlayForTutorial = () => {
@@ -929,18 +866,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideEmployeeDetail();
       }
     });
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('app:landscapemodechange', () => {
-        if (Number.isInteger(activeDetailIndex) && results[activeDetailIndex]) {
-          showEmployeeDetail(activeDetailIndex);
-        } else {
-          activeDetailIndex = null;
-          hideDetailDownload();
-          syncDetailLayout(false);
-        }
-      });
-    }
 
     const scheduleFrame = (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function')
       ? window.requestAnimationFrame.bind(window)
