@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const tutorialReady = createDeferred();
   let downloadTutorialState = null;
+  let sortingController = null;
 
   const statusEl = document.getElementById('status');
   const params = new URLSearchParams(location.search);
@@ -167,6 +168,57 @@ document.addEventListener('DOMContentLoaded', async () => {
       restart: '#payroll-home',
       setBase: '#base-wage-control',
       setTransport: '#transport-control',
+      sortHeaders: {
+        selector: '#employees thead',
+        onEnter: () => {
+          if (sortingController && typeof sortingController.reset === 'function') {
+            sortingController.reset();
+          }
+        }
+      },
+      sortedTable: {
+        selector: '#employees tbody',
+        onEnter: () => {
+          if (sortingController && typeof sortingController.sortBy === 'function') {
+            sortingController.sortBy('days', 'asc');
+          }
+        },
+        onExit: context => {
+          if (!sortingController || typeof sortingController.reset !== 'function') {
+            return;
+          }
+          if (!context || context.direction !== 'next') {
+            sortingController.reset();
+          }
+        }
+      },
+      sortReset: {
+        getElement: () => {
+          if (sortingController && typeof sortingController.getResetButton === 'function') {
+            return sortingController.getResetButton() || document.getElementById('sort-reset-button');
+          }
+          return document.getElementById('sort-reset-button');
+        },
+        onEnter: () => {
+          if (
+            sortingController &&
+            typeof sortingController.sortBy === 'function' &&
+            typeof sortingController.isSorted === 'function'
+          ) {
+            if (!sortingController.isSorted()) {
+              sortingController.sortBy('days', 'asc');
+            }
+          }
+        },
+        onExit: context => {
+          if (!sortingController || typeof sortingController.reset !== 'function') {
+            return;
+          }
+          if (!context || context.direction === 'next') {
+            sortingController.reset();
+          }
+        }
+      },
       firstEmployee: {
         getElement: () => {
           const firstRow = document.querySelector('#employees tbody tr');
@@ -657,6 +709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     totalSalaryEl.textContent = `合計支払い給与：${totalSalary.toLocaleString()}円`;
     let totalSalaryValue = totalSalary;
     const tbody = document.querySelector('#employees tbody');
+    const rowElements = Array.isArray(results) ? new Array(results.length) : [];
 
     const detailOverlay = document.createElement('div');
     detailOverlay.id = 'employee-detail-overlay';
@@ -951,6 +1004,201 @@ document.addEventListener('DOMContentLoaded', async () => {
       queueFlush();
     }
 
+    function setupEmployeesTableSorting({ table, tbody, results, rowElements }) {
+      const fallback = {
+        sortBy: () => {},
+        reset: () => {},
+        getResetButton: () => document.getElementById('sort-reset-button'),
+        isSorted: () => false
+      };
+      if (!table || !tbody || !Array.isArray(results)) {
+        return fallback;
+      }
+
+      const headerButtons = Array.from(table.querySelectorAll('thead .sort-button'));
+      if (headerButtons.length === 0) {
+        return fallback;
+      }
+
+      const ensureSortResetButton = () => {
+        let button = document.getElementById('sort-reset-button');
+        if (!button) {
+          button = document.createElement('button');
+          button.id = 'sort-reset-button';
+          button.type = 'button';
+          button.textContent = '↻';
+          button.title = '並び替えをリセット';
+          button.setAttribute('aria-label', '並び替えをリセット');
+          button.hidden = true;
+          button.setAttribute('aria-hidden', 'true');
+          const target = document.body || document.documentElement;
+          if (target) {
+            target.appendChild(button);
+          }
+        }
+        return button;
+      };
+
+      const resetButton = ensureSortResetButton();
+      const defaultOrder = results.map((_, idx) => idx);
+      const safeRowElements = Array.isArray(rowElements) ? rowElements : [];
+      const columnConfigs = {
+        name: { type: 'string', getter: employee => employee && employee.name },
+        baseWage: { type: 'number', getter: employee => employee && employee.baseWage },
+        hours: { type: 'number', getter: employee => employee && employee.hours },
+        days: { type: 'number', getter: employee => employee && employee.days },
+        absentDays: { type: 'number', getter: employee => employee && employee.absentDays },
+        transport: { type: 'number', getter: employee => employee && employee.transport },
+        salary: { type: 'number', getter: employee => employee && employee.salary }
+      };
+      const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
+        ? new Intl.Collator('ja', { numeric: false, sensitivity: 'base' })
+        : null;
+
+      const parseNumber = value => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+      };
+
+      const getBaseLabel = button => {
+        if (!button) {
+          return '';
+        }
+        if (button.dataset.sortLabel) {
+          return button.dataset.sortLabel;
+        }
+        const label = button.textContent ? button.textContent.trim() : '';
+        button.dataset.sortLabel = label;
+        return label;
+      };
+
+      let currentSort = null;
+
+      const applyOrder = order => {
+        if (!Array.isArray(order)) {
+          return;
+        }
+        order.forEach(idx => {
+          const row = safeRowElements[idx];
+          if (row) {
+            tbody.appendChild(row);
+          }
+        });
+      };
+
+      const showResetButton = visible => {
+        if (!resetButton) {
+          return;
+        }
+        if (visible) {
+          resetButton.hidden = false;
+          resetButton.setAttribute('aria-hidden', 'false');
+        } else {
+          resetButton.hidden = true;
+          resetButton.setAttribute('aria-hidden', 'true');
+        }
+      };
+
+      const updateSortIndicators = () => {
+        headerButtons.forEach(button => {
+          const key = button.dataset.sortKey;
+          const baseLabel = getBaseLabel(button);
+          const headerCell = button.closest('th');
+          if (currentSort && currentSort.key === key) {
+            button.setAttribute('data-sort-direction', currentSort.direction);
+            const directionLabel = currentSort.direction === 'asc' ? '昇順' : '降順';
+            button.setAttribute('aria-label', `${baseLabel}（${directionLabel}）`);
+            button.setAttribute('aria-pressed', 'true');
+            button.title = `${baseLabel}を${directionLabel}で並び替え中`;
+            if (headerCell) {
+              headerCell.setAttribute('aria-sort', currentSort.direction === 'asc' ? 'ascending' : 'descending');
+            }
+          } else {
+            button.removeAttribute('data-sort-direction');
+            button.removeAttribute('aria-pressed');
+            button.setAttribute('aria-label', `${baseLabel}で並び替え`);
+            button.title = `${baseLabel}で並び替える`;
+            if (headerCell) {
+              headerCell.removeAttribute('aria-sort');
+            }
+          }
+        });
+      };
+
+      const resetSort = () => {
+        currentSort = null;
+        applyOrder(defaultOrder);
+        updateSortIndicators();
+        showResetButton(false);
+      };
+
+      const sortByKey = (key, direction = 'asc') => {
+        const config = columnConfigs[key];
+        if (!config) {
+          return;
+        }
+        const normalizedDirection = direction === 'desc' ? 'desc' : 'asc';
+        const decorated = defaultOrder.map(idx => ({
+          idx,
+          value: typeof config.getter === 'function' ? config.getter(results[idx]) : results[idx]
+        }));
+        decorated.sort((a, b) => {
+          let comparison = 0;
+          if (config.type === 'string') {
+            const aValue = a.value === null || a.value === undefined ? '' : String(a.value);
+            const bValue = b.value === null || b.value === undefined ? '' : String(b.value);
+            if (collator) {
+              comparison = collator.compare(aValue, bValue);
+            } else {
+              comparison = aValue.localeCompare(bValue, 'ja');
+            }
+          } else {
+            comparison = parseNumber(a.value) - parseNumber(b.value);
+          }
+          if (comparison === 0) {
+            comparison = a.idx - b.idx;
+          }
+          return normalizedDirection === 'desc' ? -comparison : comparison;
+        });
+        applyOrder(decorated.map(item => item.idx));
+        currentSort = { key, direction: normalizedDirection };
+        updateSortIndicators();
+        showResetButton(true);
+      };
+
+      headerButtons.forEach(button => {
+        const baseLabel = getBaseLabel(button);
+        button.setAttribute('aria-label', `${baseLabel}で並び替え`);
+        button.title = `${baseLabel}で並び替える`;
+        button.addEventListener('click', () => {
+          const sortKey = button.dataset.sortKey;
+          if (!sortKey) {
+            return;
+          }
+          let nextDirection = 'asc';
+          if (currentSort && currentSort.key === sortKey) {
+            nextDirection = currentSort.direction === 'asc' ? 'desc' : 'asc';
+          }
+          sortByKey(sortKey, nextDirection);
+        });
+      });
+
+      if (resetButton) {
+        resetButton.addEventListener('click', () => {
+          resetSort();
+        });
+      }
+
+      resetSort();
+
+      return {
+        sortBy: (key, direction = 'asc') => sortByKey(key, direction),
+        reset: () => resetSort(),
+        getResetButton: () => resetButton,
+        isSorted: () => currentSort !== null
+      };
+    }
+
     results.forEach((r, idx) => {
       const tr = document.createElement('tr');
       tr.dataset.idx = idx;
@@ -1006,6 +1254,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       tr.appendChild(transportTd);
       tr.appendChild(salaryTd);
       tbody.appendChild(tr);
+      if (Array.isArray(rowElements)) {
+        rowElements[idx] = tr;
+      }
+    });
+    sortingController = setupEmployeesTableSorting({
+      table: document.getElementById('employees'),
+      tbody,
+      results,
+      rowElements
     });
     recalc();
     stopLoading(statusEl);
