@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#0f4a73">
-  <title>簡易給与計算</title>
+  <title>シート選択</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
@@ -12,26 +12,21 @@
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script defer src="app.js"></script>
   <script defer src="help.js"></script>
-  <script defer src="index.js"></script>
+  <script defer src="sheets.js"></script>
 </head>
 <body>
   <header>
     <div class="header-left">
-      <span id="version"></span>
+      <button class="back-btn" id="sheets-back" onclick="history.back()">＜店舗選択</button>
     </div>
     <div id="network-status" class="header-status network-status" aria-live="polite"></div>
     <div class="header-right">
-      <button class="back-btn" id="settings" onclick="location.href='settings.html'">設定</button>
+      <button class="back-btn" id="sheets-home" onclick="location.href='index.html'">はじめから</button>
     </div>
   </header>
-  <h1 style="text-align:center">簡易給与計算</h1>
-  <div id="settings-error" style="color:red;text-align:center;white-space:pre-line;"></div>
-  <p id="store-status" style="text-align:center"></p>
-  <div id="store-list"></div>
-  <div id="offline-controls" class="offline-controls">
-    <button id="offline-load-button" type="button">ローカルから読み込む</button>
-    <p id="offline-workbook-info" class="offline-indicator" aria-live="polite"></p>
-  </div>
-  <div class="info-box" id="announcements"></div>
+  <h1 id="store-name" style="text-align:center"></h1>
+  <h2 style="text-align:center">計算する月を選択</h2>
+  <p id="status" style="text-align:center"></p>
+  <div id="sheet-list"></div>
 </body>
 </html>

@@ -18,7 +18,7 @@ function showToastWithNativeNotice(message, options) {
   return toastHandle;
 }
 
-async function initializeSettingsView() {
+document.addEventListener('DOMContentLoaded', async () => {
   const getFieldWithLabel = id => {
     const field = document.getElementById(id);
     if (!field) {
@@ -162,37 +162,5 @@ async function initializeSettingsView() {
         copyUrlToClipboard();
       }
     });
-  }
-
-  return null;
-}
-
-let settingsViewCleanup = null;
-
-document.addEventListener('yo:view:init', event => {
-  if (!event || !event.detail || event.detail.view !== 'settings') {
-    return;
-  }
-  if (typeof settingsViewCleanup === 'function') {
-    settingsViewCleanup();
-    settingsViewCleanup = null;
-  }
-  const result = initializeSettingsView(event.detail);
-  if (result && typeof result.then === 'function') {
-    result.then(cleanup => {
-      settingsViewCleanup = typeof cleanup === 'function' ? cleanup : null;
-    });
-  } else if (typeof result === 'function') {
-    settingsViewCleanup = result;
-  }
-});
-
-document.addEventListener('yo:view:destroy', event => {
-  if (!event || !event.detail || event.detail.view !== 'settings') {
-    return;
-  }
-  if (typeof settingsViewCleanup === 'function') {
-    settingsViewCleanup();
-    settingsViewCleanup = null;
   }
 });
