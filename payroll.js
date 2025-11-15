@@ -151,6 +151,92 @@ document.addEventListener('DOMContentLoaded', async () => {
   let showEmployeeDetailOverlayForTutorial = () => {};
   let hideEmployeeDetailOverlayForTutorial = () => {};
   const resolveEmployeeDetailPopup = () => document.getElementById('employee-detail-popup');
+  let sortedTableHighlightElement = null;
+  let sortedTableRepositionUnsubscribe = null;
+
+  const ensureSortedTableHighlightElement = () => {
+    if (sortedTableHighlightElement && document.contains(sortedTableHighlightElement)) {
+      return sortedTableHighlightElement;
+    }
+    const element = document.createElement('div');
+    element.className = 'tutorial-highlight-proxy';
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    sortedTableHighlightElement = element;
+    return sortedTableHighlightElement;
+  };
+
+  const updateSortedTableHighlightElement = () => {
+    if (!sortedTableHighlightElement) {
+      return null;
+    }
+    const table = document.getElementById('employees');
+    if (!table) {
+      sortedTableHighlightElement.style.display = 'none';
+      return null;
+    }
+    const tableRect = table.getBoundingClientRect();
+    const head = table.tHead;
+    const body = table.tBodies && table.tBodies[0];
+    let height = 0;
+    if (head) {
+      const headRect = head.getBoundingClientRect();
+      height += headRect.height;
+    }
+    if (body) {
+      const rows = Array.from(body.rows).slice(0, 5);
+      rows.forEach(row => {
+        if (!row) {
+          return;
+        }
+        const rowRect = row.getBoundingClientRect();
+        height += rowRect.height;
+      });
+    }
+    if (height === 0) {
+      height = tableRect.height;
+    }
+    const top = tableRect.top + window.scrollY;
+    const left = tableRect.left + window.scrollX;
+    sortedTableHighlightElement.style.display = 'block';
+    sortedTableHighlightElement.style.position = 'absolute';
+    sortedTableHighlightElement.style.top = `${top}px`;
+    sortedTableHighlightElement.style.left = `${left}px`;
+    sortedTableHighlightElement.style.width = `${tableRect.width}px`;
+    sortedTableHighlightElement.style.height = `${height}px`;
+    return sortedTableHighlightElement;
+  };
+
+  const activateSortedTableHighlight = () => {
+    const element = ensureSortedTableHighlightElement();
+    const updatedElement = updateSortedTableHighlightElement() || element;
+    if (
+      typeof window.registerTutorialRepositionListener === 'function'
+      && !sortedTableRepositionUnsubscribe
+    ) {
+      sortedTableRepositionUnsubscribe = window.registerTutorialRepositionListener(() => {
+        updateSortedTableHighlightElement();
+      });
+    }
+    if (typeof window.requestTutorialReposition === 'function') {
+      window.requestTutorialReposition();
+    }
+    return updatedElement;
+  };
+
+  const deactivateSortedTableHighlight = () => {
+    if (typeof sortedTableRepositionUnsubscribe === 'function') {
+      sortedTableRepositionUnsubscribe();
+    }
+    sortedTableRepositionUnsubscribe = null;
+    if (sortedTableHighlightElement && sortedTableHighlightElement.parentNode) {
+      sortedTableHighlightElement.parentNode.removeChild(sortedTableHighlightElement);
+    }
+    sortedTableHighlightElement = null;
+    if (typeof window.requestTutorialReposition === 'function') {
+      window.requestTutorialReposition();
+    }
+  };
 
   initializeHelp('help/payroll.txt', {
     pageKey: 'payroll',
@@ -162,6 +248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (downloadTutorialState && typeof downloadTutorialState.restoreIncludeDetail === 'function') {
         downloadTutorialState.restoreIncludeDetail();
       }
+      deactivateSortedTableHighlight();
     },
     steps: {
       back: '#payroll-back',
@@ -177,13 +264,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       },
       sortedTable: {
-        selector: '#employees',
+        getElement: () => activateSortedTableHighlight() || document.getElementById('employees'),
         onEnter: () => {
           if (sortingController && typeof sortingController.sortBy === 'function') {
             sortingController.sortBy('days', 'desc');
           }
+          activateSortedTableHighlight();
         },
         onExit: context => {
+          deactivateSortedTableHighlight();
           if (!sortingController || typeof sortingController.reset !== 'function') {
             return;
           }
@@ -1029,13 +1118,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           button.textContent = '↻';
           button.title = '並び替えをリセット';
           button.setAttribute('aria-label', '並び替えをリセット');
-          button.hidden = true;
-          button.setAttribute('aria-hidden', 'true');
+          button.disabled = true;
+          button.setAttribute('aria-disabled', 'true');
         }
         const container = table.closest('.employees-table-container') || table.parentElement;
-        const target = container || document.body || document.documentElement;
-        if (target && button.parentElement !== target) {
-          target.appendChild(button);
+        if (container) {
+          let toolbar = container.querySelector('.employees-table-toolbar');
+          if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.className = 'employees-table-toolbar';
+            if (container.firstChild === table) {
+              container.insertBefore(toolbar, table);
+            } else {
+              container.insertBefore(toolbar, container.firstChild);
+            }
+          }
+          if (button.parentElement !== toolbar) {
+            toolbar.appendChild(button);
+          }
+        } else if (button.parentElement == null) {
+          (document.body || document.documentElement).appendChild(button);
         }
         return button;
       };
@@ -1085,19 +1187,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             tbody.appendChild(row);
           }
         });
+        if (sortedTableHighlightElement) {
+          updateSortedTableHighlightElement();
+        }
       };
 
-      const showResetButton = visible => {
+      const updateResetButtonState = () => {
         if (!resetButton) {
           return;
         }
-        if (visible) {
-          resetButton.hidden = false;
-          resetButton.setAttribute('aria-hidden', 'false');
-        } else {
-          resetButton.hidden = true;
-          resetButton.setAttribute('aria-hidden', 'true');
-        }
+        const isSorted = currentSort !== null;
+        resetButton.disabled = !isSorted;
+        resetButton.setAttribute('aria-disabled', isSorted ? 'false' : 'true');
+        resetButton.classList.toggle('is-active', isSorted);
       };
 
       const updateSortIndicators = () => {
@@ -1130,7 +1232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentSort = null;
         applyOrder(defaultOrder);
         updateSortIndicators();
-        showResetButton(false);
+        updateResetButtonState();
       };
 
       const sortByKey = (key, direction = 'asc') => {
@@ -1164,7 +1266,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyOrder(decorated.map(item => item.idx));
         currentSort = { key, direction: normalizedDirection };
         updateSortIndicators();
-        showResetButton(true);
+        updateResetButtonState();
       };
 
       headerButtons.forEach(button => {

@@ -750,6 +750,783 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   });
 })();
 
+(function setupHeaderClock() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const MINUTE = 60 * 1000;
+  let statusElement = null;
+  let messageActive = false;
+  let timerId = null;
+  let latestClockText = '';
+
+  const pad = value => String(value).padStart(2, '0');
+
+  const formatClock = date => {
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${year}年${month}月${day}日${hours}時${minutes}分`;
+  };
+
+  const clearTimer = () => {
+    if (timerId !== null) {
+      window.clearTimeout(timerId);
+      timerId = null;
+    }
+  };
+
+  const updateLatestClock = () => {
+    latestClockText = formatClock(new Date());
+    return latestClockText;
+  };
+
+  const renderClock = () => {
+    if (!statusElement) {
+      return;
+    }
+    const clockText = updateLatestClock();
+    if (messageActive) {
+      return;
+    }
+    statusElement.textContent = clockText;
+    statusElement.classList.add('has-clock');
+    statusElement.classList.remove('is-visible');
+    statusElement.classList.remove('network-status--online', 'network-status--offline');
+    statusElement.setAttribute('aria-live', 'polite');
+  };
+
+  const scheduleNextTick = () => {
+    if (!statusElement) {
+      return;
+    }
+    clearTimer();
+    const now = Date.now();
+    let delay = MINUTE - (now % MINUTE);
+    if (!Number.isFinite(delay) || delay <= 0 || delay > MINUTE) {
+      delay = MINUTE;
+    }
+    timerId = window.setTimeout(() => {
+      timerId = null;
+      renderClock();
+      scheduleNextTick();
+    }, delay);
+  };
+
+  const setMessageActive = active => {
+    messageActive = !!active;
+    if (!statusElement) {
+      return;
+    }
+    if (messageActive) {
+      statusElement.classList.remove('has-clock');
+    } else {
+      statusElement.classList.add('has-clock');
+      statusElement.classList.remove('is-visible');
+      statusElement.classList.remove('network-status--online', 'network-status--offline');
+      statusElement.textContent = latestClockText || updateLatestClock();
+    }
+  };
+
+  const refreshClock = () => {
+    if (!statusElement) {
+      return;
+    }
+    renderClock();
+    scheduleNextTick();
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      renderClock();
+      scheduleNextTick();
+    }
+  };
+
+  const init = () => {
+    if (statusElement) {
+      return;
+    }
+    statusElement = document.getElementById('network-status');
+    if (!statusElement) {
+      return;
+    }
+    statusElement.classList.add('has-clock');
+    renderClock();
+    scheduleNextTick();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  };
+
+  window.refreshHeaderClock = () => {
+    if (!statusElement) {
+      init();
+    }
+    renderClock();
+    scheduleNextTick();
+  };
+
+  window.setHeaderStatusMessageActive = active => {
+    if (!statusElement) {
+      init();
+    }
+    setMessageActive(active);
+    if (!active) {
+      renderClock();
+      scheduleNextTick();
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();
+
+(function setupHeaderDebugMenu() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const LONG_PRESS_DURATION = 5000;
+  const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, label, [role="button"], [role="link"]';
+  const MAX_STORAGE_DETAIL = 10;
+
+  let header = null;
+  let pressTimer = null;
+  let activePointerId = null;
+  let longPressTriggered = false;
+  let suppressNextClick = false;
+  let popover = null;
+  let outsideClickHandler = null;
+  let keydownHandler = null;
+  let lastRenderToken = 0;
+
+  const clearPressTimer = () => {
+    if (pressTimer !== null) {
+      window.clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  const removeDocumentListeners = () => {
+    if (outsideClickHandler) {
+      document.removeEventListener('pointerdown', outsideClickHandler, true);
+      outsideClickHandler = null;
+    }
+    if (keydownHandler) {
+      document.removeEventListener('keydown', keydownHandler, true);
+      keydownHandler = null;
+    }
+  };
+
+  const hidePopover = () => {
+    lastRenderToken += 1;
+    removeDocumentListeners();
+    if (!popover || popover.hidden) {
+      return;
+    }
+    popover.hidden = true;
+    popover.setAttribute('aria-hidden', 'true');
+    if (header) {
+      header.classList.remove('debug-popover-open');
+    }
+  };
+
+  const ensurePopover = () => {
+    if (popover && document.contains(popover)) {
+      return popover;
+    }
+    if (!header || !document.contains(header)) {
+      header = document.querySelector('header');
+    }
+    if (!header) {
+      return null;
+    }
+    popover = document.createElement('div');
+    popover.className = 'debug-popover';
+    popover.hidden = true;
+    popover.setAttribute('aria-hidden', 'true');
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-label', 'デバッグメニュー');
+
+    const inner = document.createElement('div');
+    inner.className = 'debug-popover__inner';
+
+    const arrow = document.createElement('div');
+    arrow.className = 'debug-popover__arrow';
+    inner.appendChild(arrow);
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'debug-popover__header';
+
+    const title = document.createElement('span');
+    title.className = 'debug-popover__title';
+    title.textContent = 'デバッグメニュー';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'debug-popover__close';
+    closeBtn.textContent = '閉じる';
+
+    headerRow.appendChild(title);
+    headerRow.appendChild(closeBtn);
+
+    const content = document.createElement('div');
+    content.className = 'debug-popover__content';
+    content.textContent = '読み込み中…';
+
+    inner.appendChild(headerRow);
+    inner.appendChild(content);
+    popover.appendChild(inner);
+    header.appendChild(popover);
+
+    closeBtn.addEventListener('click', () => {
+      hidePopover();
+    });
+
+    return popover;
+  };
+
+  const renderSections = (container, sections) => {
+    if (!container) {
+      return;
+    }
+    container.textContent = '';
+    if (!Array.isArray(sections) || sections.length === 0) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'debug-popover__value';
+      emptyMessage.textContent = '表示できる情報がありません。';
+      container.appendChild(emptyMessage);
+      return;
+    }
+    sections.forEach(section => {
+      if (!section || !Array.isArray(section.rows) || section.rows.length === 0) {
+        return;
+      }
+      const sectionEl = document.createElement('section');
+      sectionEl.className = 'debug-popover__section';
+      if (section.title) {
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'debug-popover__section-title';
+        titleEl.textContent = section.title;
+        sectionEl.appendChild(titleEl);
+      }
+      const rowsEl = document.createElement('div');
+      rowsEl.className = 'debug-popover__rows';
+      section.rows.forEach(row => {
+        if (!row || row.value === undefined || row.value === null) {
+          return;
+        }
+        const labelEl = document.createElement('div');
+        labelEl.className = 'debug-popover__label';
+        labelEl.textContent = row.label || '';
+        const valueEl = document.createElement('div');
+        valueEl.className = 'debug-popover__value';
+        valueEl.textContent = String(row.value);
+        rowsEl.appendChild(labelEl);
+        rowsEl.appendChild(valueEl);
+      });
+      if (rowsEl.childNodes.length > 0) {
+        sectionEl.appendChild(rowsEl);
+        container.appendChild(sectionEl);
+      }
+    });
+    if (!container.hasChildNodes()) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'debug-popover__value';
+      emptyMessage.textContent = '表示できる情報がありません。';
+      container.appendChild(emptyMessage);
+    }
+  };
+
+  const formatBytes = bytes => {
+    if (!Number.isFinite(bytes) || bytes < 0) {
+      return '不明';
+    }
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    const precision = value >= 10 || unitIndex === 0 ? 0 : 1;
+    return `${value.toFixed(precision)}${units[unitIndex]}`;
+  };
+
+  const formatDecimal = (value, fractionDigits = 2) => {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    const maximumFractionDigits = value >= 10 ? 0 : fractionDigits;
+    return value.toLocaleString('ja-JP', {
+      minimumFractionDigits: Math.min(maximumFractionDigits, fractionDigits),
+      maximumFractionDigits
+    });
+  };
+
+  const summarizeStorage = getter => {
+    if (typeof getter !== 'function') {
+      return undefined;
+    }
+    let storage;
+    try {
+      storage = getter();
+    } catch (error) {
+      return undefined;
+    }
+    if (!storage) {
+      return undefined;
+    }
+    try {
+      const entries = [];
+      let totalChars = 0;
+      for (let i = 0; i < storage.length; i += 1) {
+        const key = storage.key(i);
+        if (typeof key !== 'string') {
+          continue;
+        }
+        let value = '';
+        try {
+          value = storage.getItem(key) || '';
+        } catch (error) {
+          value = '';
+        }
+        const size = key.length + value.length;
+        totalChars += size;
+        entries.push({ key, size });
+      }
+      entries.sort((a, b) => b.size - a.size);
+      const lines = entries.map(entry => `${entry.key}: 約${formatBytes(entry.size * 2)}`);
+      return {
+        count: entries.length,
+        bytes: totalChars * 2,
+        lines
+      };
+    } catch (error) {
+      console.warn('Failed to summarize storage', error);
+      return undefined;
+    }
+  };
+
+  const gatherDebugSections = async () => {
+    const sections = [];
+    const now = new Date();
+    const nav = typeof navigator !== 'undefined' ? navigator : {};
+    const doc = typeof document !== 'undefined' ? document : {};
+    const win = typeof window !== 'undefined' ? window : {};
+
+    const nowRows = [];
+    if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+      try {
+        const formatter = new Intl.DateTimeFormat('ja-JP', { dateStyle: 'full', timeStyle: 'medium' });
+        nowRows.push({ label: 'ローカル時刻', value: formatter.format(now) });
+      } catch (error) {
+        nowRows.push({ label: 'ローカル時刻', value: now.toString() });
+      }
+    } else {
+      nowRows.push({ label: 'ローカル時刻', value: now.toString() });
+    }
+    nowRows.push({ label: 'ISO時刻', value: now.toISOString() });
+    if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) {
+          nowRows.push({ label: 'タイムゾーン', value: tz });
+        }
+      } catch (error) {
+        nowRows.push({ label: 'タイムゾーン', value: '取得失敗' });
+      }
+    }
+    if (win.location && typeof win.location.href === 'string') {
+      nowRows.push({ label: 'ページURL', value: win.location.href });
+    }
+    if (doc.visibilityState) {
+      nowRows.push({ label: '表示状態', value: doc.visibilityState });
+    }
+    if (typeof win.matchMedia === 'function') {
+      try {
+        const darkMedia = win.matchMedia('(prefers-color-scheme: dark)');
+        if (darkMedia) {
+          nowRows.push({ label: 'カラースキーム', value: darkMedia.matches ? 'ダーク' : 'ライト' });
+        }
+      } catch (error) {
+        nowRows.push({ label: 'カラースキーム', value: '取得失敗' });
+      }
+    }
+    sections.push({ title: '現在の状態', rows: nowRows });
+
+    const systemRows = [];
+    if (nav.userAgent) {
+      systemRows.push({ label: 'ユーザーエージェント', value: nav.userAgent });
+    }
+    if (nav.userAgentData && Array.isArray(nav.userAgentData.brands)) {
+      const brands = nav.userAgentData.brands
+        .map(brand => `${brand.brand} ${brand.version}`)
+        .join(', ');
+      if (brands) {
+        systemRows.push({ label: 'UA Brands', value: brands });
+      }
+    }
+    if (nav.platform) {
+      systemRows.push({ label: 'プラットフォーム', value: nav.platform });
+    }
+    if (nav.language || (Array.isArray(nav.languages) && nav.languages.length > 0)) {
+      const languages = Array.isArray(nav.languages) && nav.languages.length > 0
+        ? `${nav.language || nav.languages[0]} (${nav.languages.join(', ')})`
+        : nav.language;
+      systemRows.push({ label: '言語', value: languages || '不明' });
+    }
+    if (typeof nav.hardwareConcurrency === 'number') {
+      systemRows.push({ label: '論理CPU数', value: `${nav.hardwareConcurrency}コア` });
+    }
+    if (typeof nav.deviceMemory === 'number') {
+      systemRows.push({ label: '推定メモリ', value: `${nav.deviceMemory}GB` });
+    }
+    if (typeof nav.maxTouchPoints === 'number') {
+      systemRows.push({ label: 'タッチポイント', value: String(nav.maxTouchPoints) });
+    }
+    systemRows.push({ label: 'CPU使用率', value: 'ブラウザからは取得できません' });
+    if (typeof nav.cookieEnabled === 'boolean') {
+      systemRows.push({ label: 'Cookie', value: nav.cookieEnabled ? '有効' : '無効' });
+    }
+    sections.push({ title: '端末情報', rows: systemRows });
+
+    const screenRows = [];
+    if (win.screen) {
+      const scr = win.screen;
+      if (scr.width && scr.height) {
+        screenRows.push({ label: 'スクリーン解像度', value: `${scr.width}×${scr.height}` });
+      }
+      if (scr.availWidth && scr.availHeight) {
+        screenRows.push({ label: '利用可能領域', value: `${scr.availWidth}×${scr.availHeight}` });
+      }
+      if (scr.orientation && scr.orientation.type) {
+        screenRows.push({ label: '画面の向き', value: scr.orientation.type });
+      }
+    }
+    if (typeof win.innerWidth === 'number' && typeof win.innerHeight === 'number') {
+      screenRows.push({ label: 'ビューポート', value: `${Math.round(win.innerWidth)}×${Math.round(win.innerHeight)}` });
+    }
+    if (typeof win.devicePixelRatio === 'number') {
+      screenRows.push({ label: 'デバイスピクセル比', value: win.devicePixelRatio.toFixed(2) });
+    }
+    if (typeof win.scrollX === 'number' && typeof win.scrollY === 'number') {
+      screenRows.push({ label: 'スクロール位置', value: `${Math.round(win.scrollX)}, ${Math.round(win.scrollY)}` });
+    }
+    sections.push({ title: '画面情報', rows: screenRows });
+
+    const storageRows = [];
+    if (nav.storage && typeof nav.storage.estimate === 'function') {
+      try {
+        const estimate = await nav.storage.estimate();
+        if (estimate) {
+          if (Number.isFinite(estimate.usage)) {
+            storageRows.push({ label: 'ストレージ使用量', value: formatBytes(estimate.usage) });
+          }
+          if (Number.isFinite(estimate.quota)) {
+            storageRows.push({ label: 'ストレージ上限', value: formatBytes(estimate.quota) });
+          }
+          if (Number.isFinite(estimate.usage) && Number.isFinite(estimate.quota) && estimate.quota > 0) {
+            const percent = ((estimate.usage / estimate.quota) * 100).toFixed(1);
+            storageRows.push({ label: '使用率', value: `${percent}%` });
+          }
+        }
+      } catch (error) {
+        storageRows.push({ label: 'ストレージ推定', value: '取得失敗' });
+      }
+    }
+    const localSummary = summarizeStorage(() => win.localStorage);
+    if (localSummary) {
+      storageRows.push({ label: 'localStorage合計', value: `${formatBytes(localSummary.bytes)} / ${localSummary.count}件` });
+      if (Array.isArray(localSummary.lines) && localSummary.lines.length > 0) {
+        const limited = localSummary.lines.slice(0, MAX_STORAGE_DETAIL);
+        if (localSummary.lines.length > MAX_STORAGE_DETAIL) {
+          limited.push(`…他${localSummary.lines.length - MAX_STORAGE_DETAIL}件`);
+        }
+        storageRows.push({ label: 'localStorage詳細', value: limited.join('\n') });
+      } else {
+        storageRows.push({ label: 'localStorage詳細', value: '登録なし' });
+      }
+    } else {
+      storageRows.push({ label: 'localStorage', value: '利用不可' });
+    }
+    const sessionSummary = summarizeStorage(() => win.sessionStorage);
+    if (sessionSummary) {
+      storageRows.push({ label: 'sessionStorage合計', value: `${formatBytes(sessionSummary.bytes)} / ${sessionSummary.count}件` });
+      if (Array.isArray(sessionSummary.lines) && sessionSummary.lines.length > 0) {
+        const limited = sessionSummary.lines.slice(0, MAX_STORAGE_DETAIL);
+        if (sessionSummary.lines.length > MAX_STORAGE_DETAIL) {
+          limited.push(`…他${sessionSummary.lines.length - MAX_STORAGE_DETAIL}件`);
+        }
+        storageRows.push({ label: 'sessionStorage詳細', value: limited.join('\n') });
+      } else {
+        storageRows.push({ label: 'sessionStorage詳細', value: '登録なし' });
+      }
+    } else {
+      storageRows.push({ label: 'sessionStorage', value: '利用不可' });
+    }
+    sections.push({ title: 'ストレージ', rows: storageRows });
+
+    const cacheRows = [];
+    if (win.caches && typeof win.caches.keys === 'function') {
+      try {
+        const cacheNames = await win.caches.keys();
+        cacheRows.push({ label: 'キャッシュ数', value: `${cacheNames.length}件` });
+        const limitedNames = cacheNames.slice(0, 5);
+        for (const name of limitedNames) {
+          try {
+            const cache = await win.caches.open(name);
+            const requests = await cache.keys();
+            cacheRows.push({ label: `• ${name}`, value: `${requests.length}件` });
+          } catch (error) {
+            cacheRows.push({ label: `• ${name}`, value: '詳細取得失敗' });
+          }
+        }
+        if (cacheNames.length > limitedNames.length) {
+          cacheRows.push({ label: '…', value: `他${cacheNames.length - limitedNames.length}件` });
+        }
+      } catch (error) {
+        cacheRows.push({ label: 'キャッシュ', value: '取得失敗' });
+      }
+    } else {
+      cacheRows.push({ label: 'キャッシュ', value: '未対応' });
+    }
+    if ('serviceWorker' in nav) {
+      try {
+        const registrations = typeof nav.serviceWorker.getRegistrations === 'function'
+          ? await nav.serviceWorker.getRegistrations()
+          : [];
+        cacheRows.push({ label: 'SW登録数', value: `${registrations.length}件` });
+        registrations.slice(0, 3).forEach((reg, index) => {
+          const scope = reg && reg.scope ? reg.scope : '(scope不明)';
+          cacheRows.push({ label: `• scope#${index + 1}`, value: scope });
+        });
+        if (registrations.length > 3) {
+          cacheRows.push({ label: '…', value: `他${registrations.length - 3}件` });
+        }
+        const controller = nav.serviceWorker.controller;
+        cacheRows.push({ label: '制御中スクリプト', value: controller ? controller.scriptURL : 'なし' });
+      } catch (error) {
+        cacheRows.push({ label: 'Service Worker', value: '取得失敗' });
+      }
+    } else {
+      cacheRows.push({ label: 'Service Worker', value: '未対応' });
+    }
+    sections.push({ title: 'キャッシュ・サービスワーカー', rows: cacheRows });
+
+    const networkRows = [];
+    if (typeof nav.onLine === 'boolean') {
+      networkRows.push({ label: 'オンライン', value: nav.onLine ? 'オンライン' : 'オフライン' });
+    }
+    const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
+    if (connection) {
+      if (connection.effectiveType) {
+        networkRows.push({ label: '回線タイプ', value: connection.effectiveType });
+      }
+      const downlink = formatDecimal(connection.downlink);
+      if (downlink) {
+        networkRows.push({ label: '下り推定', value: `${downlink}Mbps` });
+      }
+      if (Number.isFinite(connection.rtt)) {
+        networkRows.push({ label: '推定RTT', value: `${Math.round(connection.rtt)}ms` });
+      }
+      if (typeof connection.saveData === 'boolean') {
+        networkRows.push({ label: 'データセーバー', value: connection.saveData ? '有効' : '無効' });
+      }
+    } else {
+      networkRows.push({ label: '接続情報', value: '未対応' });
+    }
+    sections.push({ title: 'ネットワーク', rows: networkRows });
+
+    const performanceRows = [];
+    if (typeof performance !== 'undefined') {
+      if (typeof performance.now === 'function') {
+        performanceRows.push({ label: '経過時間', value: `${Math.round(performance.now())}ms` });
+      }
+      if (typeof performance.timeOrigin === 'number') {
+        try {
+          const originDate = new Date(performance.timeOrigin);
+          performanceRows.push({ label: 'timeOrigin', value: originDate.toISOString() });
+        } catch (error) {
+          performanceRows.push({ label: 'timeOrigin', value: String(performance.timeOrigin) });
+        }
+      }
+      const memory = performance.memory;
+      if (memory && Number.isFinite(memory.usedJSHeapSize)) {
+        const used = formatBytes(memory.usedJSHeapSize);
+        const total = Number.isFinite(memory.totalJSHeapSize) ? formatBytes(memory.totalJSHeapSize) : '?';
+        const limit = Number.isFinite(memory.jsHeapSizeLimit) ? formatBytes(memory.jsHeapSizeLimit) : '?';
+        performanceRows.push({ label: 'JS Heap', value: `${used} / ${total} (上限 ${limit})` });
+      }
+    }
+    sections.push({ title: 'パフォーマンス', rows: performanceRows });
+
+    if (typeof nav.getBattery === 'function') {
+      try {
+        const battery = await nav.getBattery();
+        if (battery) {
+          const batteryRows = [];
+          batteryRows.push({ label: '充電中', value: battery.charging ? 'はい' : 'いいえ' });
+          if (Number.isFinite(battery.level)) {
+            batteryRows.push({ label: '残量', value: `${Math.round(battery.level * 100)}%` });
+          }
+          if (Number.isFinite(battery.chargingTime)) {
+            batteryRows.push({ label: '満充電まで', value: battery.chargingTime === Infinity ? '不明' : `${Math.round(battery.chargingTime / 60)}分` });
+          }
+          if (Number.isFinite(battery.dischargingTime)) {
+            batteryRows.push({ label: '推定残り時間', value: battery.dischargingTime === Infinity ? '不明' : `${Math.round(battery.dischargingTime / 60)}分` });
+          }
+          sections.push({ title: 'バッテリー', rows: batteryRows });
+        }
+      } catch (error) {
+        sections.push({ title: 'バッテリー', rows: [{ label: '情報', value: '取得失敗' }] });
+      }
+    }
+
+    return sections
+      .map(section => ({
+        title: section.title,
+        rows: (section.rows || []).filter(row => row && row.value !== undefined && row.value !== null)
+      }))
+      .filter(section => section.rows.length > 0);
+  };
+
+  const showPopover = async () => {
+    header = header || document.querySelector('header');
+    const element = ensurePopover();
+    if (!header || !element) {
+      return;
+    }
+    lastRenderToken += 1;
+    const renderToken = lastRenderToken;
+    element.hidden = false;
+    element.setAttribute('aria-hidden', 'false');
+    header.classList.add('debug-popover-open');
+    const content = element.querySelector('.debug-popover__content');
+    if (content) {
+      content.textContent = '読み込み中…';
+    }
+    removeDocumentListeners();
+    outsideClickHandler = event => {
+      if (!element.contains(event.target)) {
+        hidePopover();
+      }
+    };
+    keydownHandler = event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        hidePopover();
+      }
+    };
+    document.addEventListener('pointerdown', outsideClickHandler, true);
+    document.addEventListener('keydown', keydownHandler, true);
+    const closeBtn = element.querySelector('.debug-popover__close');
+    if (closeBtn) {
+      try {
+        closeBtn.focus({ preventScroll: true });
+      } catch (error) {
+        closeBtn.focus();
+      }
+    }
+    try {
+      const sections = await gatherDebugSections();
+      if (renderToken !== lastRenderToken || element.hidden) {
+        return;
+      }
+      renderSections(content, sections);
+    } catch (error) {
+      console.error('Failed to collect debug information', error);
+      if (renderToken !== lastRenderToken || !content) {
+        return;
+      }
+      content.textContent = 'デバッグ情報の取得に失敗しました。';
+    }
+  };
+
+  const startPress = event => {
+    if (!header || !header.contains(event.target)) {
+      return;
+    }
+    if (event.pointerType === 'mouse' && typeof event.button === 'number' && event.button !== 0) {
+      return;
+    }
+    const interactiveTarget = event.target && event.target.closest
+      ? event.target.closest(INTERACTIVE_SELECTOR)
+      : null;
+    if (interactiveTarget) {
+      return;
+    }
+    clearPressTimer();
+    activePointerId = event.pointerId;
+    longPressTriggered = false;
+    pressTimer = window.setTimeout(() => {
+      pressTimer = null;
+      longPressTriggered = true;
+      suppressNextClick = true;
+      showPopover();
+    }, LONG_PRESS_DURATION);
+  };
+
+  const endPress = event => {
+    if (activePointerId !== null && event.pointerId !== undefined && event.pointerId !== activePointerId) {
+      return;
+    }
+    clearPressTimer();
+    activePointerId = null;
+    if (longPressTriggered) {
+      event.preventDefault();
+      event.stopPropagation();
+      longPressTriggered = false;
+    }
+  };
+
+  const cancelPress = event => {
+    if (activePointerId !== null && event && event.pointerId !== undefined && event.pointerId !== activePointerId) {
+      return;
+    }
+    clearPressTimer();
+    activePointerId = null;
+    longPressTriggered = false;
+  };
+
+  const interceptClick = event => {
+    if (suppressNextClick) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressNextClick = false;
+    }
+  };
+
+  const init = () => {
+    header = document.querySelector('header');
+    if (!header || header.dataset.debugMenuBound === 'true') {
+      return;
+    }
+    header.dataset.debugMenuBound = 'true';
+    header.addEventListener('pointerdown', startPress, true);
+    header.addEventListener('pointerup', endPress, true);
+    header.addEventListener('pointercancel', cancelPress, true);
+    header.addEventListener('pointerleave', cancelPress, true);
+    header.addEventListener('click', interceptClick, true);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        hidePopover();
+      }
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();
+
 (function setupNetworkStatusIndicator() {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return;
@@ -780,6 +1557,9 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     statusElement.textContent = '🔴オフライン';
     statusElement.classList.add('is-visible', 'network-status--offline');
     statusElement.classList.remove('network-status--online');
+    if (typeof window.setHeaderStatusMessageActive === 'function') {
+      window.setHeaderStatusMessageActive(true);
+    }
   }
 
   function hideOnlineMessage() {
@@ -797,6 +1577,12 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
         }
         statusElement.textContent = '';
         statusElement.classList.remove('network-status--online');
+        if (typeof window.setHeaderStatusMessageActive === 'function') {
+          window.setHeaderStatusMessageActive(false);
+        }
+        if (typeof window.refreshHeaderClock === 'function') {
+          window.refreshHeaderClock();
+        }
         clearTimer = null;
       }, FADE_OUT_DURATION);
       hideTimer = null;
@@ -811,6 +1597,9 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     statusElement.textContent = '🟢オンラインに復帰しました';
     statusElement.classList.add('is-visible', 'network-status--online');
     statusElement.classList.remove('network-status--offline');
+    if (typeof window.setHeaderStatusMessageActive === 'function') {
+      window.setHeaderStatusMessageActive(true);
+    }
     hideOnlineMessage();
   }
 
@@ -833,6 +1622,12 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     } else {
       statusElement.textContent = '';
       statusElement.classList.remove('is-visible', 'network-status--offline', 'network-status--online');
+      if (typeof window.setHeaderStatusMessageActive === 'function') {
+        window.setHeaderStatusMessageActive(false);
+      }
+      if (typeof window.refreshHeaderClock === 'function') {
+        window.refreshHeaderClock();
+      }
     }
 
     window.addEventListener('offline', handleOffline);
