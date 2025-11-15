@@ -38,20 +38,22 @@
     <input type="number" id="transport-input" value="0">
     <button id="set-transport">一括設定</button>
   </div>
-  <table id="employees">
-    <thead>
-      <tr>
-        <th scope="col"><button type="button" class="sort-button" data-sort-key="name">従業員名</button></th>
-        <th scope="col"><button type="button" class="sort-button" data-sort-key="baseWage">基本時給</button></th>
-        <th scope="col"><button type="button" class="sort-button" data-sort-key="hours">勤務時間</button></th>
-        <th scope="col"><button type="button" class="sort-button" data-sort-key="days">出勤日数</button></th>
-        <th scope="col"><button type="button" class="sort-button" data-sort-key="absentDays">欠勤日数</button></th>
-        <th scope="col"><button type="button" class="sort-button" data-sort-key="transport">交通費</button></th>
-        <th scope="col"><button type="button" class="sort-button" data-sort-key="salary">給与</button></th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="employees-table-container">
+    <table id="employees">
+      <thead>
+        <tr>
+          <th scope="col"><button type="button" class="sort-button" data-sort-key="name">従業員名</button></th>
+          <th scope="col"><button type="button" class="sort-button" data-sort-key="baseWage">基本時給</button></th>
+          <th scope="col"><button type="button" class="sort-button" data-sort-key="hours">勤務時間</button></th>
+          <th scope="col"><button type="button" class="sort-button" data-sort-key="days">出勤日数</button></th>
+          <th scope="col"><button type="button" class="sort-button" data-sort-key="absentDays">欠勤日数</button></th>
+          <th scope="col"><button type="button" class="sort-button" data-sort-key="transport">交通費</button></th>
+          <th scope="col"><button type="button" class="sort-button" data-sort-key="salary">給与</button></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
   <div id="actions">
     <button id="download">計算結果をダウンロード</button>
     <button id="open-source">計算元を開く</button>
