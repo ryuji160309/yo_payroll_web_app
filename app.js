@@ -1120,6 +1120,21 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     const doc = typeof document !== 'undefined' ? document : {};
     const win = typeof window !== 'undefined' ? window : {};
 
+    const evaluateMediaQuery = query => {
+      if (!win.matchMedia || typeof win.matchMedia !== 'function') {
+        return '未対応';
+      }
+      try {
+        const media = win.matchMedia(query);
+        if (!media) {
+          return '未対応';
+        }
+        return media.matches ? '該当' : '非該当';
+      } catch (error) {
+        return '取得失敗';
+      }
+    };
+
     const nowRows = [];
     if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
       try {
@@ -1159,6 +1174,36 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
       }
     }
     sections.push({ title: '現在の状態', rows: nowRows });
+
+    const documentRows = [];
+    if (doc.title) {
+      documentRows.push({ label: 'ページタイトル', value: doc.title });
+    }
+    if (doc.referrer) {
+      documentRows.push({ label: 'リファラー', value: doc.referrer });
+    }
+    if (doc.documentElement && doc.documentElement.lang) {
+      documentRows.push({ label: '言語属性', value: doc.documentElement.lang });
+    }
+    if (doc.characterSet) {
+      documentRows.push({ label: '文字セット', value: doc.characterSet });
+    }
+    if (doc.contentType) {
+      documentRows.push({ label: 'コンテンツタイプ', value: doc.contentType });
+    }
+    if (doc.lastModified) {
+      documentRows.push({ label: '最終更新', value: doc.lastModified });
+    }
+    if (doc.readyState) {
+      documentRows.push({ label: '読み込み状態', value: doc.readyState });
+    }
+    if (typeof doc.hidden === 'boolean') {
+      documentRows.push({ label: 'hidden', value: doc.hidden ? 'はい' : 'いいえ' });
+    }
+    if (typeof doc.fullscreenElement !== 'undefined') {
+      documentRows.push({ label: 'フルスクリーン要素', value: doc.fullscreenElement ? 'あり' : 'なし' });
+    }
+    sections.push({ title: 'ドキュメント', rows: documentRows });
 
     const systemRows = [];
     if (nav.userAgent) {
@@ -1219,6 +1264,51 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
       screenRows.push({ label: 'スクロール位置', value: `${Math.round(win.scrollX)}, ${Math.round(win.scrollY)}` });
     }
     sections.push({ title: '画面情報', rows: screenRows });
+
+    const navigationRows = [];
+    if (win.history && typeof win.history.length === 'number') {
+      navigationRows.push({ label: '履歴件数', value: `${win.history.length}件` });
+    }
+    if (win.history && typeof win.history.scrollRestoration === 'string') {
+      navigationRows.push({ label: 'スクロール復元', value: win.history.scrollRestoration });
+    }
+    if (win.location && typeof win.location.hash === 'string') {
+      navigationRows.push({ label: 'ハッシュ', value: win.location.hash || '(なし)' });
+    }
+    if (typeof performance !== 'undefined') {
+      if (performance.navigation && typeof performance.navigation.type !== 'undefined') {
+        const typeMap = {
+          0: '通常ロード',
+          1: 'リロード',
+          2: '履歴移動',
+          255: 'その他'
+        };
+        navigationRows.push({ label: 'NavigationType', value: typeMap[performance.navigation.type] || String(performance.navigation.type) });
+      }
+      if (typeof performance.getEntriesByType === 'function') {
+        try {
+          const navEntries = performance.getEntriesByType('navigation');
+          if (navEntries && navEntries.length > 0) {
+            const navEntry = navEntries[navEntries.length - 1];
+            if (navEntry.type) {
+              navigationRows.push({ label: 'Navigation API', value: navEntry.type });
+            }
+            if (Number.isFinite(navEntry.redirectCount)) {
+              navigationRows.push({ label: 'リダイレクト回数', value: `${navEntry.redirectCount}回` });
+            }
+            if (Number.isFinite(navEntry.domContentLoadedEventEnd)) {
+              navigationRows.push({ label: 'DOMContentLoaded', value: `${Math.round(navEntry.domContentLoadedEventEnd)}ms` });
+            }
+            if (Number.isFinite(navEntry.loadEventEnd)) {
+              navigationRows.push({ label: 'Loadイベント', value: `${Math.round(navEntry.loadEventEnd)}ms` });
+            }
+          }
+        } catch (error) {
+          navigationRows.push({ label: 'Navigation API', value: '取得失敗' });
+        }
+      }
+    }
+    sections.push({ title: 'ナビゲーション', rows: navigationRows });
 
     const storageRows = [];
     if (nav.storage && typeof nav.storage.estimate === 'function') {
@@ -1365,6 +1455,94 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
       }
     }
     sections.push({ title: 'パフォーマンス', rows: performanceRows });
+
+    const accessibilityRows = [];
+    if (win.matchMedia && typeof win.matchMedia === 'function') {
+      accessibilityRows.push({ label: 'モーション軽減', value: evaluateMediaQuery('(prefers-reduced-motion: reduce)') });
+      accessibilityRows.push({ label: 'コントラスト', value: evaluateMediaQuery('(prefers-contrast: more)') });
+      accessibilityRows.push({ label: 'データ節約', value: evaluateMediaQuery('(prefers-reduced-data: reduce)') });
+      accessibilityRows.push({ label: '透過効果', value: evaluateMediaQuery('(prefers-reduced-transparency: reduce)') });
+    } else {
+      accessibilityRows.push({ label: 'メディアクエリ', value: '未対応' });
+    }
+    if (typeof nav.doNotTrack !== 'undefined') {
+      accessibilityRows.push({ label: 'Do Not Track', value: nav.doNotTrack === '1' ? '有効' : '無効' });
+    }
+    if (win.visualViewport) {
+      try {
+        const vp = win.visualViewport;
+        if (Number.isFinite(vp.scale)) {
+          accessibilityRows.push({ label: 'ビジュアルビューポート倍率', value: vp.scale.toFixed(2) });
+        }
+        if (Number.isFinite(vp.width) && Number.isFinite(vp.height)) {
+          accessibilityRows.push({ label: 'ビジュアルビューポート', value: `${Math.round(vp.width)}×${Math.round(vp.height)}` });
+        }
+      } catch (error) {
+        accessibilityRows.push({ label: 'ビジュアルビューポート', value: '取得失敗' });
+      }
+    }
+    sections.push({ title: 'アクセシビリティ・表示設定', rows: accessibilityRows });
+
+    const inputRows = [];
+    if (win.matchMedia && typeof win.matchMedia === 'function') {
+      inputRows.push({ label: '細かいポインタ', value: evaluateMediaQuery('(pointer: fine)') });
+      inputRows.push({ label: '粗いポインタ', value: evaluateMediaQuery('(pointer: coarse)') });
+      inputRows.push({ label: 'any-hover', value: evaluateMediaQuery('(any-hover: hover)') });
+      inputRows.push({ label: 'any-pointer', value: evaluateMediaQuery('(any-pointer: coarse)') });
+    }
+    if (typeof nav.maxTouchPoints === 'number') {
+      inputRows.push({ label: 'マルチタッチポイント', value: `${nav.maxTouchPoints}点` });
+    }
+    if (win.screen && typeof win.screen.orientation === 'object' && win.screen.orientation) {
+      if (typeof win.screen.orientation.angle === 'number') {
+        inputRows.push({ label: '画面角度', value: `${win.screen.orientation.angle}°` });
+      }
+    }
+    sections.push({ title: '入力・インタラクション', rows: inputRows });
+
+    const mediaDeviceRows = [];
+    if (nav.mediaDevices && typeof nav.mediaDevices.enumerateDevices === 'function') {
+      try {
+        const devices = await nav.mediaDevices.enumerateDevices();
+        mediaDeviceRows.push({ label: 'デバイス数', value: `${devices.length}件` });
+        devices.slice(0, 5).forEach((device, index) => {
+          const name = device.label ? device.label : `(名称不明#${index + 1})`;
+          mediaDeviceRows.push({ label: `• ${device.kind}`, value: name });
+        });
+        if (devices.length > 5) {
+          mediaDeviceRows.push({ label: '…', value: `他${devices.length - 5}件` });
+        }
+      } catch (error) {
+        mediaDeviceRows.push({ label: 'メディアデバイス', value: '取得失敗' });
+      }
+    } else {
+      mediaDeviceRows.push({ label: 'メディアデバイス', value: '未対応' });
+    }
+    sections.push({ title: 'メディアデバイス', rows: mediaDeviceRows });
+
+    const permissionRows = [];
+    const permissionNames = [
+      'geolocation',
+      'notifications',
+      'camera',
+      'microphone',
+      'clipboard-read',
+      'clipboard-write',
+      'push'
+    ];
+    if (nav.permissions && typeof nav.permissions.query === 'function') {
+      for (const name of permissionNames) {
+        try {
+          const status = await nav.permissions.query({ name });
+          permissionRows.push({ label: name, value: status && status.state ? status.state : '不明' });
+        } catch (error) {
+          permissionRows.push({ label: name, value: '取得失敗' });
+        }
+      }
+    } else {
+      permissionRows.push({ label: '権限API', value: '未対応' });
+    }
+    sections.push({ title: '権限状態', rows: permissionRows });
 
     if (typeof nav.getBattery === 'function') {
       try {
