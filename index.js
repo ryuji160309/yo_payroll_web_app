@@ -18,7 +18,29 @@ function showToastWithNativeNotice(message, options) {
   return toastHandle;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+let homePageShowHandler = null;
+
+async function initializeHomeView() {
+  const goToView = (view, params = {}, options = {}) => {
+    if (typeof window.navigateTo === 'function') {
+      window.navigateTo(view, params, options);
+      return;
+    }
+    const search = new URLSearchParams({ view });
+    Object.keys(params || {}).forEach(key => {
+      const value = params[key];
+      if (value !== undefined && value !== null) {
+        search.set(key, value);
+      }
+    });
+    const query = search.toString();
+    const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    if (options && options.replace && typeof window.history.replaceState === 'function') {
+      window.history.replaceState(null, '', url);
+      return;
+    }
+    window.location.href = url;
+  };
   function createDeferred() {
     let resolved = false;
     let resolver = null;
@@ -315,11 +337,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   resetOfflineState();
 
-  window.addEventListener('pageshow', event => {
+  if (homePageShowHandler) {
+    window.removeEventListener('pageshow', homePageShowHandler);
+  }
+  homePageShowHandler = event => {
     if (event.persisted) {
       resetOfflineState();
     }
-  });
+  };
+  window.addEventListener('pageshow', homePageShowHandler);
 
   let offlineFileInput = null;
   if (offlineControls && offlineButton) {
@@ -361,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const targetKey = storedKey && availableKeys.includes(storedKey) ? storedKey : availableKeys[0];
           if (targetKey) {
             setLastSelectedStoreKey(targetKey);
-            window.location.href = `sheets.html?store=${encodeURIComponent(targetKey)}&offline=1`;
+            goToView('sheets', { store: targetKey, offline: '1' });
           } else if (status) {
             status.textContent = '店舗情報が設定されていないためローカルファイルを開けません。設定を確認してください。';
           }
@@ -605,9 +631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
         const orderedKeys = Array.from(selectedStores);
-        const params = new URLSearchParams();
-        params.set('stores', orderedKeys.join(','));
-        window.location.href = `sheets.html?${params.toString()}`;
+        goToView('sheets', { stores: orderedKeys.join(',') });
       });
 
       const modeButton = document.createElement('button');
@@ -648,7 +672,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Ignore failures disabling offline mode.
           }
         }
-        window.location.href = `sheets.html?store=${key}`;
+        goToView('sheets', { store: key });
       });
       const targetContainer = storeButtonsHighlightTarget || list;
       targetContainer.appendChild(btn);
@@ -916,12 +940,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         registration.active.postMessage({
           type: 'WARMUP_CACHE',
           paths: [
-            '/payroll.html',
-            '/settings.html',
-            '/sheets.html',
             '/payroll.js',
             '/settings.js',
             '/sheets.js',
+            '/router.js',
             '/calc.js',
             '/help.js',
             '/help/payroll.txt',
@@ -933,5 +955,41 @@ document.addEventListener('DOMContentLoaded', async () => {
       .catch(() => {
         // Ignore failures warming the cache; navigation will still work without it.
       });
+  }
+  return () => {
+    if (homePageShowHandler) {
+      window.removeEventListener('pageshow', homePageShowHandler);
+      homePageShowHandler = null;
+    }
+  };
+}
+
+let homeViewCleanup = null;
+
+document.addEventListener('yo:view:init', event => {
+  if (!event || !event.detail || event.detail.view !== 'home') {
+    return;
+  }
+  if (typeof homeViewCleanup === 'function') {
+    homeViewCleanup();
+    homeViewCleanup = null;
+  }
+  const result = initializeHomeView(event.detail);
+  if (result && typeof result.then === 'function') {
+    result.then(cleanup => {
+      homeViewCleanup = typeof cleanup === 'function' ? cleanup : null;
+    });
+  } else if (typeof result === 'function') {
+    homeViewCleanup = result;
+  }
+});
+
+document.addEventListener('yo:view:destroy', event => {
+  if (!event || !event.detail || event.detail.view !== 'home') {
+    return;
+  }
+  if (typeof homeViewCleanup === 'function') {
+    homeViewCleanup();
+    homeViewCleanup = null;
   }
 });
