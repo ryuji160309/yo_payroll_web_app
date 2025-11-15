@@ -620,6 +620,9 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
     const count = selectedSheets.size;
     startBtn.disabled = count === 0;
     startBtn.textContent = count === 0 ? '計算開始' : `計算開始 (${count}件)`;
+    if (typeof window.requestTutorialReposition === 'function') {
+      window.requestTutorialReposition();
+    }
   }
 
   function toggleOverlay(show) {

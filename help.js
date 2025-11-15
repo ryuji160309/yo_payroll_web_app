@@ -404,6 +404,7 @@ function initializeHelp(path, options = {}) {
   let currentConfig = null;
   let retryTimer = null;
   let listenersAttached = false;
+  const repositionListeners = new Set();
 
   const resolveStepConfig = id => {
     const config = stepConfigs[id];
@@ -473,7 +474,21 @@ function initializeHelp(path, options = {}) {
     }
   };
 
+  const notifyRepositionListeners = () => {
+    repositionListeners.forEach(listener => {
+      if (typeof listener !== 'function') {
+        return;
+      }
+      try {
+        listener();
+      } catch (error) {
+        console.warn('tutorial reposition listener failed', error);
+      }
+    });
+  };
+
   const reposition = () => {
+    notifyRepositionListeners();
     if (!overlay.isVisible()) {
       return;
     }
@@ -484,6 +499,37 @@ function initializeHelp(path, options = {}) {
     } else {
       overlay.centerBubble();
     }
+  };
+
+  const requestRepositionFrame = () => {
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        reposition();
+      });
+      return;
+    }
+    reposition();
+  };
+
+  window.requestTutorialReposition = () => {
+    requestRepositionFrame();
+  };
+
+  window.registerTutorialRepositionListener = listener => {
+    if (typeof listener !== 'function') {
+      return () => {};
+    }
+    repositionListeners.add(listener);
+    return () => {
+      repositionListeners.delete(listener);
+    };
+  };
+
+  window.unregisterTutorialRepositionListener = listener => {
+    if (typeof listener !== 'function') {
+      return;
+    }
+    repositionListeners.delete(listener);
   };
 
   const attachListeners = () => {
@@ -627,6 +673,7 @@ function initializeHelp(path, options = {}) {
     cleanupCurrentTarget();
     overlay.hide();
     detachListeners();
+    repositionListeners.clear();
     requestAnimationFrame(() => {
       try {
         window.scrollTo({ top: 0, behavior: 'smooth' });
