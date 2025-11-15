@@ -509,10 +509,18 @@ textarea:focus {
 #transport-control input {
   width: 4rem;
 }
+.employees-table-container {
+  position: relative;
+  margin: 0.75rem 0;
+}
+
+.employees-table-container table {
+  margin: 0;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
-  margin: 0.75rem 0;
   background: var(--color-surface);
 }
 th,
@@ -876,24 +884,24 @@ td {
 }
 
 #sort-reset-button {
-  position: fixed;
-  bottom: 1rem;
-  right: 6.5rem;
-  padding: 0.75rem 1.25rem;
-  min-width: 3rem;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  min-width: 2.25rem;
   border-radius: 9999px;
-  border: 2px solid #111;
+  border: 1px solid #111;
   background: #fff;
   color: #111;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.45rem;
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
-  z-index: 1450;
-  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.12);
+  z-index: 10;
+  box-shadow: 0 0.35rem 0.85rem rgba(0, 0, 0, 0.12);
   transition: background-color 0.2s ease, color 0.2s ease,
     border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
 }
@@ -901,13 +909,13 @@ td {
 #sort-reset-button:hover,
 #sort-reset-button:focus-visible {
   transform: translateY(-1px);
-  box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.55rem 1.1rem rgba(0, 0, 0, 0.2);
   outline: none;
 }
 
 #sort-reset-button:active {
   transform: translateY(1px);
-  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
 }
 
 #sort-reset-button:focus-visible {
@@ -923,12 +931,12 @@ td {
   background: #111;
   color: #fff;
   border-color: #f0f0f0;
-  box-shadow: 0 0.65rem 1.85rem rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0.45rem 1.25rem rgba(0, 0, 0, 0.4);
 }
 
 :root[data-theme="dark"] #sort-reset-button:hover,
 :root[data-theme="dark"] #sort-reset-button:focus-visible {
-  box-shadow: 0 0.85rem 2.1rem rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0.65rem 1.55rem rgba(0, 0, 0, 0.5);
 }
 
 #help-button:focus {
