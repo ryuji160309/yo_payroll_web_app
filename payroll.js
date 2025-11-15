@@ -44,13 +44,7 @@ function formatPeriodRange(startDate, endDate) {
   return `${startLabel}～${endLabel}`;
 }
 
-let downloadTutorialState = null;
-let sortingController = null;
-
-async function initializePayrollView(detail) {
-  const params = detail && detail.searchParams instanceof URLSearchParams
-    ? new URLSearchParams(detail.searchParams)
-    : new URLSearchParams();
+document.addEventListener('DOMContentLoaded', async () => {
   function createDeferred() {
     let resolved = false;
     let resolver = null;
@@ -74,7 +68,11 @@ async function initializePayrollView(detail) {
   }
 
   const tutorialReady = createDeferred();
+  let downloadTutorialState = null;
+  let sortingController = null;
+
   const statusEl = document.getElementById('status');
+  const params = new URLSearchParams(location.search);
   const selectionsParamRaw = params.get('selections');
   const isCrossStoreMode = selectionsParamRaw !== null && selectionsParamRaw.trim() !== '';
   startLoading(
@@ -1375,41 +1373,6 @@ async function initializePayrollView(detail) {
     stopLoading(statusEl);
     tutorialReady.resolve();
     document.getElementById('error').innerHTML = 'シートが読み込めませんでした。<br>シフト表ではないシートを選択しているか、表のデータが破損している可能性があります。';
-  }
-
-  return () => {
-    downloadTutorialState = null;
-    sortingController = null;
-  };
-}
-
-let payrollViewCleanup = null;
-
-document.addEventListener('yo:view:init', event => {
-  if (!event || !event.detail || event.detail.view !== 'payroll') {
-    return;
-  }
-  if (typeof payrollViewCleanup === 'function') {
-    payrollViewCleanup();
-    payrollViewCleanup = null;
-  }
-  const result = initializePayrollView(event.detail);
-  if (result && typeof result.then === 'function') {
-    result.then(cleanup => {
-      payrollViewCleanup = typeof cleanup === 'function' ? cleanup : null;
-    });
-  } else if (typeof result === 'function') {
-    payrollViewCleanup = result;
-  }
-});
-
-document.addEventListener('yo:view:destroy', event => {
-  if (!event || !event.detail || event.detail.view !== 'payroll') {
-    return;
-  }
-  if (typeof payrollViewCleanup === 'function') {
-    payrollViewCleanup();
-    payrollViewCleanup = null;
   }
 });
 

@@ -40,30 +40,7 @@ function showToastWithNativeNotice(message, options) {
   return toastHandle;
 }
 
-async function initializeSheetsView(detail) {
-  sheetButtonsHighlightTarget = null;
-  multiMonthTutorialState = null;
-
-  const goToView = (view, params = {}, options = {}) => {
-    if (typeof window.navigateTo === 'function') {
-      window.navigateTo(view, params, options);
-      return;
-    }
-    const search = new URLSearchParams({ view });
-    Object.keys(params || {}).forEach(key => {
-      const value = params[key];
-      if (value !== undefined && value !== null) {
-        search.set(key, value);
-      }
-    });
-    const query = search.toString();
-    const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-    if (options && options.replace && typeof window.history.replaceState === 'function') {
-      window.history.replaceState(null, '', url);
-      return;
-    }
-    window.location.href = url;
-  };
+document.addEventListener('DOMContentLoaded', async () => {
   function createDeferred() {
     let resolved = false;
     let resolver = null;
@@ -89,9 +66,7 @@ async function initializeSheetsView(detail) {
   const tutorialReady = createDeferred();
   const statusEl = document.getElementById('status');
 
-  const params = detail && detail.searchParams instanceof URLSearchParams
-    ? new URLSearchParams(detail.searchParams)
-    : new URLSearchParams();
+  const params = new URLSearchParams(location.search);
   const storesParamRaw = params.get('stores');
   const crossStoreMode = storesParamRaw !== null;
 
@@ -783,11 +758,7 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
     }
 
     toggleOverlay(false);
-    const queryParams = {};
-    query.forEach((value, key) => {
-      queryParams[key] = value;
-    });
-    goToView('payroll', queryParams);
+    window.location.href = `payroll.html?${query.toString()}`;
   });
 
   multiMonthTutorialState = {
@@ -839,14 +810,11 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
           btn.classList.add('sheet-button');
           btn.textContent = formatSheetName(meta.name);
           btn.addEventListener('click', () => {
-            const params = {
-              store: entry.key,
-              sheet: String(meta.index)
-            };
+            const params = new URLSearchParams({ store: entry.key, sheet: meta.index });
             if (meta.sheetId !== undefined && meta.sheetId !== null) {
-              params.gid = String(meta.sheetId);
+              params.set('gid', String(meta.sheetId));
             }
-            goToView('payroll', params);
+            window.location.href = `payroll.html?${params.toString()}`;
           });
           buttonWrapper.appendChild(btn);
         });
@@ -876,55 +844,17 @@ function buildSheetSelectionInterface({ list, stores, crossStoreMode, offlineMod
         btn.classList.add('sheet-button');
         btn.textContent = formatSheetName(meta.name);
         btn.addEventListener('click', () => {
-          const params = {
-            store: stores[0].key,
-            sheet: String(meta.index)
-          };
+          const params = new URLSearchParams({ store: stores[0].key, sheet: meta.index });
           if (meta.sheetId !== undefined && meta.sheetId !== null) {
-            params.gid = String(meta.sheetId);
+            params.set('gid', String(meta.sheetId));
           }
           if (offlineMode) {
-            params.offline = '1';
+            params.set('offline', '1');
           }
-          goToView('payroll', params);
+          window.location.href = `payroll.html?${params.toString()}`;
         });
         sheetButtonsContainer.appendChild(btn);
       });
     }
   }
-
-  return () => {
-    sheetButtonsHighlightTarget = null;
-    multiMonthTutorialState = null;
-  };
 }
-
-let sheetsViewCleanup = null;
-
-document.addEventListener('yo:view:init', event => {
-  if (!event || !event.detail || event.detail.view !== 'sheets') {
-    return;
-  }
-  if (typeof sheetsViewCleanup === 'function') {
-    sheetsViewCleanup();
-    sheetsViewCleanup = null;
-  }
-  const result = initializeSheetsView(event.detail);
-  if (result && typeof result.then === 'function') {
-    result.then(cleanup => {
-      sheetsViewCleanup = typeof cleanup === 'function' ? cleanup : null;
-    });
-  } else if (typeof result === 'function') {
-    sheetsViewCleanup = result;
-  }
-});
-
-document.addEventListener('yo:view:destroy', event => {
-  if (!event || !event.detail || event.detail.view !== 'sheets') {
-    return;
-  }
-  if (typeof sheetsViewCleanup === 'function') {
-    sheetsViewCleanup();
-    sheetsViewCleanup = null;
-  }
-});

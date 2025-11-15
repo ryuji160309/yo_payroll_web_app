@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0f4a73">
+  <title>設定</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="help.js"></script>
+  <script defer src="settings.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <button class="back-btn" id="settings-back" onclick="history.back()">＜店舗選択</button>
+    </div>
+    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-right">
+      <button class="back-btn" id="settings-home" onclick="location.href='index.html'">はじめから</button>
+    </div>
+  </header>
+  <h1 style="text-align:center">設定 <span style="font-size:1rem;font-weight:normal;">(参照)</span></h1>
+  <div style="padding:1rem;">
+    <div style="color:red;">設定は設定用スプレッドシートに移動しました。</div>
+    <button id="open-settings-sheet" onclick="window.open('https://docs.google.com/spreadsheets/d/1qIKwli_xm3-a1HDs6DtE_XgQekXU9KYZyc2dDXAOdUY/edit?usp=sharing','_blank')">設定用スプレッドシートを開く</button><br>
+    <div id="settings-error" style="color:red;white-space:pre-line;"></div><br><br>
+    <label>店舗<select id="store-select"></select></label><br><br>
+    <label>シートURL<input id="url" class="copyable-input" style="width:100%" readonly title="タップしてコピー"></label><br><br>
+    <label>基本時給<input id="baseWage" type="number" disabled></label><br><br>
+    <label>時間外倍率<input id="overtime" type="number" step="0.01" disabled></label><br><br>
+    <label>従業員名除外ワード<input id="excludeWords" style="width:100%" placeholder="カンマ区切りで入力" disabled></label><br><br>
+  </div>
+</body>
+</html>
