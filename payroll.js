@@ -177,10 +177,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       },
       sortedTable: {
-        selector: '#employees tbody',
+        selector: '#employees',
         onEnter: () => {
           if (sortingController && typeof sortingController.sortBy === 'function') {
-            sortingController.sortBy('days', 'asc');
+            sortingController.sortBy('days', 'desc');
           }
         },
         onExit: context => {
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             typeof sortingController.isSorted === 'function'
           ) {
             if (!sortingController.isSorted()) {
-              sortingController.sortBy('days', 'asc');
+              sortingController.sortBy('days', 'desc');
             }
           }
         },
@@ -1031,10 +1031,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           button.setAttribute('aria-label', '並び替えをリセット');
           button.hidden = true;
           button.setAttribute('aria-hidden', 'true');
-          const target = document.body || document.documentElement;
-          if (target) {
-            target.appendChild(button);
-          }
+        }
+        const container = table.closest('.employees-table-container') || table.parentElement;
+        const target = container || document.body || document.documentElement;
+        if (target && button.parentElement !== target) {
+          target.appendChild(button);
         }
         return button;
       };

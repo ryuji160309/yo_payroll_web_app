@@ -355,6 +355,13 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     activePresses.delete(pointerId);
   }
 
+  function clearAllPresses() {
+    if (activePresses.size === 0) {
+      return;
+    }
+    Array.from(activePresses.keys()).forEach(clearPress);
+  }
+
   function handlePointerDown(event) {
     if (typeof event.button === 'number' && event.button !== 0) {
       return;
@@ -402,6 +409,15 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     clearPress(event.pointerId);
   }
 
+  function handleVisibilityChange() {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    if (document.visibilityState !== 'visible') {
+      clearAllPresses();
+    }
+  }
+
   function handleButtonActivation(event) {
     const button = event.target && event.target.closest
       ? event.target.closest(PRESSABLE_SELECTOR)
@@ -417,8 +433,15 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   }
 
   document.addEventListener('pointerdown', handlePointerDown, { passive: true });
+  document.addEventListener('pointerup', handlePointerEnd, true);
+  document.addEventListener('pointercancel', handlePointerEnd, true);
   window.addEventListener('pointerup', handlePointerEnd);
   window.addEventListener('pointercancel', handlePointerEnd);
+  window.addEventListener('mouseup', clearAllPresses, true);
+  window.addEventListener('touchend', clearAllPresses, true);
+  window.addEventListener('touchcancel', clearAllPresses, true);
+  window.addEventListener('blur', clearAllPresses);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
   document.addEventListener('click', handleButtonActivation, true);
 })();
 
