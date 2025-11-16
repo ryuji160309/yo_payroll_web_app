@@ -125,6 +125,8 @@ header {
   transition: opacity 0.4s ease;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .network-status.is-visible,
@@ -155,6 +157,8 @@ select {
   box-shadow: none;
   border-radius: 0.5rem;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
   transition: background-color 0.18s ease, border-color 0.18s ease,
     box-shadow 0.18s ease, transform 0.1s ease, color 0.18s ease;
 }
