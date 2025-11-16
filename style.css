@@ -679,6 +679,63 @@ td {
   box-shadow: 0 0.75rem 2.5rem rgba(15, 23, 42, 0.08);
 }
 
+#today-attendance .today-attendance-header {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-bottom: 0.25rem;
+}
+
+.today-attendance-status {
+  text-align: center;
+  color: var(--color-muted-text);
+  margin: 0.15rem 0 0.6rem;
+}
+
+.today-attendance-store {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.55rem;
+  margin-top: 0.55rem;
+}
+
+.today-attendance-store:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.today-attendance-store-title {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.today-attendance-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.today-attendance-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.15rem 0;
+}
+
+.today-attendance-range {
+  min-width: 6rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-text);
+}
+
+.today-attendance-name {
+  flex: 1;
+}
+
+.today-attendance-empty {
+  margin: 0;
+  color: var(--color-muted-text);
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;
