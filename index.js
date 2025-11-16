@@ -1186,6 +1186,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return document.querySelector('#store-list button.store-button') || document.getElementById('store-list');
       },
       local: '#offline-load-button',
+      todayAttendance: '#today-attendance',
+      announcementsArea: '#announcements',
       setting: '#settings',
       announcements: {
         selectors: ['#announcements select', '#announcements']
