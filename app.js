@@ -891,26 +891,18 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     return;
   }
 
-  const LONG_PRESS_DURATION = 5000;
+  const TAP_RESET_DURATION = 4000;
+  const TAP_COUNT_TO_OPEN = 5;
   const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, label, [role="button"], [role="link"]';
   const MAX_STORAGE_DETAIL = 10;
 
   let header = null;
-  let pressTimer = null;
-  let activePointerId = null;
-  let longPressTriggered = false;
-  let suppressNextClick = false;
+  let tapCount = 0;
+  let lastTapTime = 0;
   let popover = null;
   let outsideClickHandler = null;
   let keydownHandler = null;
   let lastRenderToken = 0;
-
-  const clearPressTimer = () => {
-    if (pressTimer !== null) {
-      window.clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  };
 
   const removeDocumentListeners = () => {
     if (outsideClickHandler) {
@@ -1626,7 +1618,12 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     }
   };
 
-  const startPress = event => {
+  const resetTapCounter = () => {
+    tapCount = 0;
+    lastTapTime = 0;
+  };
+
+  const handleTap = event => {
     if (!header || !header.contains(event.target)) {
       return;
     }
@@ -1639,44 +1636,18 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     if (interactiveTarget) {
       return;
     }
-    clearPressTimer();
-    activePointerId = event.pointerId;
-    longPressTriggered = false;
-    pressTimer = window.setTimeout(() => {
-      pressTimer = null;
-      longPressTriggered = true;
-      suppressNextClick = true;
+
+    const now = Date.now();
+    if (!Number.isFinite(lastTapTime) || now - lastTapTime > TAP_RESET_DURATION) {
+      resetTapCounter();
+    }
+
+    tapCount += 1;
+    lastTapTime = now;
+
+    if (tapCount >= TAP_COUNT_TO_OPEN) {
+      resetTapCounter();
       showPopover();
-    }, LONG_PRESS_DURATION);
-  };
-
-  const endPress = event => {
-    if (activePointerId !== null && event.pointerId !== undefined && event.pointerId !== activePointerId) {
-      return;
-    }
-    clearPressTimer();
-    activePointerId = null;
-    if (longPressTriggered) {
-      event.preventDefault();
-      event.stopPropagation();
-      longPressTriggered = false;
-    }
-  };
-
-  const cancelPress = event => {
-    if (activePointerId !== null && event && event.pointerId !== undefined && event.pointerId !== activePointerId) {
-      return;
-    }
-    clearPressTimer();
-    activePointerId = null;
-    longPressTriggered = false;
-  };
-
-  const interceptClick = event => {
-    if (suppressNextClick) {
-      event.preventDefault();
-      event.stopPropagation();
-      suppressNextClick = false;
     }
   };
 
@@ -1686,14 +1657,11 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
       return;
     }
     header.dataset.debugMenuBound = 'true';
-    header.addEventListener('pointerdown', startPress, true);
-    header.addEventListener('pointerup', endPress, true);
-    header.addEventListener('pointercancel', cancelPress, true);
-    header.addEventListener('pointerleave', cancelPress, true);
-    header.addEventListener('click', interceptClick, true);
+    header.addEventListener('pointerdown', handleTap, true);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         hidePopover();
+        resetTapCounter();
       }
     });
   };
