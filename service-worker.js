@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.8.3';
+const CACHE_VERSION = 'v1.8.4';
 const CACHE_NAME = `yo-payroll-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
@@ -6,6 +6,7 @@ const STATIC_ASSETS = [
   '/payroll.html',
   '/settings.html',
   '/sheets.html',
+  '/today.html',
   '/style.css',
   '/manifest.json',
   '/app.js',
@@ -13,6 +14,7 @@ const STATIC_ASSETS = [
   '/payroll.js',
   '/settings.js',
   '/sheets.js',
+  '/today.js',
   '/calc.js',
   '/help.js',
   '/help/top.txt',

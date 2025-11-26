@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0f4a73">
+  <title>今日の出勤者</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="help.js"></script>
+  <script defer src="today.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <button class="back-btn" id="today-back" onclick="history.back()">＜戻る</button>
+    </div>
+    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-right">
+      <button class="back-btn" id="today-home" onclick="location.href='index.html'">はじめから</button>
+    </div>
+  </header>
+  <h1 style="text-align:center">今日の出勤者</h1>
+  <div id="today-status" style="text-align:center"></div>
+  <div class="today-summary">
+    <div class="today-summary__title" id="today-date"></div>
+    <div class="today-summary__subtitle" id="today-period-note"></div>
+  </div>
+  <div class="today-table-wrapper" aria-live="polite">
+    <table class="today-table" id="today-table" aria-describedby="today-period-note">
+      <thead>
+        <tr id="today-header-row"></tr>
+      </thead>
+      <tbody id="today-table-body"></tbody>
+    </table>
+  </div>
+  <div id="today-warnings" class="today-warning-list" hidden aria-live="polite"></div>
+</body>
+</html>
