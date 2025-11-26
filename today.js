@@ -81,19 +81,21 @@ function fillSlots(slots, startMinutes, endMinutes, name) {
   if (!Array.isArray(slots) || !name) {
     return;
   }
-  let start = startMinutes;
-  let end = endMinutes;
-  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+  const start = Number.isFinite(startMinutes) ? startMinutes : NaN;
+  const end = Number.isFinite(endMinutes) ? endMinutes : NaN;
+  if (Number.isNaN(start) || Number.isNaN(end)) {
     return;
   }
-  if (end <= start) {
-    end += 24 * 60;
+  const clampedStart = Math.max(0, start);
+  const clampedEnd = Math.min(24 * 60, end);
+  if (clampedEnd <= clampedStart) {
+    return;
   }
-  for (let minutes = Math.floor(start / 60) * 60; minutes < end; minutes += 60) {
-    const hourIndex = Math.floor(minutes / 60) % 24;
+  for (let minutes = Math.floor(clampedStart / 60) * 60; minutes < clampedEnd; minutes += 60) {
+    const hourIndex = Math.floor(minutes / 60);
     const slotStart = minutes;
     const slotEnd = minutes + 60;
-    const overlap = Math.min(end, slotEnd) - Math.max(start, slotStart);
+    const overlap = Math.min(clampedEnd, slotEnd) - Math.max(clampedStart, slotStart);
     if (overlap > 0 && slots[hourIndex]) {
       slots[hourIndex].add(name);
     }
@@ -120,13 +122,39 @@ function buildSlotsForDay(data, startDate, targetDate, store) {
   }
   const slots = Array.from({ length: 24 }, () => new Set());
   const excludeWords = Array.isArray(store.excludeWords) ? store.excludeWords : [];
-  for (let col = 3; col < header.length; col += 1) {
-    const name = header[col];
-    if (!name || excludeWords.some(word => String(name).includes(word))) {
-      continue;
+
+  const appendRowToSlots = (rowData, { overnightHeadOnly = false } = {}) => {
+    if (!rowData || !Array.isArray(rowData)) {
+      return;
     }
-    const ranges = parseTimeRanges(row[col]);
-    ranges.forEach(range => fillSlots(slots, range.start, range.end, String(name)));
+    for (let col = 3; col < header.length; col += 1) {
+      const name = header[col];
+      if (!name || excludeWords.some(word => String(name).includes(word))) {
+        continue;
+      }
+      const ranges = parseTimeRanges(rowData[col]);
+      ranges.forEach(range => {
+        const start = range.start;
+        const end = range.end;
+        if (overnightHeadOnly) {
+          if (end <= start) {
+            fillSlots(slots, 0, end, String(name));
+          }
+          return;
+        }
+        if (end <= start) {
+          fillSlots(slots, start, 24 * 60, String(name));
+          return;
+        }
+        fillSlots(slots, start, end, String(name));
+      });
+    }
+  };
+
+  appendRowToSlots(row);
+  if (scheduleRowIndex - 1 >= 3 && offset > 0) {
+    const previousRow = data[scheduleRowIndex - 1];
+    appendRowToSlots(previousRow, { overnightHeadOnly: true });
   }
   return slots.map(set => Array.from(set));
 }
@@ -198,18 +226,12 @@ function renderAttendanceTable(stores) {
 
   const timeHeader = document.createElement('th');
   timeHeader.textContent = '時間帯';
+  timeHeader.className = 'today-time-cell today-time-header';
   headerRow.appendChild(timeHeader);
 
   stores.forEach(store => {
     const th = document.createElement('th');
     th.textContent = store.storeName || '';
-    if (store.periodLabel) {
-      const note = document.createElement('span');
-      note.className = 'today-header-note';
-      note.textContent = store.periodLabel;
-      th.appendChild(document.createElement('br'));
-      th.appendChild(note);
-    }
     headerRow.appendChild(th);
   });
 
