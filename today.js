@@ -5,6 +5,22 @@ function createEmptySlots() {
   return Array.from({ length: 24 }, () => []);
 }
 
+function hasAttendance(slots) {
+  if (!Array.isArray(slots)) {
+    return false;
+  }
+  return slots.some(hour => Array.isArray(hour) && hour.length > 0);
+}
+
+function isWithinPeriod(date, period) {
+  if (!(date instanceof Date) || !period || !period.startDate || !period.endDate) {
+    return false;
+  }
+  const normalizedDate = normalizeDate(date);
+  return normalizedDate >= normalizeDate(period.startDate)
+    && normalizedDate <= normalizeDate(period.endDate);
+}
+
 function normalizeDate(value) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
@@ -204,7 +220,7 @@ function renderWarnings(messages) {
   warningBox.innerHTML = validMessages.map(msg => `<div>${msg}</div>`).join('');
 }
 
-function renderAttendanceTable(stores) {
+function renderAttendanceTable(stores, options = {}) {
   const headerRow = document.getElementById('today-header-row');
   const body = document.getElementById('today-table-body');
   if (!headerRow || !body) {
@@ -237,10 +253,15 @@ function renderAttendanceTable(stores) {
 
   for (let hour = 0; hour < 24; hour += 1) {
     const row = document.createElement('tr');
+    row.dataset.hour = String(hour);
     const timeCell = document.createElement('th');
     timeCell.className = 'today-time-cell';
     timeCell.scope = 'row';
     timeCell.textContent = `${hour}時`;
+    if (options.currentHour === hour) {
+      row.classList.add('today-current-hour-row');
+      timeCell.classList.add('today-current-hour-cell');
+    }
     row.appendChild(timeCell);
 
     stores.forEach(store => {
@@ -272,17 +293,153 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('today-status');
   const dateEl = document.getElementById('today-date');
   const periodEl = document.getElementById('today-period-note');
-  const targetDate = normalizeDate(new Date());
+  const prevButton = document.getElementById('today-prev-day');
+  const nextButton = document.getElementById('today-next-day');
+  const today = normalizeDate(new Date());
+  const currentHour = new Date().getHours();
 
-  if (dateEl) {
-    dateEl.textContent = formatDateLabel(targetDate);
-  }
+  let displayDate = today;
+  let rangeStart = null;
+  let rangeEnd = null;
+  let initialScrollDone = false;
+  const warnings = [];
+  const loadedStores = [];
+
   if (periodEl) {
     periodEl.textContent = '全店舗のシートから当日の出勤予定を読み込みます。';
   }
   if (statusEl) {
     startLoading(statusEl, '今日の出勤者を読み込み中…', { disableSlowNote: true });
   }
+
+  const updateDateLabel = date => {
+    if (dateEl) {
+      dateEl.textContent = formatDateLabel(date);
+    }
+  };
+
+  const updatePeriodNote = storesForDate => {
+    if (!periodEl) {
+      return;
+    }
+    const labels = storesForDate
+      .filter(store => store.periodActive && store.periodLabel)
+      .map(store => store.periodLabel);
+    const fallbackLabels = loadedStores
+      .map(store => store.periodLabel)
+      .filter(label => !!label);
+    const uniqueLabels = Array.from(new Set(labels.length ? labels : fallbackLabels));
+    periodEl.textContent = uniqueLabels.length
+      ? `対象期間：${uniqueLabels.join(' ／ ')}`
+      : '各店舗の最新シートから出勤予定を表示しています。';
+  };
+
+  const updateStatus = ({ hasPeriodData, hasAttendance }) => {
+    if (!statusEl) {
+      return;
+    }
+    if (!loadedStores.length) {
+      statusEl.textContent = '出勤予定を取得できませんでした。';
+      return;
+    }
+    if (!hasPeriodData) {
+      statusEl.textContent = '選択した日は対象期間外です。';
+      return;
+    }
+    if (!hasAttendance) {
+      statusEl.textContent = '選択した日の出勤予定はありません。';
+      return;
+    }
+    statusEl.textContent = '';
+  };
+
+  const scrollToHour = hour => {
+    if (typeof hour !== 'number' || Number.isNaN(hour)) {
+      return;
+    }
+    const wrapper = document.querySelector('.today-table-wrapper');
+    if (!wrapper) {
+      return;
+    }
+    const targetRow = wrapper.querySelector(`tr[data-hour="${hour}"]`);
+    if (!targetRow) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      const offset = targetRow.offsetTop - wrapper.offsetTop;
+      const scrollTarget = Math.max(0, offset - Math.max(0, (wrapper.clientHeight - targetRow.clientHeight) / 2));
+      wrapper.scrollTop = scrollTarget;
+    });
+  };
+
+  const updateNavButtons = () => {
+    const normalizedDate = normalizeDate(displayDate);
+    if (prevButton) {
+      prevButton.disabled = !rangeStart || normalizedDate <= normalizeDate(rangeStart);
+    }
+    if (nextButton) {
+      nextButton.disabled = !rangeEnd || normalizedDate >= normalizeDate(rangeEnd);
+    }
+  };
+
+  const renderForDate = (targetDate, { shouldScrollToCurrent = false } = {}) => {
+    const normalizedDate = normalizeDate(targetDate);
+    displayDate = normalizedDate;
+    updateDateLabel(normalizedDate);
+
+    const storesForDate = loadedStores.map(store => {
+      const periodActive = isWithinPeriod(normalizedDate, store.period);
+      let slots = null;
+      if (periodActive && store.workbook?.data) {
+        slots = buildSlotsForDay(store.workbook.data, store.period.startDate, normalizedDate, store.sourceStore)
+          || createEmptySlots();
+      }
+      return {
+        ...store,
+        slots,
+        periodActive
+      };
+    });
+
+    const storesWithinPeriod = storesForDate.filter(store => store.periodActive);
+    const storesWithAttendance = storesWithinPeriod.filter(store => hasAttendance(store.slots));
+
+    renderAttendanceTable(storesWithAttendance, {
+      currentHour: normalizedDate.getTime() === today.getTime() ? currentHour : null
+    });
+    renderWarnings(warnings);
+    updatePeriodNote(storesForDate);
+    updateStatus({
+      hasPeriodData: storesWithinPeriod.length > 0,
+      hasAttendance: storesWithAttendance.length > 0
+    });
+    updateNavButtons();
+
+    if (!initialScrollDone && shouldScrollToCurrent && normalizedDate.getTime() === today.getTime()) {
+      scrollToHour(currentHour);
+      initialScrollDone = true;
+    }
+  };
+
+  const clampDate = date => {
+    let nextDate = date instanceof Date ? new Date(date.getTime()) : new Date();
+    nextDate = normalizeDate(nextDate);
+    if (rangeStart && nextDate < normalizeDate(rangeStart)) {
+      return normalizeDate(rangeStart);
+    }
+    if (rangeEnd && nextDate > normalizeDate(rangeEnd)) {
+      return normalizeDate(rangeEnd);
+    }
+    return nextDate;
+  };
+
+  const shiftDate = delta => {
+    const nextDate = clampDate(new Date(displayDate.getTime() + delta * DAY_IN_MS));
+    if (nextDate.getTime() === displayDate.getTime()) {
+      return;
+    }
+    renderForDate(nextDate, { shouldScrollToCurrent: true });
+  };
 
   try {
     if (window.settingsLoadPromise && typeof window.settingsLoadPromise.then === 'function') {
@@ -293,65 +450,65 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const stores = DEFAULT_STORES || {};
-  const storeEntries = Object.keys(stores).map(key => ({ key, ...stores[key] }));
-  const warnings = [];
-  const tableStores = [];
+  const storeEntries = Object.keys(stores)
+    .map(key => ({ key, ...stores[key] }))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
 
   for (let i = 0; i < storeEntries.length; i += 1) {
     const store = storeEntries[i];
     if (!store || !store.url) {
       continue;
     }
-    const { workbook, period, warnings: storeWarnings } = await resolveSheetForToday(store, targetDate);
+    const { workbook, period, warnings: storeWarnings } = await resolveSheetForToday(store, today);
     if (Array.isArray(storeWarnings)) {
       warnings.push(...storeWarnings);
     }
     if (!workbook || !period) {
       warnings.push(`${store.name}：今日を含むシートが見つかりません`);
-      tableStores.push({
-        storeKey: store.key,
-        storeName: store.name,
-        slots: createEmptySlots(),
-        periodLabel: ''
-      });
-      continue;
+    } else {
+      if (period.startDate instanceof Date) {
+        rangeStart = rangeStart && rangeStart instanceof Date
+          ? new Date(Math.min(rangeStart.getTime(), period.startDate.getTime()))
+          : new Date(period.startDate.getTime());
+      }
+      if (period.endDate instanceof Date) {
+        rangeEnd = rangeEnd && rangeEnd instanceof Date
+          ? new Date(Math.max(rangeEnd.getTime(), period.endDate.getTime()))
+          : new Date(period.endDate.getTime());
+      }
     }
-    const slots = buildSlotsForDay(workbook.data, period.startDate, targetDate, store);
-    if (!slots) {
-      warnings.push(`${store.name}：当日の行を取得できませんでした`);
-      tableStores.push({
-        storeKey: store.key,
-        storeName: store.name,
-        slots: createEmptySlots(),
-        periodLabel: period.label || ''
-      });
-      continue;
-    }
-    tableStores.push({
+    loadedStores.push({
       storeKey: store.key,
       storeName: store.name,
-      slots,
-      periodLabel: period.label || ''
+      workbook: workbook || null,
+      period: period || null,
+      periodLabel: period?.label || '',
+      sourceStore: store
     });
   }
 
-  tableStores.sort((a, b) => (a.storeName || '').localeCompare(b.storeName || '', 'ja'));
-
   if (statusEl) {
     stopLoading(statusEl);
-    statusEl.textContent = tableStores.length ? '' : '出勤予定を取得できませんでした。';
   }
 
-  renderAttendanceTable(tableStores);
-  renderWarnings(warnings);
+  renderForDate(displayDate, { shouldScrollToCurrent: true });
 
-  if (periodEl && tableStores.length) {
-    const matchedSheets = tableStores
-      .map(store => store.periodLabel)
-      .filter(label => !!label);
-    const uniqueLabels = Array.from(new Set(matchedSheets));
-    periodEl.textContent = uniqueLabels.length
-      ? `対象期間：${uniqueLabels.join(' ／ ')}`
-      : '各店舗の最新シートから出勤予定を表示しています。';
+  if (prevButton) {
+    prevButton.addEventListener('click', () => shiftDate(-1));
   }
+  if (nextButton) {
+    nextButton.addEventListener('click', () => shiftDate(1));
+  }
+
+  initializeHelp('help/today.txt', {
+    pageKey: 'today',
+    steps: {
+      date: '#today-date',
+      prev: '#today-prev-day',
+      next: '#today-next-day',
+      table: '.today-table-wrapper',
+      warnings: '#today-warnings'
+    },
+    waitForReady: () => document.getElementById('today-table-body')?.children.length > 0
+  });
 });

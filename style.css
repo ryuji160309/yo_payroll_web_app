@@ -635,7 +635,7 @@ td {
 
 #toast-container {
   position: fixed;
-  inset: auto 0 1.5rem;
+  inset: auto 0 5.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -857,7 +857,7 @@ td {
   position: fixed;
   bottom: 1rem;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, 0);
   padding: 0.75rem 1.5rem;
   min-width: 8.5rem;
   border-radius: 9999px;
@@ -869,18 +869,18 @@ td {
   box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.22);
   cursor: pointer;
   z-index: 1500;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .today-button:hover,
 .today-button:focus-visible {
-  transform: translateX(-50%) translateY(-1px);
+  transform: translate(-50%, -1px);
   box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.26);
   filter: brightness(1.03);
 }
 
 .today-button:active {
-  transform: translateX(-50%) scale(0.98);
+  transform: translate(-50%, 0) scale(0.98);
 }
 
 .theme-toggle {
@@ -1720,6 +1720,51 @@ td {
   color: var(--color-body-text);
 }
 
+.today-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.today-summary__text {
+  min-width: 0;
+}
+
+.today-nav__button {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-body-text);
+  font-weight: 700;
+  min-width: 4.5rem;
+  cursor: pointer;
+  box-shadow: 0 0.65rem 1.2rem rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.today-nav__button:hover,
+.today-nav__button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 0.75rem 1.3rem rgba(0, 0, 0, 0.12);
+}
+
+.today-nav__button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+.today-nav__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+  transform: none;
+}
+
 .today-summary__title {
   font-size: 1.2rem;
   font-weight: 700;
@@ -1757,7 +1802,7 @@ td {
   padding: 0.85rem 0.75rem;
   border-bottom: 1px solid var(--color-border-strong);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  z-index: 2;
+  z-index: 3;
 }
 
 .today-header-note {
@@ -1785,16 +1830,36 @@ td {
   background: var(--color-surface);
   font-weight: 700;
   min-width: 4.25rem;
-  z-index: 1;
+  z-index: 4;
   color: var(--color-body-text);
   box-shadow: 6px 0 14px rgba(0, 0, 0, 0.05);
 }
 
 .today-time-header {
   top: 0;
-  z-index: 3;
+  z-index: 5;
   background: var(--color-surface-strong);
   box-shadow: 6px 0 14px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.today-current-hour-row {
+  background: linear-gradient(90deg, rgba(33, 150, 243, 0.08), rgba(33, 150, 243, 0));
+}
+
+.today-current-hour-cell {
+  background: rgba(33, 150, 243, 0.12);
+  color: #0f4a73;
+  box-shadow: 6px 0 14px rgba(15, 74, 115, 0.16);
+}
+
+:root[data-theme="dark"] .today-current-hour-row {
+  background: linear-gradient(90deg, rgba(61, 143, 206, 0.2), rgba(61, 143, 206, 0));
+}
+
+:root[data-theme="dark"] .today-current-hour-cell {
+  background: rgba(61, 143, 206, 0.24);
+  color: #e7f3ff;
+  box-shadow: 6px 0 14px rgba(15, 74, 115, 0.28);
 }
 
 .today-badges {
