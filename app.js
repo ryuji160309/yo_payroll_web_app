@@ -1,4 +1,4 @@
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.8.4';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
 const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
@@ -129,6 +129,39 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   });
 
   initTheme();
+})();
+
+(function setupTodayButton() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const BUTTON_ID = 'today-button';
+
+  const ensureButton = () => {
+    if (document.getElementById(BUTTON_ID)) {
+      return;
+    }
+    const target = document.body || document.documentElement;
+    if (!target) {
+      return;
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = BUTTON_ID;
+    button.className = 'today-button';
+    button.textContent = '今日の出勤者';
+    button.addEventListener('click', () => {
+      window.location.href = 'today.html';
+    });
+    target.appendChild(button);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureButton, { once: true });
+  } else {
+    ensureButton();
+  }
 })();
 
 (function setupToastSystem() {
@@ -891,7 +924,7 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     return;
   }
 
-  const TAP_RESET_DURATION = 4000;
+  const TAP_RESET_DURATION = 2000;
   const TAP_COUNT_TO_OPEN = 5;
   const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, label, [role="button"], [role="link"]';
   const MAX_STORAGE_DETAIL = 10;
