@@ -1,4 +1,4 @@
-const APP_VERSION = '1.8.4';
+const APP_VERSION = '1.9.1';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
 const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
@@ -138,7 +138,24 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
 
   const BUTTON_ID = 'today-button';
 
+  const isTopPage = () => {
+    const path = (window.location && window.location.pathname) || '';
+    const lastSegment = path.split('/').filter(Boolean).pop() || '';
+    return lastSegment === '' || lastSegment === 'index.html' || lastSegment === 'index';
+  };
+
+  const removeButtonIfExists = () => {
+    const existing = document.getElementById(BUTTON_ID);
+    if (existing && existing.parentElement) {
+      existing.parentElement.removeChild(existing);
+    }
+  };
+
   const ensureButton = () => {
+    if (!isTopPage()) {
+      removeButtonIfExists();
+      return;
+    }
     if (document.getElementById(BUTTON_ID)) {
       return;
     }
