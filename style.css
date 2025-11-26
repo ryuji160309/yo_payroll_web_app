@@ -1790,6 +1790,13 @@ td {
   box-shadow: 6px 0 14px rgba(0, 0, 0, 0.05);
 }
 
+.today-time-header {
+  top: 0;
+  z-index: 3;
+  background: var(--color-surface-strong);
+  box-shadow: 6px 0 14px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
 .today-badges {
   display: flex;
   flex-wrap: wrap;
