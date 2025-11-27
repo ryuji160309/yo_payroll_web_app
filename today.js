@@ -220,23 +220,6 @@ function renderWarnings(messages) {
   warningBox.innerHTML = validMessages.map(msg => `<div>${msg}</div>`).join('');
 }
 
-function buildSheetViewUrl(storeUrl, workbook) {
-  if (typeof extractFileId !== 'function') {
-    return null;
-  }
-  const fileId = extractFileId(storeUrl || '');
-  if (!fileId) {
-    return null;
-  }
-  const sheetId = Number.isFinite(workbook?.sheetId) ? Number(workbook.sheetId) : null;
-  const fallbackGidMatch = storeUrl ? storeUrl.match(/[#&]gid=(\d+)/) : null;
-  const gid = sheetId !== null
-    ? sheetId
-    : (fallbackGidMatch ? Number(fallbackGidMatch[1]) : null);
-  const gidFragment = Number.isFinite(gid) ? `#gid=${gid}` : '';
-  return `https://docs.google.com/spreadsheets/d/${fileId}/edit${gidFragment}`;
-}
-
 function renderAttendanceTable(stores, options = {}) {
   const headerRow = document.getElementById('today-header-row');
   const body = document.getElementById('today-table-body');
@@ -263,22 +246,8 @@ function renderAttendanceTable(stores, options = {}) {
   headerRow.appendChild(timeHeader);
 
   stores.forEach(store => {
-    const sheetUrl = buildSheetViewUrl(store.sourceStore?.url, store.workbook);
     const th = document.createElement('th');
-    th.className = 'today-store-header';
-    if (sheetUrl) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'today-store-link';
-      button.textContent = store.storeName || '';
-      button.addEventListener('click', () => {
-        window.open(sheetUrl, '_blank', 'noopener');
-      });
-      button.title = `${store.storeName || '店舗'}のシートを開く`;
-      th.appendChild(button);
-    } else {
-      th.textContent = store.storeName || '';
-    }
+    th.textContent = store.storeName || '';
     headerRow.appendChild(th);
   });
 
@@ -313,9 +282,6 @@ function renderAttendanceTable(stores, options = {}) {
           list.appendChild(badge);
         });
         cell.appendChild(list);
-      }
-      if (options.currentHour === hour) {
-        cell.classList.add('today-current-hour-slot');
       }
       row.appendChild(cell);
     });
@@ -389,22 +355,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const scrollToHour = hour => {
     if (typeof hour !== 'number' || Number.isNaN(hour)) {
-      return false;
+      return;
     }
     const wrapper = document.querySelector('.today-table-wrapper');
     if (!wrapper) {
-      return false;
+      return;
     }
     const targetRow = wrapper.querySelector(`tr[data-hour="${hour}"]`);
     if (!targetRow) {
-      return false;
+      return;
     }
     requestAnimationFrame(() => {
       const offset = targetRow.offsetTop - wrapper.offsetTop;
       const scrollTarget = Math.max(0, offset - Math.max(0, (wrapper.clientHeight - targetRow.clientHeight) / 2));
       wrapper.scrollTop = scrollTarget;
     });
-    return true;
   };
 
   const updateNavButtons = () => {
@@ -451,16 +416,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateNavButtons();
 
     if (!initialScrollDone && shouldScrollToCurrent && normalizedDate.getTime() === today.getTime()) {
-      const scrolled = scrollToHour(currentHour);
-      if (scrolled) {
-        initialScrollDone = true;
-      } else {
-        setTimeout(() => {
-          if (!initialScrollDone) {
-            initialScrollDone = scrollToHour(currentHour);
-          }
-        }, 200);
-      }
+      scrollToHour(currentHour);
+      initialScrollDone = true;
     }
   };
 
