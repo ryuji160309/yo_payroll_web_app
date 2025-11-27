@@ -1805,6 +1805,41 @@ td {
   z-index: 3;
 }
 
+.today-store-header {
+  z-index: 4;
+  padding: 0;
+}
+
+.today-store-header__button {
+  width: 100%;
+  padding: 0.85rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.today-store-header__button:disabled {
+  cursor: not-allowed;
+  color: var(--color-muted-text);
+}
+
+.today-store-header__button:not(:disabled):hover,
+.today-store-header__button:not(:disabled):focus-visible {
+  background: rgba(15, 74, 115, 0.08);
+  outline: none;
+}
+
+.today-store-header__button:not(:disabled):active {
+  background: rgba(15, 74, 115, 0.14);
+}
+
 .today-header-note {
   display: block;
   font-size: 0.8rem;
@@ -1843,23 +1878,45 @@ td {
 }
 
 .today-current-hour-row {
-  background: linear-gradient(90deg, rgba(33, 150, 243, 0.08), rgba(33, 150, 243, 0));
+  background: linear-gradient(90deg, rgba(15, 74, 115, 0.18), rgba(15, 74, 115, 0.05));
 }
 
 .today-current-hour-cell {
-  background: rgba(33, 150, 243, 0.12);
-  color: #0f4a73;
-  box-shadow: 6px 0 14px rgba(15, 74, 115, 0.16);
+  background: rgba(15, 74, 115, 0.26);
+  color: #072b46;
+  box-shadow: 6px 0 14px rgba(7, 43, 70, 0.26);
 }
 
 :root[data-theme="dark"] .today-current-hour-row {
-  background: linear-gradient(90deg, rgba(61, 143, 206, 0.2), rgba(61, 143, 206, 0));
+  background: linear-gradient(90deg, rgba(61, 143, 206, 0.28), rgba(61, 143, 206, 0.08));
 }
 
 :root[data-theme="dark"] .today-current-hour-cell {
-  background: rgba(61, 143, 206, 0.24);
+  background: rgba(61, 143, 206, 0.34);
   color: #e7f3ff;
-  box-shadow: 6px 0 14px rgba(15, 74, 115, 0.28);
+  box-shadow: 6px 0 14px rgba(15, 74, 115, 0.32);
+}
+
+.today-current-hour-slot {
+  background: linear-gradient(180deg, rgba(15, 74, 115, 0.12), rgba(15, 74, 115, 0.06));
+  position: relative;
+}
+
+.today-current-hour-slot::before {
+  content: '';
+  position: absolute;
+  inset: 0.1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(15, 74, 115, 0.25);
+  pointer-events: none;
+}
+
+:root[data-theme="dark"] .today-current-hour-slot {
+  background: linear-gradient(180deg, rgba(61, 143, 206, 0.16), rgba(61, 143, 206, 0.1));
+}
+
+:root[data-theme="dark"] .today-current-hour-slot::before {
+  border-color: rgba(61, 143, 206, 0.32);
 }
 
 .today-badges {
