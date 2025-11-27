@@ -942,7 +942,6 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   }
 
   const TAP_RESET_DURATION = 2000;
-  const TAP_SEQUENCE_INTERVAL = 600;
   const TAP_COUNT_TO_OPEN = 5;
   const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, label, [role="button"], [role="link"]';
   const MAX_STORAGE_DETAIL = 10;
@@ -1690,10 +1689,6 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
 
     const now = Date.now();
     if (!Number.isFinite(lastTapTime) || now - lastTapTime > TAP_RESET_DURATION) {
-      resetTapCounter();
-    }
-
-    if (tapCount > 0 && now - lastTapTime > TAP_SEQUENCE_INTERVAL) {
       resetTapCounter();
     }
 

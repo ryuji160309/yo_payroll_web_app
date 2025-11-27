@@ -247,25 +247,7 @@ function renderAttendanceTable(stores, options = {}) {
 
   stores.forEach(store => {
     const th = document.createElement('th');
-    th.className = 'today-store-header';
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'today-store-header__button';
-    button.textContent = store.storeName || '';
-    const sheetUrl = store?.sourceStore?.url;
-    if (sheetUrl) {
-      button.addEventListener('click', () => {
-        try {
-          window.open(sheetUrl, '_blank', 'noopener');
-        } catch (error) {
-          // Ignore navigation errors
-        }
-      });
-      button.title = '算出元のシートを開く';
-    } else {
-      button.disabled = true;
-    }
-    th.appendChild(button);
+    th.textContent = store.storeName || '';
     headerRow.appendChild(th);
   });
 
@@ -285,9 +267,6 @@ function renderAttendanceTable(stores, options = {}) {
     stores.forEach(store => {
       const cell = document.createElement('td');
       const badges = store.slots && store.slots[hour] ? store.slots[hour] : [];
-      if (options.currentHour === hour) {
-        cell.classList.add('today-current-hour-slot');
-      }
       if (badges.length === 0) {
         const empty = document.createElement('span');
         empty.className = 'today-empty';
@@ -387,11 +366,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const offset = targetRow.offsetTop - wrapper.offsetTop;
-        const scrollTarget = Math.max(0, offset - Math.max(0, (wrapper.clientHeight - targetRow.clientHeight) / 2));
-        wrapper.scrollTop = scrollTarget;
-      });
+      const offset = targetRow.offsetTop - wrapper.offsetTop;
+      const scrollTarget = Math.max(0, offset - Math.max(0, (wrapper.clientHeight - targetRow.clientHeight) / 2));
+      wrapper.scrollTop = scrollTarget;
     });
   };
 
