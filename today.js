@@ -310,15 +310,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const periodEl = document.getElementById('today-period-note');
   const prevButton = document.getElementById('today-prev-day');
   const nextButton = document.getElementById('today-next-day');
+  const todayButton = document.getElementById('today-reset');
   const today = normalizeDate(new Date());
   const currentHour = new Date().getHours();
 
   let displayDate = today;
   let rangeStart = null;
   let rangeEnd = null;
-  let initialScrollDone = false;
+  let lastAutoScrollDate = null;
   const warnings = [];
   const loadedStores = [];
+
+  const updateStickyOffset = () => {
+    const header = document.querySelector('header');
+    const offset = header ? header.offsetHeight : 0;
+    document.documentElement.style.setProperty('--today-sticky-offset', `${offset}px`);
+  };
+  updateStickyOffset();
+  window.addEventListener('resize', updateStickyOffset);
 
   if (periodEl) {
     periodEl.textContent = '全店舗のシートから当日の出勤予定を読み込みます。';
@@ -397,6 +406,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (nextButton) {
       nextButton.disabled = !rangeEnd || normalizedDate >= normalizeDate(rangeEnd);
     }
+    if (todayButton) {
+      todayButton.disabled = normalizedDate.getTime() === today.getTime();
+    }
   };
 
   const renderForDate = (targetDate, { shouldScrollToCurrent = false } = {}) => {
@@ -432,9 +444,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     updateNavButtons();
 
-    if (!initialScrollDone && shouldScrollToCurrent && normalizedDate.getTime() === today.getTime()) {
+    if (normalizedDate.getTime() !== today.getTime()) {
+      lastAutoScrollDate = null;
+    } else if (shouldScrollToCurrent && (!lastAutoScrollDate || lastAutoScrollDate.getTime() !== normalizedDate.getTime())) {
       scrollToHour(currentHour);
-      initialScrollDone = true;
+      lastAutoScrollDate = normalizedDate;
     }
   };
 
@@ -516,9 +530,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (nextButton) {
     nextButton.addEventListener('click', () => shiftDate(1));
   }
+  if (todayButton) {
+    todayButton.addEventListener('click', () => {
+      renderForDate(clampDate(today), { shouldScrollToCurrent: true });
+    });
+  }
 
   initializeHelp('help/today.txt', {
     pageKey: 'today',
+    autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
     steps: {
       date: '#today-date',
       prev: '#today-prev-day',
