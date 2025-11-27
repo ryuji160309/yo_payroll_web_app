@@ -941,7 +941,8 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     return;
   }
 
-  const TAP_RESET_DURATION = 2000;
+  const RAPID_TAP_INTERVAL = 350;
+  const RAPID_TAP_WINDOW = 1200;
   const TAP_COUNT_TO_OPEN = 5;
   const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, label, [role="button"], [role="link"]';
   const MAX_STORAGE_DETAIL = 10;
@@ -949,6 +950,7 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   let header = null;
   let tapCount = 0;
   let lastTapTime = 0;
+  let firstTapTime = 0;
   let popover = null;
   let outsideClickHandler = null;
   let keydownHandler = null;
@@ -1671,6 +1673,7 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   const resetTapCounter = () => {
     tapCount = 0;
     lastTapTime = 0;
+    firstTapTime = 0;
   };
 
   const handleTap = event => {
@@ -1688,14 +1691,15 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     }
 
     const now = Date.now();
-    if (!Number.isFinite(lastTapTime) || now - lastTapTime > TAP_RESET_DURATION) {
+    if (!firstTapTime || now - lastTapTime > RAPID_TAP_INTERVAL || now - firstTapTime > RAPID_TAP_WINDOW) {
       resetTapCounter();
+      firstTapTime = now;
     }
 
     tapCount += 1;
     lastTapTime = now;
 
-    if (tapCount >= TAP_COUNT_TO_OPEN) {
+    if (tapCount >= TAP_COUNT_TO_OPEN && now - firstTapTime <= RAPID_TAP_WINDOW) {
       resetTapCounter();
       showPopover();
     }

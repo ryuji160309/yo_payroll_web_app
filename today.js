@@ -247,7 +247,19 @@ function renderAttendanceTable(stores, options = {}) {
 
   stores.forEach(store => {
     const th = document.createElement('th');
-    th.textContent = store.storeName || '';
+    th.className = 'today-store-header';
+    const storeUrl = store.sourceStore?.url;
+    if (storeUrl) {
+      const link = document.createElement('a');
+      link.href = storeUrl;
+      link.target = '_blank';
+      link.rel = 'noreferrer noopener';
+      link.className = 'today-store-link';
+      link.textContent = store.storeName || '';
+      th.appendChild(link);
+    } else {
+      th.textContent = store.storeName || '';
+    }
     headerRow.appendChild(th);
   });
 
@@ -266,6 +278,9 @@ function renderAttendanceTable(stores, options = {}) {
 
     stores.forEach(store => {
       const cell = document.createElement('td');
+      if (options.currentHour === hour) {
+        cell.classList.add('today-current-hour-slot');
+      }
       const badges = store.slots && store.slots[hour] ? store.slots[hour] : [];
       if (badges.length === 0) {
         const empty = document.createElement('span');
@@ -361,14 +376,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!wrapper) {
       return;
     }
-    const targetRow = wrapper.querySelector(`tr[data-hour="${hour}"]`);
-    if (!targetRow) {
-      return;
-    }
     requestAnimationFrame(() => {
-      const offset = targetRow.offsetTop - wrapper.offsetTop;
-      const scrollTarget = Math.max(0, offset - Math.max(0, (wrapper.clientHeight - targetRow.clientHeight) / 2));
-      wrapper.scrollTop = scrollTarget;
+      const targetRow = wrapper.querySelector(`tr[data-hour="${hour}"]`);
+      if (!targetRow) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        const offset = targetRow.offsetTop - wrapper.offsetTop;
+        const scrollTarget = Math.max(0, offset - Math.max(0, (wrapper.clientHeight - targetRow.clientHeight) / 2));
+        wrapper.scrollTop = scrollTarget;
+      });
     });
   };
 
