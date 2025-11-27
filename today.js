@@ -310,13 +310,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const periodEl = document.getElementById('today-period-note');
   const prevButton = document.getElementById('today-prev-day');
   const nextButton = document.getElementById('today-next-day');
+  const todayButton = document.getElementById('today-today');
   const today = normalizeDate(new Date());
   const currentHour = new Date().getHours();
 
   let displayDate = today;
   let rangeStart = null;
   let rangeEnd = null;
-  let initialScrollDone = false;
   const warnings = [];
   const loadedStores = [];
 
@@ -389,6 +389,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
+  const isToday = date => normalizeDate(date).getTime() === today.getTime();
+
   const updateNavButtons = () => {
     const normalizedDate = normalizeDate(displayDate);
     if (prevButton) {
@@ -396,6 +398,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (nextButton) {
       nextButton.disabled = !rangeEnd || normalizedDate >= normalizeDate(rangeEnd);
+    }
+    if (todayButton) {
+      todayButton.disabled = isToday(normalizedDate);
+      todayButton.setAttribute('aria-disabled', todayButton.disabled ? 'true' : 'false');
     }
   };
 
@@ -432,9 +438,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     updateNavButtons();
 
-    if (!initialScrollDone && shouldScrollToCurrent && normalizedDate.getTime() === today.getTime()) {
+    if (shouldScrollToCurrent && isToday(normalizedDate)) {
       scrollToHour(currentHour);
-      initialScrollDone = true;
     }
   };
 
@@ -516,9 +521,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (nextButton) {
     nextButton.addEventListener('click', () => shiftDate(1));
   }
+  if (todayButton) {
+    todayButton.addEventListener('click', () => {
+      renderForDate(today, { shouldScrollToCurrent: true });
+    });
+  }
 
   initializeHelp('help/today.txt', {
     pageKey: 'today',
+    showPrompt: false,
+    autoStartIf: ({ hasAutoStartFlag }) => hasAutoStartFlag,
     steps: {
       date: '#today-date',
       prev: '#today-prev-day',
