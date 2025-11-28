@@ -220,6 +220,43 @@ function renderWarnings(messages) {
   warningBox.innerHTML = validMessages.map(msg => `<div>${msg}</div>`).join('');
 }
 
+function areBadgesEqual(a, b) {
+  const listA = Array.isArray(a) ? a : [];
+  const listB = Array.isArray(b) ? b : [];
+  if (listA.length !== listB.length) {
+    return false;
+  }
+  return listA.every((item, index) => item === listB[index]);
+}
+
+function buildRowSpanPlan(slots) {
+  const normalizedSlots = Array.from({ length: 24 }, (_, hour) => (Array.isArray(slots?.[hour]) ? slots[hour] : []));
+  const plan = Array(24).fill(null);
+  let hour = 0;
+
+  while (hour < 24) {
+    const badges = normalizedSlots[hour];
+    if (!badges.length) {
+      plan[hour] = { rowSpan: 1, badges };
+      hour += 1;
+      continue;
+    }
+
+    let span = 1;
+    while (hour + span < 24 && areBadgesEqual(badges, normalizedSlots[hour + span])) {
+      span += 1;
+    }
+
+    plan[hour] = { rowSpan: span, badges };
+    for (let offset = 1; offset < span; offset += 1) {
+      plan[hour + offset] = { merged: true };
+    }
+    hour += span;
+  }
+
+  return plan;
+}
+
 function renderAttendanceTable(stores, options = {}) {
   const headerRow = document.getElementById('today-header-row');
   const body = document.getElementById('today-table-body');
@@ -263,6 +300,8 @@ function renderAttendanceTable(stores, options = {}) {
     headerRow.appendChild(th);
   });
 
+  const spanPlans = stores.map(store => buildRowSpanPlan(store?.slots));
+
   for (let hour = 0; hour < 24; hour += 1) {
     const row = document.createElement('tr');
     row.dataset.hour = String(hour);
@@ -276,12 +315,21 @@ function renderAttendanceTable(stores, options = {}) {
     }
     row.appendChild(timeCell);
 
-    stores.forEach(store => {
+    stores.forEach((store, storeIndex) => {
+      const spanPlan = Array.isArray(spanPlans?.[storeIndex]) ? spanPlans[storeIndex] : [];
+      const plan = spanPlan[hour];
+      if (plan && plan.merged) {
+        return;
+      }
+
+      const badges = plan && Array.isArray(plan.badges) ? plan.badges : (store.slots && store.slots[hour]) || [];
       const cell = document.createElement('td');
+      if (plan && Number.isInteger(plan.rowSpan) && plan.rowSpan > 1) {
+        cell.rowSpan = plan.rowSpan;
+      }
       if (options.currentHour === hour) {
         cell.classList.add('today-current-hour-slot');
       }
-      const badges = store.slots && store.slots[hour] ? store.slots[hour] : [];
       if (badges.length === 0) {
         const empty = document.createElement('span');
         empty.className = 'today-empty';
