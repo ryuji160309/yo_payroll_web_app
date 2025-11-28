@@ -353,6 +353,21 @@ function renderAttendanceTable(stores, options = {}) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const rootStyle = document.documentElement?.style;
+  const updateStickyOffsets = () => {
+    const headerEl = document.querySelector('header');
+    const stickyHeaderEl = document.querySelector('.today-sticky-header');
+    if (rootStyle && headerEl) {
+      rootStyle.setProperty('--today-sticky-offset', `${headerEl.getBoundingClientRect().height}px`);
+    }
+    if (rootStyle && stickyHeaderEl) {
+      rootStyle.setProperty('--today-sticky-header-height', `${stickyHeaderEl.getBoundingClientRect().height}px`);
+    }
+  };
+
+  updateStickyOffsets();
+  window.addEventListener('resize', updateStickyOffsets);
+
   const statusEl = document.getElementById('today-status');
   const dateEl = document.getElementById('today-date');
   const periodEl = document.getElementById('today-period-note');
@@ -488,6 +503,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       hasAttendance: storesWithAttendance.length > 0
     });
     updateNavButtons();
+    updateStickyOffsets();
 
     if (shouldScrollToCurrent && isToday(normalizedDate)) {
       scrollToHour(currentHour);
