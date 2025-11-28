@@ -372,19 +372,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof hour !== 'number' || Number.isNaN(hour)) {
       return;
     }
-    const wrapper = document.querySelector('.today-table-wrapper');
-    if (!wrapper) {
+    const scrollArea = document.querySelector('.today-scroll-area');
+    const table = document.querySelector('.today-table');
+    if (!scrollArea || !table) {
       return;
     }
     requestAnimationFrame(() => {
-      const targetRow = wrapper.querySelector(`tr[data-hour="${hour}"]`);
+      const targetRow = table.querySelector(`tr[data-hour="${hour}"]`);
       if (!targetRow) {
         return;
       }
       requestAnimationFrame(() => {
-        const offset = targetRow.offsetTop - wrapper.offsetTop;
-        const scrollTarget = Math.max(0, offset - Math.max(0, (wrapper.clientHeight - targetRow.clientHeight) / 2));
-        wrapper.scrollTop = scrollTarget;
+        const rowRect = targetRow.getBoundingClientRect();
+        const areaRect = scrollArea.getBoundingClientRect();
+        const offset = rowRect.top - areaRect.top;
+        const scrollTarget = Math.max(0, scrollArea.scrollTop + offset - Math.max(0, (scrollArea.clientHeight - targetRow.clientHeight) / 2));
+        scrollArea.scrollTop = scrollTarget;
       });
     });
   };
