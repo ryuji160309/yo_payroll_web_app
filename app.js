@@ -1011,13 +1011,30 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     title.className = 'debug-popover__title';
     title.textContent = 'デバッグメニュー';
 
+    const actions = document.createElement('div');
+    actions.className = 'debug-popover__actions';
+
+    const codexBtn = document.createElement('button');
+    codexBtn.type = 'button';
+    codexBtn.className = 'debug-popover__button debug-popover__codex';
+    codexBtn.textContent = 'Codex';
+    codexBtn.addEventListener('click', () => {
+      try {
+        window.open('https://chatgpt.com/codex', '_blank', 'noopener');
+      } catch (error) {
+        window.open('https://chatgpt.com/codex', '_blank');
+      }
+    });
+
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.className = 'debug-popover__close';
+    closeBtn.className = 'debug-popover__button debug-popover__close';
     closeBtn.textContent = '閉じる';
 
+    actions.appendChild(codexBtn);
+    actions.appendChild(closeBtn);
     headerRow.appendChild(title);
-    headerRow.appendChild(closeBtn);
+    headerRow.appendChild(actions);
 
     const content = document.createElement('div');
     content.className = 'debug-popover__content';
