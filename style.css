@@ -22,8 +22,6 @@
   --color-success: #2e7d32;
   --color-danger: #d32f2f;
   --color-toast-bg: rgba(19, 28, 38, 0.92);
-  --today-sticky-offset: var(--app-header-height);
-  --today-sticky-header-height: 0px;
 }
 
 :root[data-theme="dark"] {
@@ -1729,7 +1727,7 @@ td {
 
 .today-sticky-header {
   position: sticky;
-  top: var(--today-sticky-offset);
+  top: var(--app-header-height);
   z-index: 30;
   padding: 0.75rem 1rem 0.25rem;
   background: linear-gradient(180deg, var(--color-body-bg) 0%, var(--color-surface) 70%);
@@ -1872,7 +1870,7 @@ td {
 
 .today-table thead th {
   position: sticky;
-  top: calc(var(--today-sticky-offset) + var(--today-sticky-header-height));
+  top: 0;
   background: var(--color-surface-strong);
   color: var(--color-body-text);
   font-weight: 700;
@@ -1923,14 +1921,14 @@ td {
   background: var(--color-surface);
   font-weight: 700;
   min-width: 4.25rem;
-  z-index: 14;
+  z-index: 10;
   color: var(--color-body-text);
   box-shadow: 6px 0 14px rgba(0, 0, 0, 0.05);
 }
 
 .today-time-header {
   top: 0;
-  z-index: 16;
+  z-index: 12;
   background: var(--color-surface-strong);
   box-shadow: 6px 0 14px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
 }
