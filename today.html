@@ -24,29 +24,35 @@
       <button class="back-btn" id="today-home" onclick="location.href='index.html'">はじめから</button>
     </div>
   </header>
-  <h1 style="text-align:center">今日の出勤者</h1>
-  <div id="today-status" style="text-align:center"></div>
-  <div class="today-summary">
-    <div class="today-nav">
-      <button type="button" class="today-nav__button" id="today-prev-day" aria-label="前日">前日</button>
-      <div class="today-summary__text">
-        <div class="today-summary__title" id="today-date"></div>
-        <div class="today-summary__subtitle" id="today-period-note"></div>
-        <div class="today-summary__actions">
-          <button type="button" class="today-today-button" id="today-today">今日</button>
+  <main class="today-page">
+    <div class="today-sticky-header">
+      <h1 class="today-title">今日の出勤者</h1>
+      <div id="today-status" class="today-status"></div>
+      <div class="today-summary">
+        <div class="today-nav">
+          <button type="button" class="today-nav__button" id="today-prev-day" aria-label="前日">前日</button>
+          <div class="today-summary__text">
+            <div class="today-summary__title" id="today-date"></div>
+            <div class="today-summary__subtitle" id="today-period-note"></div>
+            <div class="today-summary__actions">
+              <button type="button" class="today-today-button" id="today-today">今日</button>
+            </div>
+          </div>
+          <button type="button" class="today-nav__button" id="today-next-day" aria-label="翌日">翌日</button>
         </div>
       </div>
-      <button type="button" class="today-nav__button" id="today-next-day" aria-label="翌日">翌日</button>
     </div>
-  </div>
-  <div class="today-table-wrapper" aria-live="polite">
-    <table class="today-table" id="today-table" aria-describedby="today-period-note">
-      <thead>
-        <tr id="today-header-row"></tr>
-      </thead>
-      <tbody id="today-table-body"></tbody>
-    </table>
-  </div>
-  <div id="today-warnings" class="today-warning-list" hidden aria-live="polite"></div>
+    <div class="today-scroll-area">
+      <div class="today-table-wrapper" aria-live="polite">
+        <table class="today-table" id="today-table" aria-describedby="today-period-note">
+          <thead>
+            <tr id="today-header-row"></tr>
+          </thead>
+          <tbody id="today-table-body"></tbody>
+        </table>
+      </div>
+      <div id="today-warnings" class="today-warning-list" hidden aria-live="polite"></div>
+    </div>
+  </main>
 </body>
 </html>
