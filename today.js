@@ -118,6 +118,73 @@ function fillSlots(slots, startMinutes, endMinutes, name) {
   }
 }
 
+function splitLabelAcrossHours(label, length) {
+  if (!label || length <= 0) {
+    return [];
+  }
+  if (length === 1) {
+    return [label];
+  }
+  const chars = Array.from(label);
+  if (chars.length <= length) {
+    const result = Array(length).fill('');
+    chars.forEach((char, index) => {
+      result[index] = char;
+    });
+    return result;
+  }
+  const result = Array(length).fill('');
+  result[0] = label;
+  return result;
+}
+
+function mergeSlotsForDisplay(slots) {
+  if (!Array.isArray(slots)) {
+    return null;
+  }
+  const merged = Array.from({ length: 24 }, () => []);
+  const activeSpans = new Map();
+
+  const commitSpan = span => {
+    if (!span) {
+      return;
+    }
+    const label = `(${span.name})`;
+    const parts = splitLabelAcrossHours(label, span.length);
+    parts.forEach((part, index) => {
+      if (part) {
+        const targetHour = span.start + index;
+        if (targetHour >= 0 && targetHour < merged.length) {
+          merged[targetHour].push(part);
+        }
+      }
+    });
+  };
+
+  for (let hour = 0; hour <= 24; hour += 1) {
+    const names = hour < 24 && Array.isArray(slots[hour]) ? slots[hour] : [];
+    const currentSet = new Set(names);
+
+    Array.from(activeSpans.keys()).forEach(name => {
+      if (!currentSet.has(name)) {
+        commitSpan(activeSpans.get(name));
+        activeSpans.delete(name);
+      }
+    });
+
+    names.forEach(name => {
+      if (activeSpans.has(name)) {
+        const span = activeSpans.get(name);
+        span.length += 1;
+      } else {
+        activeSpans.set(name, { name: String(name), start: hour, length: 1 });
+      }
+    });
+  }
+
+  return merged;
+}
+
 function buildSlotsForDay(data, startDate, targetDate, store) {
   const startTime = startDate instanceof Date ? startDate.getTime() : NaN;
   const targetTime = targetDate instanceof Date ? targetDate.getTime() : NaN;
@@ -263,6 +330,8 @@ function renderAttendanceTable(stores, options = {}) {
     headerRow.appendChild(th);
   });
 
+  const mergedSlotsCache = stores.map(store => mergeSlotsForDisplay(store.slots));
+
   for (let hour = 0; hour < 24; hour += 1) {
     const row = document.createElement('tr');
     row.dataset.hour = String(hour);
@@ -276,12 +345,13 @@ function renderAttendanceTable(stores, options = {}) {
     }
     row.appendChild(timeCell);
 
-    stores.forEach(store => {
+    stores.forEach((store, storeIndex) => {
       const cell = document.createElement('td');
       if (options.currentHour === hour) {
         cell.classList.add('today-current-hour-slot');
       }
-      const badges = store.slots && store.slots[hour] ? store.slots[hour] : [];
+      const mergedSlots = mergedSlotsCache[storeIndex];
+      const badges = mergedSlots && mergedSlots[hour] ? mergedSlots[hour] : [];
       if (badges.length === 0) {
         const empty = document.createElement('span');
         empty.className = 'today-empty';
