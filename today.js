@@ -262,6 +262,15 @@ function layoutAttendanceSpans(spans) {
   });
 }
 
+function estimateBadgeWidth(name) {
+  const cleanName = typeof name === 'string' ? name.trim() : '';
+  if (!cleanName) {
+    return 0;
+  }
+  const characters = Array.from(cleanName);
+  return 14 + characters.length * 6;
+}
+
 let lastOverlayRender = null;
 let overlayRefreshHandle = null;
 
@@ -337,9 +346,10 @@ function renderAttendanceOverlay(stores, options = {}) {
   overlay.style.width = `${table.scrollWidth}px`;
   overlay.style.height = `${table.scrollHeight}px`;
 
-  const badgeGap = 6;
-  const preferredBadgeWidth = 28;
-  const minBadgeWidth = 22;
+  const badgeGap = 8;
+  const minBadgeWidth = 24;
+  const preferredBadgeWidth = 36;
+  const maxBadgeWidth = 72;
 
   stores.forEach((store, storeIndex) => {
     const rect = columnRects[storeIndex];
@@ -360,11 +370,18 @@ function renderAttendanceOverlay(stores, options = {}) {
       const height = Math.max(32, bottom - top);
 
       const laneCount = Math.max(1, span.laneCount || 1);
-      const availableWidth = Math.max(minBadgeWidth, rect.width - badgeGap * (laneCount - 1));
-      const slotWidth = Math.max(minBadgeWidth, Math.min(preferredBadgeWidth, availableWidth / laneCount));
-      const totalBadgeWidth = slotWidth * laneCount + badgeGap * (laneCount - 1);
+      const gap = laneCount > 1
+        ? Math.min(badgeGap, Math.max(4, (rect.width * 0.05) / (laneCount - 1)))
+        : 0;
+      const laneWidth = (rect.width - gap * (laneCount - 1)) / laneCount;
+      const desiredWidth = Math.min(
+        maxBadgeWidth,
+        Math.max(minBadgeWidth, Math.max(preferredBadgeWidth, estimateBadgeWidth(span.name)))
+      );
+      const slotWidth = Math.min(desiredWidth, laneWidth);
+      const totalBadgeWidth = slotWidth * laneCount + gap * (laneCount - 1);
       const startLeft = rect.left + Math.max(0, (rect.width - totalBadgeWidth) / 2);
-      const left = startLeft + span.laneIndex * (slotWidth + badgeGap);
+      const left = startLeft + span.laneIndex * (slotWidth + gap);
 
       const block = document.createElement('div');
       block.className = 'today-overlay__block';
@@ -615,10 +632,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     scheduleOverlayRefresh();
   };
 
-  const tableWrapper = document.querySelector('.today-table-wrapper');
-  if (typeof ResizeObserver !== 'undefined' && tableWrapper) {
+  const todayTable = document.getElementById('today-table');
+  if (typeof ResizeObserver !== 'undefined' && todayTable) {
     const overlayObserver = new ResizeObserver(handleResize);
-    overlayObserver.observe(tableWrapper);
+    overlayObserver.observe(todayTable);
   }
 
   window.addEventListener('resize', handleResize);
