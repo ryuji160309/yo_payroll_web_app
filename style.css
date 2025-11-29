@@ -85,6 +85,18 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 a {
   color: var(--color-link);
 }
@@ -1153,6 +1165,12 @@ td {
   gap: 0.75rem;
 }
 
+.debug-popover__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .debug-popover__title {
   font-size: 1.05rem;
   font-weight: 700;
@@ -1759,8 +1777,8 @@ td {
   top: var(--app-header-height);
   z-index: 30;
   padding: 0.75rem 1rem 0.25rem;
-  background: linear-gradient(180deg, var(--color-body-bg) 0%, var(--color-surface) 70%);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  background: transparent;
+  box-shadow: none;
 }
 
 .today-title {
@@ -1895,7 +1913,7 @@ td {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 640px;
+  min-width: 720px;
 }
 
 .today-table thead th {
@@ -1912,7 +1930,7 @@ td {
 }
 
 .today-store-header {
-  min-width: 8.5rem;
+  min-width: 11rem;
   background: linear-gradient(180deg, var(--color-surface-strong) 0%, var(--color-surface) 100%);
   box-shadow: inset 0 -1px 0 var(--color-border-strong);
 }
@@ -1952,7 +1970,7 @@ td {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 0.25rem;
+  padding: 0.35rem 0.35rem;
   border-radius: 1.4rem;
   background: linear-gradient(180deg, #7a7a7a 0%, #616161 100%);
   color: #ffffff;
@@ -1961,6 +1979,7 @@ td {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
 }
 
 .today-overlay__block--active {
@@ -2049,20 +2068,6 @@ td {
   font-weight: 700;
   border: 1px solid var(--color-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.today-slot-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  background: rgba(15, 74, 115, 0.12);
-  color: #0f4a73;
-  font-weight: 900;
-  font-size: 0.85rem;
-  border: 1px solid var(--color-border);
 }
 
 :root[data-theme="dark"] .today-badge {
