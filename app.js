@@ -1019,11 +1019,25 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     headerRow.appendChild(title);
     headerRow.appendChild(closeBtn);
 
+    const actionRow = document.createElement('div');
+    actionRow.className = 'debug-popover__actions';
+
+    const codexButton = document.createElement('button');
+    codexButton.type = 'button';
+    codexButton.className = 'debug-popover__action-button';
+    codexButton.textContent = 'Codex';
+    codexButton.addEventListener('click', () => {
+      window.open('https://chatgpt.com/codex', '_blank', 'noreferrer');
+    });
+
+    actionRow.appendChild(codexButton);
+
     const content = document.createElement('div');
     content.className = 'debug-popover__content';
     content.textContent = '読み込み中…';
 
     inner.appendChild(headerRow);
+    inner.appendChild(actionRow);
     inner.appendChild(content);
     popover.appendChild(inner);
     header.appendChild(popover);

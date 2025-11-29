@@ -1182,6 +1182,35 @@ td {
   outline-offset: 0.15rem;
 }
 
+.debug-popover__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.25rem 0.25rem 0;
+}
+
+.debug-popover__action-button {
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--color-border-strong);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-strong) 100%);
+  color: var(--color-body-text);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.debug-popover__action-button:hover,
+.debug-popover__action-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(15, 74, 115, 0.16);
+}
+
+.debug-popover__action-button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
 .debug-popover__content {
   overflow-y: auto;
   padding-right: 0.25rem;
@@ -1859,6 +1888,7 @@ td {
   border: 1px solid var(--color-border);
   background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-strong) 70%);
   box-shadow: 0 1.4rem 3rem rgba(15, 23, 42, 0.15);
+  position: relative;
 }
 
 .today-table {
@@ -1908,6 +1938,34 @@ td {
   padding: 0.65rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
+}
+
+.today-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.today-overlay__block {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.25rem;
+  border-radius: 1.4rem;
+  background: linear-gradient(180deg, #7a7a7a 0%, #616161 100%);
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.today-overlay__block--active {
+  background: linear-gradient(180deg, #2196f3 0%, #0f4a73 100%);
+  box-shadow: 0 10px 22px rgba(15, 74, 115, 0.26);
 }
 
 .today-table tbody tr:last-child td,
@@ -1991,6 +2049,20 @@ td {
   font-weight: 700;
   border: 1px solid var(--color-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.today-slot-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: rgba(15, 74, 115, 0.12);
+  color: #0f4a73;
+  font-weight: 900;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border);
 }
 
 :root[data-theme="dark"] .today-badge {
