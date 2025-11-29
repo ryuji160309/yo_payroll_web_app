@@ -220,41 +220,141 @@ function renderWarnings(messages) {
   warningBox.innerHTML = validMessages.map(msg => `<div>${msg}</div>`).join('');
 }
 
-function areBadgesEqual(a, b) {
-  const listA = Array.isArray(a) ? a : [];
-  const listB = Array.isArray(b) ? b : [];
-  if (listA.length !== listB.length) {
-    return false;
-  }
-  return listA.every((item, index) => item === listB[index]);
+function collectAttendanceSpans(slots) {
+  const hours = Array.from({ length: 24 }, (_, hour) => (Array.isArray(slots?.[hour]) ? slots[hour] : []));
+  const uniqueNames = new Set();
+  hours.forEach(list => {
+    list.forEach(name => uniqueNames.add(name));
+  });
+
+  const spans = [];
+  uniqueNames.forEach(name => {
+    let start = null;
+    for (let hour = 0; hour <= 24; hour += 1) {
+      const present = hour < 24 && hours[hour].includes(name);
+      if (present && start === null) {
+        start = hour;
+      }
+      if (!present && start !== null) {
+        spans.push({ name, startHour: start, endHour: hour });
+        start = null;
+      }
+    }
+  });
+
+  spans.sort((a, b) => a.startHour - b.startHour || a.endHour - b.endHour || a.name.localeCompare(b.name, 'ja'));
+  return spans;
 }
 
-function buildRowSpanPlan(slots) {
-  const normalizedSlots = Array.from({ length: 24 }, (_, hour) => (Array.isArray(slots?.[hour]) ? slots[hour] : []));
-  const plan = Array(24).fill(null);
-  let hour = 0;
-
-  while (hour < 24) {
-    const badges = normalizedSlots[hour];
-    if (!badges.length) {
-      plan[hour] = { rowSpan: 1, badges };
-      hour += 1;
-      continue;
+function layoutAttendanceSpans(spans) {
+  const ordered = Array.isArray(spans) ? [...spans] : [];
+  ordered.sort((a, b) => a.startHour - b.startHour || a.endHour - b.endHour);
+  const lanes = [];
+  return ordered.map(span => {
+    let laneIndex = lanes.findIndex(laneEnd => laneEnd <= span.startHour);
+    if (laneIndex === -1) {
+      laneIndex = lanes.length;
+      lanes.push(span.endHour);
+    } else {
+      lanes[laneIndex] = span.endHour;
     }
+    return { ...span, laneIndex, laneCount: lanes.length };
+  });
+}
 
-    let span = 1;
-    while (hour + span < 24 && areBadgesEqual(badges, normalizedSlots[hour + span])) {
-      span += 1;
-    }
+function clearAttendanceOverlay() {
+  const wrapper = document.querySelector('.today-table-wrapper');
+  const existing = wrapper?.querySelector('.today-overlay');
+  if (existing) {
+    existing.textContent = '';
+  }
+}
 
-    plan[hour] = { rowSpan: span, badges };
-    for (let offset = 1; offset < span; offset += 1) {
-      plan[hour + offset] = { merged: true };
-    }
-    hour += span;
+function renderAttendanceOverlay(stores, options = {}) {
+  const wrapper = document.querySelector('.today-table-wrapper');
+  const table = document.getElementById('today-table');
+  if (!wrapper || !table || !Array.isArray(stores) || !stores.length) {
+    clearAttendanceOverlay();
+    return;
   }
 
-  return plan;
+  const headerRow = table.querySelector('thead tr');
+  const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+  if (!headerRow || !bodyRows.length) {
+    clearAttendanceOverlay();
+    return;
+  }
+
+  let overlay = wrapper.querySelector('.today-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'today-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    wrapper.appendChild(overlay);
+  }
+  overlay.textContent = '';
+
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const columnHeaders = Array.from(headerRow.querySelectorAll('th')).slice(1);
+  const columnRects = columnHeaders.map(cell => {
+    const rect = cell.getBoundingClientRect();
+    return {
+      left: rect.left - wrapperRect.left + wrapper.scrollLeft,
+      width: rect.width
+    };
+  });
+
+  const rowRects = bodyRows.map(row => {
+    const rect = row.getBoundingClientRect();
+    return {
+      top: rect.top - wrapperRect.top + wrapper.scrollTop,
+      bottom: rect.bottom - wrapperRect.top + wrapper.scrollTop,
+      height: rect.height
+    };
+  });
+
+  overlay.style.width = `${table.scrollWidth}px`;
+  overlay.style.height = `${table.scrollHeight}px`;
+
+  const indicatorGap = 6;
+
+  stores.forEach((store, storeIndex) => {
+    const rect = columnRects[storeIndex];
+    if (!rect) {
+      return;
+    }
+    const spans = layoutAttendanceSpans(collectAttendanceSpans(store?.slots));
+    spans.forEach(span => {
+      const startHour = Math.max(0, Math.min(23, span.startHour));
+      const endHour = Math.max(startHour + 1, Math.min(24, span.endHour));
+      const startRect = rowRects[startHour];
+      const endRect = rowRects[Math.min(endHour - 1, rowRects.length - 1)];
+      if (!startRect || !endRect) {
+        return;
+      }
+      const top = startRect.top;
+      const bottom = endHour >= rowRects.length ? rowRects[rowRects.length - 1].bottom : rowRects[endHour - 1].bottom;
+      const height = Math.max(32, bottom - top);
+
+      const laneCount = Math.max(1, span.laneCount || 1);
+      const slotWidth = Math.max(40, (rect.width - indicatorGap * (laneCount - 1)) / laneCount);
+      const left = rect.left + span.laneIndex * (slotWidth + indicatorGap);
+
+      const block = document.createElement('div');
+      block.className = 'today-overlay__block';
+      block.style.left = `${left}px`;
+      block.style.top = `${top}px`;
+      block.style.width = `${slotWidth}px`;
+      block.style.height = `${height}px`;
+      block.textContent = span.name;
+
+      if (Number.isInteger(options.currentHour) && options.currentHour >= span.startHour && options.currentHour < span.endHour) {
+        block.classList.add('today-overlay__block--active');
+      }
+
+      overlay.appendChild(block);
+    });
+  });
 }
 
 function renderAttendanceTable(stores, options = {}) {
@@ -267,6 +367,7 @@ function renderAttendanceTable(stores, options = {}) {
   body.textContent = '';
 
   if (!stores.length) {
+    clearAttendanceOverlay();
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = Math.max(1, stores.length + 1);
@@ -300,8 +401,6 @@ function renderAttendanceTable(stores, options = {}) {
     headerRow.appendChild(th);
   });
 
-  const spanPlans = stores.map(store => buildRowSpanPlan(store?.slots));
-
   for (let hour = 0; hour < 24; hour += 1) {
     const row = document.createElement('tr');
     row.dataset.hour = String(hour);
@@ -316,17 +415,8 @@ function renderAttendanceTable(stores, options = {}) {
     row.appendChild(timeCell);
 
     stores.forEach((store, storeIndex) => {
-      const spanPlan = Array.isArray(spanPlans?.[storeIndex]) ? spanPlans[storeIndex] : [];
-      const plan = spanPlan[hour];
-      if (plan && plan.merged) {
-        return;
-      }
-
-      const badges = plan && Array.isArray(plan.badges) ? plan.badges : (store.slots && store.slots[hour]) || [];
+      const badges = (store.slots && store.slots[hour]) || [];
       const cell = document.createElement('td');
-      if (plan && Number.isInteger(plan.rowSpan) && plan.rowSpan > 1) {
-        cell.rowSpan = plan.rowSpan;
-      }
       if (options.currentHour === hour) {
         cell.classList.add('today-current-hour-slot');
       }
@@ -336,20 +426,20 @@ function renderAttendanceTable(stores, options = {}) {
         empty.textContent = '―';
         cell.appendChild(empty);
       } else {
-        const list = document.createElement('div');
-        list.className = 'today-badges';
-        badges.forEach(name => {
-          const badge = document.createElement('span');
-          badge.className = 'today-badge';
-          badge.textContent = name;
-          list.appendChild(badge);
-        });
-        cell.appendChild(list);
+        const dot = document.createElement('span');
+        dot.className = 'today-slot-indicator';
+        dot.textContent = '●';
+        dot.setAttribute('aria-label', badges.join(', '));
+        cell.appendChild(dot);
       }
       row.appendChild(cell);
     });
     body.appendChild(row);
   }
+
+  requestAnimationFrame(() => {
+    renderAttendanceOverlay(stores, options);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
