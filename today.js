@@ -346,9 +346,9 @@ function renderAttendanceOverlay(stores, options = {}) {
   overlay.style.width = `${table.scrollWidth}px`;
   overlay.style.height = `${table.scrollHeight}px`;
 
-  const badgeGap = 8;
-  const minBadgeWidth = 24;
-  const preferredBadgeWidth = 36;
+  const badgeGap = 12;
+  const minBadgeWidth = 32;
+  const preferredBadgeWidth = 40;
   const maxBadgeWidth = 72;
 
   stores.forEach((store, storeIndex) => {
@@ -371,9 +371,9 @@ function renderAttendanceOverlay(stores, options = {}) {
 
       const laneCount = Math.max(1, span.laneCount || 1);
       const gap = laneCount > 1
-        ? Math.min(badgeGap, Math.max(4, (rect.width * 0.05) / (laneCount - 1)))
+        ? Math.min(badgeGap, Math.max(6, (rect.width * 0.08) / (laneCount - 1)))
         : 0;
-      const laneWidth = (rect.width - gap * (laneCount - 1)) / laneCount;
+      const laneWidth = Math.max(minBadgeWidth, (rect.width - gap * (laneCount - 1)) / laneCount);
       const desiredWidth = Math.min(
         maxBadgeWidth,
         Math.max(minBadgeWidth, Math.max(preferredBadgeWidth, estimateBadgeWidth(span.name)))
