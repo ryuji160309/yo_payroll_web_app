@@ -127,14 +127,31 @@ function buildSlotsForDay(data, startDate, targetDate, store) {
   const normalizedStart = normalizeDate(startDate);
   const normalizedTarget = normalizeDate(targetDate);
   const offset = Math.floor((normalizedTarget.getTime() - normalizedStart.getTime()) / DAY_IN_MS);
-  const scheduleRowIndex = 3 + offset;
+  let scheduleRowIndex = 3 + offset;
   if (offset < 0 || scheduleRowIndex < 0 || scheduleRowIndex >= data.length) {
     return null;
   }
-  const row = data[scheduleRowIndex];
+  let row = data[scheduleRowIndex];
   const header = data[2] || [];
-  if (!row || !Array.isArray(row) || !Array.isArray(header)) {
+  if (!Array.isArray(header)) {
     return null;
+  }
+  if (!row || !Array.isArray(row)) {
+    const targetDay = targetDate.getDate();
+    const fallbackRowIndex = data.findIndex((candidate, index) => {
+      if (index < 3 || !Array.isArray(candidate)) {
+        return false;
+      }
+      const dayCell = candidate[1] ?? candidate[0];
+      const numericDay = Number.parseInt(String(dayCell || '').replace(/[^0-9]/g, ''), 10);
+      return Number.isFinite(numericDay) && numericDay === targetDay;
+    });
+
+    if (fallbackRowIndex === -1) {
+      return null;
+    }
+    scheduleRowIndex = fallbackRowIndex;
+    row = data[scheduleRowIndex];
   }
   const slots = Array.from({ length: 24 }, () => new Set());
   const excludeWords = Array.isArray(store.excludeWords) ? store.excludeWords : [];
@@ -346,7 +363,7 @@ function renderAttendanceOverlay(stores, options = {}) {
   overlay.style.width = `${table.scrollWidth}px`;
   overlay.style.height = `${table.scrollHeight}px`;
 
-  const badgeGap = 12;
+  const badgeGap = 16;
   const minBadgeWidth = 32;
   const preferredBadgeWidth = 40;
   const maxBadgeWidth = 72;
@@ -371,16 +388,19 @@ function renderAttendanceOverlay(stores, options = {}) {
 
       const laneCount = Math.max(1, span.laneCount || 1);
       const gap = laneCount > 1
-        ? Math.min(badgeGap, Math.max(6, (rect.width * 0.08) / (laneCount - 1)))
+        ? Math.max(10, Math.min(badgeGap, (rect.width * 0.12) / (laneCount - 1)))
         : 0;
-      const laneWidth = Math.max(minBadgeWidth, (rect.width - gap * (laneCount - 1)) / laneCount);
-      const desiredWidth = Math.min(
-        maxBadgeWidth,
-        Math.max(minBadgeWidth, Math.max(preferredBadgeWidth, estimateBadgeWidth(span.name)))
+      const laneWidth = Math.max(
+        minBadgeWidth,
+        Math.min(maxBadgeWidth, (rect.width - gap * (laneCount - 1)) / laneCount)
+      );
+      const desiredWidth = Math.max(
+        minBadgeWidth,
+        Math.min(maxBadgeWidth, Math.max(preferredBadgeWidth, estimateBadgeWidth(span.name)))
       );
       const slotWidth = Math.min(desiredWidth, laneWidth);
       const totalBadgeWidth = slotWidth * laneCount + gap * (laneCount - 1);
-      const startLeft = rect.left + Math.max(0, (rect.width - totalBadgeWidth) / 2);
+      const startLeft = rect.left + Math.max(8, (rect.width - totalBadgeWidth) / 2);
       const left = startLeft + span.laneIndex * (slotWidth + gap);
 
       const block = document.createElement('div');
