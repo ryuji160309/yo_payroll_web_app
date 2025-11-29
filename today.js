@@ -262,6 +262,22 @@ function layoutAttendanceSpans(spans) {
   });
 }
 
+let lastOverlayRender = null;
+let overlayRefreshHandle = null;
+
+function scheduleOverlayRefresh() {
+  if (!lastOverlayRender) {
+    return;
+  }
+  if (overlayRefreshHandle) {
+    return;
+  }
+  overlayRefreshHandle = requestAnimationFrame(() => {
+    overlayRefreshHandle = null;
+    renderAttendanceOverlay(lastOverlayRender.stores, lastOverlayRender.options);
+  });
+}
+
 function clearAttendanceOverlay() {
   const wrapper = document.querySelector('.today-table-wrapper');
   const existing = wrapper?.querySelector('.today-overlay');
@@ -271,6 +287,11 @@ function clearAttendanceOverlay() {
 }
 
 function renderAttendanceOverlay(stores, options = {}) {
+  if (Array.isArray(stores) && stores.length) {
+    lastOverlayRender = { stores, options };
+  } else {
+    lastOverlayRender = null;
+  }
   const wrapper = document.querySelector('.today-table-wrapper');
   const table = document.getElementById('today-table');
   if (!wrapper || !table || !Array.isArray(stores) || !stores.length) {
@@ -316,7 +337,9 @@ function renderAttendanceOverlay(stores, options = {}) {
   overlay.style.width = `${table.scrollWidth}px`;
   overlay.style.height = `${table.scrollHeight}px`;
 
-  const indicatorGap = 6;
+  const badgeGap = 6;
+  const preferredBadgeWidth = 28;
+  const minBadgeWidth = 22;
 
   stores.forEach((store, storeIndex) => {
     const rect = columnRects[storeIndex];
@@ -337,8 +360,11 @@ function renderAttendanceOverlay(stores, options = {}) {
       const height = Math.max(32, bottom - top);
 
       const laneCount = Math.max(1, span.laneCount || 1);
-      const slotWidth = Math.max(40, (rect.width - indicatorGap * (laneCount - 1)) / laneCount);
-      const left = rect.left + span.laneIndex * (slotWidth + indicatorGap);
+      const availableWidth = Math.max(minBadgeWidth, rect.width - badgeGap * (laneCount - 1));
+      const slotWidth = Math.max(minBadgeWidth, Math.min(preferredBadgeWidth, availableWidth / laneCount));
+      const totalBadgeWidth = slotWidth * laneCount + badgeGap * (laneCount - 1);
+      const startLeft = rect.left + Math.max(0, (rect.width - totalBadgeWidth) / 2);
+      const left = startLeft + span.laneIndex * (slotWidth + badgeGap);
 
       const block = document.createElement('div');
       block.className = 'today-overlay__block';
@@ -426,11 +452,12 @@ function renderAttendanceTable(stores, options = {}) {
         empty.textContent = '―';
         cell.appendChild(empty);
       } else {
-        const dot = document.createElement('span');
-        dot.className = 'today-slot-indicator';
-        dot.textContent = '●';
-        dot.setAttribute('aria-label', badges.join(', '));
-        cell.appendChild(dot);
+        const hiddenLabel = document.createElement('span');
+        hiddenLabel.className = 'visually-hidden';
+        hiddenLabel.textContent = badges.join('、');
+        cell.setAttribute('aria-label', badges.join(', '));
+        cell.title = badges.join(', ');
+        cell.appendChild(hiddenLabel);
       }
       row.appendChild(cell);
     });
@@ -583,6 +610,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       scrollToHour(currentHour);
     }
   };
+
+  const handleResize = () => {
+    scheduleOverlayRefresh();
+  };
+
+  const tableWrapper = document.querySelector('.today-table-wrapper');
+  if (typeof ResizeObserver !== 'undefined' && tableWrapper) {
+    const overlayObserver = new ResizeObserver(handleResize);
+    overlayObserver.observe(tableWrapper);
+  }
+
+  window.addEventListener('resize', handleResize);
 
   const clampDate = date => {
     let nextDate = date instanceof Date ? new Date(date.getTime()) : new Date();

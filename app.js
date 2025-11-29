@@ -1017,10 +1017,6 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     closeBtn.textContent = '閉じる';
 
     headerRow.appendChild(title);
-    headerRow.appendChild(closeBtn);
-
-    const actionRow = document.createElement('div');
-    actionRow.className = 'debug-popover__actions';
 
     const codexButton = document.createElement('button');
     codexButton.type = 'button';
@@ -1030,14 +1026,17 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
       window.open('https://chatgpt.com/codex', '_blank', 'noreferrer');
     });
 
-    actionRow.appendChild(codexButton);
+    const headerActions = document.createElement('div');
+    headerActions.className = 'debug-popover__header-actions';
+    headerActions.appendChild(codexButton);
+    headerActions.appendChild(closeBtn);
 
     const content = document.createElement('div');
     content.className = 'debug-popover__content';
     content.textContent = '読み込み中…';
 
     inner.appendChild(headerRow);
-    inner.appendChild(actionRow);
+    headerRow.appendChild(headerActions);
     inner.appendChild(content);
     popover.appendChild(inner);
     header.appendChild(popover);
