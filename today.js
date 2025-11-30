@@ -85,6 +85,17 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
   const entries = new Map();
   const excludeWords = Array.isArray(store.excludeWords) ? store.excludeWords : [];
 
+  const startMonthSpan = new Date(period.startDate.getFullYear(), period.startDate.getMonth() + 1, 0)
+    .getDate() - period.startDate.getDate() + 1;
+  const expectedDayCount = Math.round((period.endDate - period.startDate) / DAY_IN_MS) + 1;
+  const placeholderCount = Math.max(0, scheduleRows.length - expectedDayCount);
+
+  const resolveRowIndex = index => {
+    if (index < 0) return index;
+    const adjustedIndex = index >= startMonthSpan ? index + placeholderCount : index;
+    return adjustedIndex;
+  };
+
   const addSegment = (name, segment, label) => {
     const entry = entries.get(name) || { name, storeName: store.name, segments: [] };
     entry.segments.push({
@@ -121,11 +132,14 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
     });
   };
 
-  if (dayIndex >= 0 && dayIndex < scheduleRows.length) {
-    processRow(scheduleRows[dayIndex], 0);
+  const currentRowIndex = resolveRowIndex(dayIndex);
+  if (currentRowIndex >= 0 && currentRowIndex < scheduleRows.length) {
+    processRow(scheduleRows[currentRowIndex], 0);
   }
-  if (dayIndex - 1 >= 0 && dayIndex - 1 < scheduleRows.length) {
-    processRow(scheduleRows[dayIndex - 1], -1);
+
+  const previousRowIndex = resolveRowIndex(dayIndex - 1);
+  if (previousRowIndex >= 0 && previousRowIndex < scheduleRows.length) {
+    processRow(scheduleRows[previousRowIndex], -1);
   }
 
   const employees = Array.from(entries.values())
@@ -245,8 +259,15 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
 
     const header = document.createElement('div');
     header.className = 'store-column__header';
-    const title = document.createElement('h2');
+    const title = document.createElement(section.storeUrl ? 'a' : 'h2');
+    title.className = 'store-column__title';
     title.textContent = section.storeName;
+    if (section.storeUrl && title instanceof HTMLAnchorElement) {
+      title.href = section.storeUrl;
+      title.target = '_blank';
+      title.rel = 'noreferrer noopener';
+      title.title = '計算元のシートを開く';
+    }
     header.appendChild(title);
     storeColumn.appendChild(header);
 
@@ -262,7 +283,8 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
     } else {
       const { items: laidOut, laneCount } = layoutSegments(section.employees);
       const requiredWidth = Math.max(140, laneCount * SHIFT_LANE_WIDTH + 24);
-      storeColumn.style.minWidth = `${requiredWidth}px`;
+      storeColumn.style.width = `${requiredWidth}px`;
+      storeColumn.style.setProperty('--store-min-width', `${requiredWidth}px`);
       storeColumn.style.setProperty('--shift-lane-width', `${SHIFT_LANE_WIDTH}px`);
 
       laidOut.forEach(item => {
@@ -271,7 +293,7 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
         const isActive = nowMinutes !== null && nowMinutes >= segment.start && nowMinutes < segment.end;
         block.className = `shift-block${isActive ? ' shift-block--active' : ''}`;
         block.style.top = minutesToPercent(segment.start);
-        block.style.height = `calc(${minutesToPercent(segment.end)} - ${minutesToPercent(segment.start)})`;
+        block.style.height = `calc(${minutesToPercent(segment.end)} - ${minutesToPercent(segment.start)} - 2px)`;
         block.style.setProperty('--lane-index', laneIndex);
 
         const name = document.createElement('div');
@@ -339,6 +361,7 @@ function buildSectionsForDate(targetDate, storeDataList) {
     try {
       sections.push({
         storeName: entry.storeName,
+        storeUrl: entry.store && entry.store.url,
         employees: collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate)
       });
     } catch (error) {
