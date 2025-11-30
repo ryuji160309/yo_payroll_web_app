@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0f4a73">
+  <title>今日の出勤者</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="help.js"></script>
+  <script defer src="today.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <button class="back-btn" id="today-back" onclick="history.back()">＜戻る</button>
+    </div>
+    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-right">
+      <button class="back-btn" id="today-home" onclick="location.href='index.html'">ホーム</button>
+    </div>
+  </header>
+  <main class="attendance-page">
+    <h1 class="page-title">今日の出勤者</h1>
+    <section class="attendance-controls" aria-label="日付の切り替え">
+      <div class="attendance-date-group">
+        <button id="prev-day" type="button" class="control-btn">前日</button>
+        <button id="today-button" type="button" class="control-btn">今日</button>
+        <button id="next-day" type="button" class="control-btn">翌日</button>
+      </div>
+      <div class="attendance-date-label" id="selected-date" aria-live="polite"></div>
+    </section>
+    <p id="attendance-status" class="attendance-status" aria-live="polite"></p>
+    <div class="timeline-wrapper" id="attendance-content"></div>
+  </main>
+</body>
+</html>
