@@ -136,49 +136,7 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
     return;
   }
 
-  const BUTTON_ID = 'today-button';
-
-  const isTopPage = () => {
-    const path = (window.location && window.location.pathname) || '';
-    const lastSegment = path.split('/').filter(Boolean).pop() || '';
-    return lastSegment === '' || lastSegment === 'index.html' || lastSegment === 'index';
-  };
-
-  const removeButtonIfExists = () => {
-    const existing = document.getElementById(BUTTON_ID);
-    if (existing && existing.parentElement) {
-      existing.parentElement.removeChild(existing);
-    }
-  };
-
-  const ensureButton = () => {
-    if (!isTopPage()) {
-      removeButtonIfExists();
-      return;
-    }
-    if (document.getElementById(BUTTON_ID)) {
-      return;
-    }
-    const target = document.body || document.documentElement;
-    if (!target) {
-      return;
-    }
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.id = BUTTON_ID;
-    button.className = 'today-button';
-    button.textContent = '今日の出勤者';
-    button.addEventListener('click', () => {
-      window.location.href = 'today.html';
-    });
-    target.appendChild(button);
-  };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', ensureButton, { once: true });
-  } else {
-    ensureButton();
-  }
+  // 今日の出勤者ページは廃止しました。
 })();
 
 (function setupToastSystem() {
