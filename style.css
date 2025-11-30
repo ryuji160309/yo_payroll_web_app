@@ -2204,16 +2204,14 @@ td {
 
 .timeline-wrapper {
   overflow-x: auto;
-  padding: 0.5rem 0 1.25rem;
-  background: linear-gradient(180deg, rgba(15, 74, 115, 0.04), rgba(15, 74, 115, 0.02));
-  border-radius: 14px;
+  padding-bottom: 1rem;
 }
 
 .attendance-grid {
   --hour-height: 48px;
   --timeline-height: calc(var(--hour-height) * 24);
   display: grid;
-  grid-template-columns: 80px repeat(var(--store-count, 1), minmax(220px, max-content));
+  grid-template-columns: 80px repeat(var(--store-count, 1), minmax(200px, 1fr));
   gap: 0.75rem;
   position: relative;
   min-width: 860px;
@@ -2263,19 +2261,6 @@ td {
 .store-column__header h2 {
   margin: 0;
   font-size: 1rem;
-}
-
-.store-column__title {
-  margin: 0;
-  font-size: 1rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.store-column__title:hover,
-.store-column__title:focus-visible {
-  color: var(--color-link);
-  text-decoration: underline;
 }
 
 .time-column__body,
