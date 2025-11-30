@@ -2,6 +2,27 @@ const MINUTES_IN_DAY = 24 * 60;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHIFT_LANE_WIDTH = 86;
 
+function createDeferred() {
+  let resolved = false;
+  let resolveFn = null;
+  const promise = new Promise(resolve => {
+    resolveFn = () => {
+      if (resolved) return;
+      resolved = true;
+      resolve();
+    };
+  });
+  return {
+    resolve: () => {
+      if (typeof resolveFn === 'function') {
+        resolveFn();
+      }
+    },
+    isResolved: () => resolved,
+    promise
+  };
+}
+
 function formatDateLabel(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
   const days = ['日', '月', '火', '水', '木', '金', '土'];
@@ -358,6 +379,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const status = document.getElementById('attendance-status');
   const content = document.getElementById('attendance-content');
 
+  const tutorialReady = createDeferred();
+
   let currentDate = normalizeDate(new Date());
   let storeDataList = [];
 
@@ -393,6 +416,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         status.classList.remove('attendance-status--error');
       }
     }
+
+    if (typeof window.requestTutorialReposition === 'function') {
+      window.requestTutorialReposition();
+    }
   };
 
   const initializeData = async () => {
@@ -411,8 +438,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       setNavigationDisabled(false);
       renderForDate();
+      tutorialReady.resolve();
     }
   };
+
+  initializeHelp('help/today.txt', {
+    pageKey: 'today',
+    showPrompt: false,
+    waitForReady: () => (tutorialReady.isResolved() ? true : tutorialReady.promise),
+    steps: {
+      date: '#selected-date',
+      prev: '#prev-day',
+      next: '#next-day',
+      table: () => document.querySelector('.attendance-grid') || content,
+      warnings: '#attendance-status',
+      help: () => document.getElementById('help-button')
+    }
+  });
 
   if (prevBtn) {
     prevBtn.addEventListener('click', () => {
