@@ -2395,6 +2395,12 @@ td {
   gap: 0.75rem;
 }
 
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem 1rem;
+}
+
 .report-form {
   display: flex;
   flex-direction: column;
@@ -2419,6 +2425,20 @@ td {
 
 .report-section-title {
   margin: 0;
+}
+
+.report-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.report-hint {
+  margin: 0;
+  color: var(--color-muted-text);
+  font-size: 0.95rem;
 }
 
 .report-period {
@@ -2457,7 +2477,46 @@ td {
   min-height: 260px;
 }
 
-#report-chart {
+#report-chart,
+#store-trend-chart,
+#employee-trend-chart {
   width: 100%;
   height: 100%;
+}
+
+.table-wrapper {
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 0.6rem;
+  background: var(--color-surface);
+  box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.06);
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.report-table th,
+.report-table td {
+  padding: 0.65rem 0.85rem;
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.report-table th:first-child,
+.report-table td:first-child {
+  text-align: left;
+}
+
+.report-table thead {
+  background: var(--color-muted-background);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.report-table tbody tr:nth-child(odd) {
+  background: var(--color-muted-background);
 }
