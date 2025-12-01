@@ -98,10 +98,29 @@ function parseWorkbookPeriod(data) {
   return { startDate, endDate };
 }
 
+function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function getScheduleRowIndex(targetDate, period) {
+  const normalizedDate = normalizeDate(targetDate);
+  const rawIndex = Math.floor((normalizedDate - period.startDate) / DAY_IN_MS);
+
+  const startMonthLength = daysInMonth(period.startDate);
+  const missingDays = Math.max(0, 31 - startMonthLength);
+  const nextMonthStart = new Date(period.startDate.getFullYear(), period.startDate.getMonth() + 1, 1);
+
+  if (normalizedDate >= nextMonthStart) {
+    return rawIndex + missingDays;
+  }
+
+  return rawIndex;
+}
+
 function collectShiftsForStore(store, workbook, period, targetDate) {
   const data = workbook.data || [];
   const header = data[2] || [];
-  const dayIndex = Math.floor((targetDate - period.startDate) / DAY_IN_MS);
+  const dayIndex = getScheduleRowIndex(targetDate, period);
   const scheduleRows = data.slice(3, 34);
   const entries = new Map();
   const excludeWords = Array.isArray(store.excludeWords) ? store.excludeWords : [];
@@ -142,11 +161,13 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
     });
   };
 
+  const previousDayIndex = getScheduleRowIndex(new Date(targetDate.getTime() - DAY_IN_MS), period);
+
   if (dayIndex >= 0 && dayIndex < scheduleRows.length) {
     processRow(scheduleRows[dayIndex], 0);
   }
-  if (dayIndex - 1 >= 0 && dayIndex - 1 < scheduleRows.length) {
-    processRow(scheduleRows[dayIndex - 1], -1);
+  if (previousDayIndex >= 0 && previousDayIndex < scheduleRows.length) {
+    processRow(scheduleRows[previousDayIndex], -1);
   }
 
   const employees = Array.from(entries.values())
