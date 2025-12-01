@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0f4a73">
+  <title>月次レポート</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="help.js"></script>
+  <script defer src="reports.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <button class="back-btn" type="button" onclick="location.href='index.html'">ホーム</button>
+    </div>
+    <div id="network-status" class="header-status network-status" aria-live="polite"></div>
+    <div class="header-right">
+      <button class="back-btn" type="button" onclick="location.href='settings.html'">設定</button>
+    </div>
+  </header>
+  <h1 class="page-title">月次レポート</h1>
+  <main class="page-content">
+    <section class="info-box report-card">
+      <div class="report-form">
+        <label for="report-store" class="report-label">店舗</label>
+        <select id="report-store"></select>
+      </div>
+      <div class="report-form">
+        <label for="report-month" class="report-label">対象月</label>
+        <select id="report-month"></select>
+      </div>
+      <div class="report-actions">
+        <button id="run-report" type="button">集計</button>
+        <p id="report-status" class="report-status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="info-box report-card">
+      <h2 class="report-section-title">集計結果</h2>
+      <p id="report-period-label" class="report-period" aria-live="polite"></p>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-label">総労働時間</div>
+          <div id="summary-total-hours" class="summary-value">--</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">残業時間</div>
+          <div id="summary-overtime" class="summary-value">--</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">概算給与</div>
+          <div id="summary-salary" class="summary-value">--</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">出勤日数</div>
+          <div id="summary-days" class="summary-value">--</div>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="report-chart" aria-label="月次サマリーの棒グラフ" role="img"></canvas>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
