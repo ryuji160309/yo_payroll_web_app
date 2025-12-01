@@ -7,6 +7,14 @@
   "theme_color": "#0f4a73",
   "lang": "ja-JP",
   "description": "Google スプレッドシートを元に給与計算を行うオフライン対応アプリです。",
+  "shortcuts": [
+    {
+      "name": "月次レポート",
+      "short_name": "レポート",
+      "url": "/reports.html",
+      "description": "勤怠データの月次サマリーを確認します。"
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
