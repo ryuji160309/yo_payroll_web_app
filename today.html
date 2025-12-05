@@ -26,6 +26,12 @@
   </header>
   <main class="attendance-page">
     <h1 class="page-title">今日の出勤者</h1>
+    <section class="attendance-store-selector" aria-label="店舗選択">
+      <h2 class="attendance-store-selector__title">表示する店舗を選択</h2>
+      <p class="attendance-store-selector__description">店舗ごとの出勤スケジュールを確認するには、以下の店舗ボタンを押してください。</p>
+      <div id="today-store-list"></div>
+    </section>
+    <section class="attendance-schedule" id="attendance-schedule-section" aria-label="出勤スケジュール">
       <section class="attendance-controls" aria-label="日付の切り替え">
         <div class="attendance-date-row">
           <button id="prev-day" type="button" class="control-btn">前日</button>
@@ -36,8 +42,9 @@
           <button id="today-button" type="button" class="control-btn">今日</button>
         </div>
       </section>
-    <p id="attendance-status" class="attendance-status" aria-live="polite"></p>
-    <div class="timeline-wrapper" id="attendance-content"></div>
+      <p id="attendance-status" class="attendance-status" aria-live="polite"></p>
+      <div class="timeline-wrapper" id="attendance-content"></div>
+    </section>
   </main>
 </body>
 </html>

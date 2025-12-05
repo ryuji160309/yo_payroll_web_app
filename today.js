@@ -399,11 +399,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const todayBtn = document.getElementById('today-button');
   const status = document.getElementById('attendance-status');
   const content = document.getElementById('attendance-content');
+  const storeList = document.getElementById('today-store-list');
+  const scheduleSection = document.getElementById('attendance-schedule-section');
 
   const tutorialReady = createDeferred();
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const requestedStoreKey = searchParams.get('store');
+
+  let stores = {};
+  let storeKeys = [];
   let currentDate = normalizeDate(new Date());
   let storeDataList = [];
+  const selectedStoreKeys = [];
 
   const setNavigationDisabled = disabled => {
     [prevBtn, nextBtn, todayBtn].forEach(btn => {
@@ -413,13 +421,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
+  const setScheduleVisible = visible => {
+    if (scheduleSection) {
+      scheduleSection.style.display = visible ? '' : 'none';
+    }
+  };
+
   const updateDateLabel = () => {
     if (dateLabel) {
       dateLabel.textContent = formatDateLabel(currentDate);
     }
   };
 
+  const getSelectionLabel = () => {
+    if (storeKeys.length === selectedStoreKeys.length) {
+      return '全店舗';
+    }
+    const names = selectedStoreKeys
+      .map(key => stores[key])
+      .filter(Boolean)
+      .map(entry => entry.name);
+    return names.length > 0 ? names.join(' / ') : '選択した店舗';
+  };
+
   const renderForDate = () => {
+    if (selectedStoreKeys.length === 0) return;
     const { sections, errors } = buildSectionsForDate(currentDate, storeDataList);
     const now = new Date();
     const nowMinutes = isSameDate(currentDate, now)
@@ -433,7 +459,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         status.textContent = errors.join('\n');
         status.classList.add('attendance-status--error');
       } else {
-        status.textContent = `${sections.length}件の店舗からシフトを読み込みました。`;
+        const selectionLabel = getSelectionLabel();
+        status.textContent = `${selectionLabel}のシフトを読み込みました（${sections.length}店舗）。`;
         status.classList.remove('attendance-status--error');
       }
     }
@@ -443,15 +470,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  const renderStoreButtons = () => {
+    if (!storeList) return;
+
+    storeList.textContent = '';
+
+    const addButton = (label, key) => {
+      if (!label || !key) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'store-button';
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        const params = new URLSearchParams();
+        params.set('store', key);
+        window.location.href = `today.html?${params.toString()}`;
+      });
+      storeList.appendChild(btn);
+    };
+
+    addButton('全店舗', 'all');
+    storeKeys.forEach(key => {
+      const store = stores[key];
+      addButton(store.name, key);
+    });
+  };
+
   const initializeData = async () => {
+    if (selectedStoreKeys.length === 0) {
+      tutorialReady.resolve();
+      return;
+    }
+
     if (content) {
       startLoading(content, '読み込み中です…');
     }
     setNavigationDisabled(true);
 
     try {
-      const stores = loadStores();
-      const tasks = Object.values(stores).map(store => loadStoreWorkbooks(store));
+      const targetStores = selectedStoreKeys.map(key => stores[key]).filter(Boolean);
+      const tasks = targetStores.map(store => loadStoreWorkbooks(store));
       storeDataList = await Promise.all(tasks);
     } finally {
       if (content) {
@@ -476,6 +534,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       help: () => document.getElementById('help-button')
     }
   });
+
+  stores = loadStores();
+  storeKeys = Object.keys(stores);
+  selectedStoreKeys.push(
+    ...(() => {
+      if (requestedStoreKey === 'all') {
+        return storeKeys;
+      }
+      if (requestedStoreKey && storeKeys.includes(requestedStoreKey)) {
+        return [requestedStoreKey];
+      }
+      return [];
+    })()
+  );
+
+  renderStoreButtons();
+
+  if (selectedStoreKeys.length === 0) {
+    setScheduleVisible(false);
+    setNavigationDisabled(true);
+    if (status) {
+      if (requestedStoreKey) {
+        status.textContent = '指定された店舗が見つかりません。店舗一覧から選択してください。';
+      } else {
+        status.textContent = '表示する店舗を選択してください。';
+      }
+      status.classList.remove('attendance-status--error');
+    }
+    tutorialReady.resolve();
+  } else {
+    setScheduleVisible(true);
+  }
 
   if (prevBtn) {
     prevBtn.addEventListener('click', () => {
@@ -502,5 +592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   updateDateLabel();
-  initializeData();
+  if (selectedStoreKeys.length > 0) {
+    initializeData();
+  }
 });
