@@ -254,10 +254,26 @@ textarea:focus {
   border-color: var(--color-control-hover-border);
 }
 
-#store-list button, #sheet-list button {
+#store-list button, #sheet-list button, #today-store-list button {
   display: block;
   width: 90%;
   margin: 0.5rem auto;
+}
+
+.attendance-store-selector {
+  margin: 1rem auto;
+  text-align: center;
+}
+
+.attendance-store-selector__title {
+  margin-bottom: 0.25rem;
+}
+
+.attendance-store-selector__description {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  color: var(--color-muted-text);
 }
 
 #multi-store-mode-button {
