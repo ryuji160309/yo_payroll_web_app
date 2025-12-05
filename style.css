@@ -281,6 +281,65 @@ textarea:focus {
   color: #072c5c;
 }
 
+.store-filter {
+  max-width: 960px;
+  margin: 0 auto 1rem;
+  padding: 0.5rem 1rem 0.75rem;
+  background: var(--color-surface);
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 0.75rem 1.6rem rgba(15, 23, 42, 0.06);
+}
+
+.store-filter__title {
+  margin: 0.25rem 0 0.75rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.store-filter__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.store-filter__empty {
+  text-align: center;
+  color: var(--color-muted-text);
+  margin: 0.5rem 0;
+}
+
+.store-button {
+  padding: 0.6rem 0.9rem;
+  min-width: 6.5rem;
+  font-weight: 600;
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-body-text);
+  box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+.store-button.is-selected {
+  background: #e3f2fd;
+  border-color: #64b5f6;
+  color: #0d47a1;
+  box-shadow: 0 0.45rem 1.2rem rgba(13, 71, 161, 0.18);
+}
+
+:root[data-theme="dark"] .store-button {
+  background: var(--color-surface-strong);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="dark"] .store-button.is-selected {
+  background: #1f2f46;
+  border-color: #64b5f6;
+  color: #e3f2fd;
+  box-shadow: 0 0.45rem 1.2rem rgba(100, 181, 246, 0.22);
+}
+
 #multi-month-mode-button {
   background: #fff6de;
   border-color: #f0c36b;
