@@ -1,7 +1,6 @@
 const MINUTES_IN_DAY = 24 * 60;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHIFT_LANE_WIDTH = 86;
-const LAST_STORE_STORAGE_KEY = 'lastSelectedStore';
 
 function createDeferred() {
   let resolved = false;
@@ -97,34 +96,6 @@ function parseWorkbookPeriod(data) {
   const startDate = new Date(year, startMonth - 1, 16);
   const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 15, 23, 59, 59, 999);
   return { startDate, endDate };
-}
-
-function getLastSelectedStoreKey(stores) {
-  if (!stores) {
-    return null;
-  }
-  try {
-    const key = localStorage.getItem(LAST_STORE_STORAGE_KEY);
-    if (key === 'all') {
-      return key;
-    }
-    if (key && stores[key]) {
-      return key;
-    }
-  } catch (e) {
-    // Ignore storage access issues.
-  }
-  return null;
-}
-
-function setLastSelectedStoreKey(key) {
-  try {
-    if (key) {
-      localStorage.setItem(LAST_STORE_STORAGE_KEY, key);
-    }
-  } catch (e) {
-    // Ignore storage access issues.
-  }
 }
 
 function daysInMonth(date) {
@@ -361,8 +332,8 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
   container.appendChild(grid);
 }
 
-async function loadStoreWorkbooks(storeKey, store) {
-  const result = { storeKey, store, storeName: store.name, workbooks: [] };
+async function loadStoreWorkbooks(store) {
+  const result = { store, storeName: store.name, workbooks: [] };
   try {
     const sheetList = await fetchSheetList(store.url, { allowOffline: true });
     const candidates = sheetList && sheetList.length > 0 ? sheetList.slice().reverse() : [{ index: 0 }];
@@ -428,15 +399,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const todayBtn = document.getElementById('today-button');
   const status = document.getElementById('attendance-status');
   const content = document.getElementById('attendance-content');
-  const storeButtonsContainer = document.getElementById('today-store-buttons');
 
   const tutorialReady = createDeferred();
 
   let currentDate = normalizeDate(new Date());
   let storeDataList = [];
-  let stores = {};
-  let storeKeys = [];
-  let selectedStoreKey = 'all';
 
   const setNavigationDisabled = disabled => {
     [prevBtn, nextBtn, todayBtn].forEach(btn => {
@@ -446,70 +413,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  const setStoreButtonsDisabled = disabled => {
-    if (!storeButtonsContainer) return;
-    const buttons = storeButtonsContainer.querySelectorAll('button');
-    buttons.forEach(btn => {
-      btn.disabled = disabled;
-    });
-  };
-
   const updateDateLabel = () => {
     if (dateLabel) {
       dateLabel.textContent = formatDateLabel(currentDate);
     }
   };
 
-  const getActiveStoreData = () => {
-    if (selectedStoreKey === 'all') {
-      return storeDataList;
-    }
-    return storeDataList.filter(entry => entry.storeKey === selectedStoreKey);
-  };
-
-  const renderStoreButtons = () => {
-    if (!storeButtonsContainer) {
-      return;
-    }
-    storeButtonsContainer.textContent = '';
-
-    if (storeKeys.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'store-filter__empty';
-      empty.textContent = '設定画面で店舗を追加してください。';
-      storeButtonsContainer.appendChild(empty);
-      return;
-    }
-
-    const createButton = (key, label) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'store-button';
-      if (selectedStoreKey === key) {
-        btn.classList.add('is-selected');
-      }
-      btn.textContent = label;
-      btn.addEventListener('click', () => {
-        if (selectedStoreKey === key) {
-          return;
-        }
-        selectedStoreKey = key;
-        setLastSelectedStoreKey(key);
-        renderStoreButtons();
-        renderForDate();
-      });
-      storeButtonsContainer.appendChild(btn);
-    };
-
-    createButton('all', '全店舗');
-    storeKeys.forEach(key => {
-      createButton(key, stores[key].name);
-    });
-  };
-
   const renderForDate = () => {
-    const activeStoreData = getActiveStoreData();
-    const { sections, errors } = buildSectionsForDate(currentDate, activeStoreData);
+    const { sections, errors } = buildSectionsForDate(currentDate, storeDataList);
     const now = new Date();
     const nowMinutes = isSameDate(currentDate, now)
       ? now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60
@@ -518,20 +429,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderTimeline(sections, currentDate, nowMinutes);
 
     if (status) {
-      const selectedStoreName = selectedStoreKey === 'all'
-        ? '全店舗'
-        : (stores && stores[selectedStoreKey] ? stores[selectedStoreKey].name : '選択した店舗');
       if (errors.length > 0) {
         status.textContent = errors.join('\n');
         status.classList.add('attendance-status--error');
       } else {
-        if (sections.length === 0) {
-          status.textContent = `${selectedStoreName}のシフトを表示できませんでした。`;
-        } else if (selectedStoreKey === 'all') {
-          status.textContent = `${sections.length}件の店舗からシフトを読み込みました。`;
-        } else {
-          status.textContent = `${selectedStoreName}のシフトを表示しています。`;
-        }
+        status.textContent = `${sections.length}件の店舗からシフトを読み込みました。`;
         status.classList.remove('attendance-status--error');
       }
     }
@@ -546,23 +448,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       startLoading(content, '読み込み中です…');
     }
     setNavigationDisabled(true);
-    setStoreButtonsDisabled(true);
 
     try {
-      stores = loadStores();
-      storeKeys = stores ? Object.keys(stores) : [];
-      const storedKey = getLastSelectedStoreKey(stores);
-      selectedStoreKey = storedKey || storeKeys[0] || 'all';
-      renderStoreButtons();
-
-      const tasks = storeKeys.map(key => loadStoreWorkbooks(key, stores[key]));
+      const stores = loadStores();
+      const tasks = Object.values(stores).map(store => loadStoreWorkbooks(store));
       storeDataList = await Promise.all(tasks);
     } finally {
       if (content) {
         stopLoading(content);
       }
       setNavigationDisabled(false);
-      setStoreButtonsDisabled(false);
       renderForDate();
       tutorialReady.resolve();
     }
