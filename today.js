@@ -289,8 +289,14 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
 
     const header = document.createElement('div');
     header.className = 'store-column__header';
-    const title = document.createElement('h2');
+    const title = document.createElement(section.storeUrl ? 'a' : 'h2');
     title.textContent = section.storeName;
+    if (section.storeUrl) {
+      title.href = section.storeUrl;
+      title.target = '_blank';
+      title.rel = 'noreferrer noopener';
+      title.className = 'store-column__link';
+    }
     header.appendChild(title);
     storeColumn.appendChild(header);
 
@@ -383,6 +389,7 @@ function buildSectionsForDate(targetDate, storeDataList) {
     try {
       sections.push({
         storeName: entry.storeName,
+        storeUrl: entry.store && entry.store.url,
         employees: collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate)
       });
     } catch (error) {
@@ -405,6 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const scheduleSection = document.getElementById('attendance-schedule-section');
   const backButton = document.getElementById('today-back');
   const homeButton = document.getElementById('today-home');
+  const dateControls = document.querySelector('.attendance-controls');
 
   const shouldShowNavigationButtons = () => {
     try {
@@ -533,6 +541,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentDate = normalizeDate(new Date());
   let storeDataList = [];
   const selectedStoreKeys = [];
+  let liveNowTimer = null;
+  let shouldAutoScrollToControls = false;
 
   const setNavigationDisabled = disabled => {
     [prevBtn, nextBtn, todayBtn].forEach(btn => {
@@ -589,6 +599,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof window.requestTutorialReposition === 'function') {
       window.requestTutorialReposition();
     }
+
+    if (shouldAutoScrollToControls && sections.length > 0) {
+      shouldAutoScrollToControls = false;
+      if (dateControls) {
+        dateControls.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  const renderForDateWithLiveSync = () => {
+    renderForDate();
+    startLiveNowTimer();
   };
 
   const renderStoreButtons = () => {
@@ -637,9 +659,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         stopLoading(content);
       }
       setNavigationDisabled(false);
-      renderForDate();
+      shouldAutoScrollToControls = true;
+      renderForDateWithLiveSync();
       tutorialReady.resolve();
     }
+  };
+
+  const stopLiveNowTimer = () => {
+    if (liveNowTimer) {
+      clearInterval(liveNowTimer);
+      liveNowTimer = null;
+    }
+  };
+
+  const startLiveNowTimer = () => {
+    stopLiveNowTimer();
+    const now = new Date();
+    if (!isSameDate(currentDate, now)) {
+      return;
+    }
+    liveNowTimer = window.setInterval(() => {
+      const currentNow = new Date();
+      if (!isSameDate(currentDate, currentNow)) {
+        stopLiveNowTimer();
+        renderForDate();
+        return;
+      }
+      renderForDate();
+    }, 30000);
   };
 
   initializeHelp('help/today.txt', {
@@ -692,7 +739,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     prevBtn.addEventListener('click', () => {
       currentDate = new Date(currentDate.getTime() - DAY_IN_MS);
       updateDateLabel();
-      renderForDate();
+      stopLiveNowTimer();
+      renderForDateWithLiveSync();
     });
   }
 
@@ -700,7 +748,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     nextBtn.addEventListener('click', () => {
       currentDate = new Date(currentDate.getTime() + DAY_IN_MS);
       updateDateLabel();
-      renderForDate();
+      stopLiveNowTimer();
+      renderForDateWithLiveSync();
     });
   }
 
@@ -708,7 +757,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     todayBtn.addEventListener('click', () => {
       currentDate = normalizeDate(new Date());
       updateDateLabel();
-      renderForDate();
+      stopLiveNowTimer();
+      renderForDateWithLiveSync();
     });
   }
 
