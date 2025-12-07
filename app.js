@@ -1819,6 +1819,13 @@ const SETTINGS_SHEET_NAME = '給与計算_設定';
 
 // Simple password gate to restrict access
 function initPasswordGate() {
+  if (typeof window !== 'undefined') {
+    const path = window.location?.pathname || '';
+    if (path.endsWith('today.html')) {
+      return;
+    }
+  }
+
   if (sessionStorage.getItem('pwAuth')) return;
 
   const overlay = document.createElement('div');

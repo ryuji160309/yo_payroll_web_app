@@ -1,6 +1,8 @@
 const MINUTES_IN_DAY = 24 * 60;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHIFT_LANE_WIDTH = 86;
+const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
+const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
 
 function createDeferred() {
   let resolved = false;
@@ -401,6 +403,125 @@ document.addEventListener('DOMContentLoaded', async () => {
   const content = document.getElementById('attendance-content');
   const storeList = document.getElementById('today-store-list');
   const scheduleSection = document.getElementById('attendance-schedule-section');
+  const backButton = document.getElementById('today-back');
+  const homeButton = document.getElementById('today-home');
+
+  const shouldShowNavigationButtons = () => {
+    try {
+      if (!document.referrer) {
+        return false;
+      }
+      const referrerUrl = new URL(document.referrer);
+      return referrerUrl.origin === window.location.origin;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const applyNavigationVisibility = () => {
+    const visible = shouldShowNavigationButtons();
+    [backButton, homeButton].forEach(btn => {
+      if (!btn) return;
+      btn.style.display = visible ? '' : 'none';
+      btn.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    });
+  };
+
+  const shouldShowWarningOverlay = () => {
+    try {
+      const raw = localStorage.getItem(TODAY_WARNING_ACK_KEY);
+      const lastShown = Number(raw);
+      if (!Number.isFinite(lastShown)) {
+        return true;
+      }
+      return Date.now() - lastShown >= TODAY_WARNING_INTERVAL_MS;
+    } catch (error) {
+      return true;
+    }
+  };
+
+  const recordWarningAcknowledged = () => {
+    try {
+      localStorage.setItem(TODAY_WARNING_ACK_KEY, String(Date.now()));
+    } catch (error) {
+      // Ignore failures
+    }
+  };
+
+  const createWarningOverlay = () => {
+    const overlay = document.createElement('div');
+    overlay.className = 'today-warning-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'today-warning-overlay__content';
+
+    const title = document.createElement('p');
+    title.className = 'today-warning-overlay__title';
+    title.textContent = 'このページの表示について必ず確認してください';
+    contentWrapper.appendChild(title);
+
+    const list = document.createElement('ul');
+    list.className = 'today-warning-overlay__list';
+    [
+      'シフト表が正しく入力されていない',
+      '同じ時刻に出勤するためにシフト表に入力されていない',
+      '他店舗からのヘルプや派遣の入力'
+    ].forEach(text => {
+      const li = document.createElement('li');
+      li.textContent = `・${text}`;
+      list.appendChild(li);
+    });
+    contentWrapper.appendChild(list);
+
+    const note = document.createElement('p');
+    note.className = 'today-warning-overlay__note';
+    note.textContent = '以上の場合はシフト予定に表示されません。';
+    contentWrapper.appendChild(note);
+
+    const reminder = document.createElement('p');
+    reminder.className = 'today-warning-overlay__note';
+    reminder.innerHTML = 'また、このページは簡単に当日のシフト者を確認するために作っているため、<strong>正確なシフトはスプレッドシートを確認してください</strong>。';
+    contentWrapper.appendChild(reminder);
+
+    const responsibility = document.createElement('p');
+    responsibility.className = 'today-warning-overlay__note';
+    responsibility.innerHTML = 'このページを確認して間違った時間に出勤してしまった場合/出勤を忘れた場合の<strong>責任は一切取れません</strong>。絶対に元のスプレッドシートを確認してください。';
+    contentWrapper.appendChild(responsibility);
+
+    const testNotice = document.createElement('p');
+    testNotice.className = 'today-warning-overlay__note';
+    testNotice.textContent = 'このページはテスト中のため、予告なくアクセスできなくなる場合があります。';
+    contentWrapper.appendChild(testNotice);
+
+    const actions = document.createElement('div');
+    actions.className = 'today-warning-overlay__actions';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'today-warning-overlay__button';
+    closeBtn.textContent = '確認';
+    closeBtn.addEventListener('click', () => {
+      recordWarningAcknowledged();
+      overlay.remove();
+    });
+    actions.appendChild(closeBtn);
+    contentWrapper.appendChild(actions);
+
+    overlay.appendChild(contentWrapper);
+    return overlay;
+  };
+
+  const maybeShowWarningOverlay = () => {
+    if (!shouldShowWarningOverlay()) {
+      return;
+    }
+    const overlay = createWarningOverlay();
+    document.body.appendChild(overlay);
+  };
+
+  applyNavigationVisibility();
+  maybeShowWarningOverlay();
 
   const tutorialReady = createDeferred();
 
@@ -460,7 +581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         status.classList.add('attendance-status--error');
       } else {
         const selectionLabel = getSelectionLabel();
-        status.textContent = `${selectionLabel}のシフトを読み込みました（${sections.length}店舗）。`;
+        status.textContent = `${selectionLabel}のシフトを読み込みました。`;
         status.classList.remove('attendance-status--error');
       }
     }
