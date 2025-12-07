@@ -467,7 +467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const title = document.createElement('p');
     title.className = 'today-warning-overlay__title';
-    title.textContent = 'このページの表示について必ず確認してください';
+    title.textContent = '⚠️必ず確認してください⚠️';
     contentWrapper.appendChild(title);
 
     const list = document.createElement('ul');
@@ -495,12 +495,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const responsibility = document.createElement('p');
     responsibility.className = 'today-warning-overlay__note';
-    responsibility.innerHTML = 'このページを確認して間違った時間に出勤してしまった場合/出勤を忘れた場合の<strong>責任は一切取れません</strong>。絶対に元のスプレッドシートを確認してください。';
+    responsibility.innerHTML = 'このページを確認して間違った時間に出勤してしまった場合/出勤を忘れた場合の<strong>責任は一切取れません</strong>。<strong>絶対</strong>に元のスプレッドシートを確認してください。';
     contentWrapper.appendChild(responsibility);
 
     const testNotice = document.createElement('p');
     testNotice.className = 'today-warning-overlay__note';
-    testNotice.textContent = 'このページはテスト中のため、予告なくアクセスできなくなる場合があります。';
+    testNotice.textContent = '出勤表の店舗名部分をタップすると<strong>スプレッドシートが開きます</strong>。';
     contentWrapper.appendChild(testNotice);
 
     const actions = document.createElement('div');
