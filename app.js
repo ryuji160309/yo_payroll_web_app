@@ -751,6 +751,14 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   if (!('serviceWorker' in navigator)) {
     return;
   }
+
+  const path = typeof window !== 'undefined' && window.location && typeof window.location.pathname === 'string'
+    ? window.location.pathname
+    : '';
+  if (path === '/today.html' || path.endsWith('/today.html')) {
+    return;
+  }
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js').catch(err => {
       console.error('Service worker registration failed:', err);
