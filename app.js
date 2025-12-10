@@ -1824,7 +1824,6 @@ let PASSWORD = '3963';
 window.settingsError = false;
 const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=xlsx';
 const SETTINGS_SHEET_NAME = '給与計算_設定';
-const PHP_SETTINGS_JSON_URL = 'php/data/settings.json';
 
 // Simple password gate to restrict access
 function initPasswordGate() {
@@ -2118,42 +2117,6 @@ async function fetchRemoteSettings() {
 let settingsLoadPromise;
 let settingsLoaded = false;
 let cacheApplied = false;
-let phpSettingsAttempted = false;
-let phpSettingsSuccess = false;
-let phpSettingsFetchedAt = null;
-let PHP_WORKBOOK_MAP = {};
-let phpStatusMessage = '';
-
-function ensurePhpStatusElement() {
-  if (typeof document === 'undefined') return null;
-  const existing = document.getElementById('php-data-status');
-  if (existing) return existing;
-  const parent = document.querySelector('header .header-left') || document.querySelector('header') || document.body || document.documentElement;
-  const el = document.createElement('div');
-  el.id = 'php-data-status';
-  el.className = 'header-status php-status';
-  parent.appendChild(el);
-  return el;
-}
-
-function formatLocalDateTime(isoString) {
-  if (!isoString) return null;
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return null;
-  try {
-    return date.toLocaleString('ja-JP', { timeZoneName: 'short' });
-  } catch (e) {
-    return date.toLocaleString();
-  }
-}
-
-function updatePhpStatus(message, tone = 'info') {
-  phpStatusMessage = message;
-  const el = ensurePhpStatusElement();
-  if (!el) return;
-  el.textContent = message || '';
-  el.dataset.tone = tone;
-}
 
 function applySettingsRecord(record) {
   if (!record) return false;
@@ -2161,12 +2124,6 @@ function applySettingsRecord(record) {
   if (record.password) PASSWORD = record.password;
   if (record.settingsError) window.settingsError = true;
   if (record.settingsErrorDetails) window.settingsErrorDetails = record.settingsErrorDetails;
-  if (record.workbookCache && typeof record.workbookCache === 'object') {
-    PHP_WORKBOOK_MAP = record.workbookCache;
-  }
-  if (record.fetchedAt) {
-    phpSettingsFetchedAt = record.fetchedAt;
-  }
   return true;
 }
 
@@ -2181,11 +2138,7 @@ function loadSettingsFromCache() {
   if (!raw) return false;
   try {
     const data = JSON.parse(raw);
-    const applied = applySettingsRecord(data);
-    if (data.phpFetchedAt) {
-      phpSettingsFetchedAt = data.phpFetchedAt;
-    }
-    return applied;
+    return applySettingsRecord(data);
   } catch (e) {
     console.error('loadSettingsFromCache parse failed', e);
     try {
@@ -2204,8 +2157,6 @@ function saveSettingsToCache() {
     password: PASSWORD,
     settingsError: window.settingsError || undefined,
     settingsErrorDetails: window.settingsErrorDetails || undefined,
-    workbookCache: Object.keys(PHP_WORKBOOK_MAP || {}).length ? PHP_WORKBOOK_MAP : undefined,
-    phpFetchedAt: phpSettingsFetchedAt || undefined,
   };
   try {
     localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(payload));
@@ -2221,66 +2172,22 @@ function shouldFetchRemoteSettings() {
   return true;
 }
 
-async function tryLoadPhpSettings() {
-  if (phpSettingsAttempted) {
-    return phpSettingsSuccess;
-  }
-
-  phpSettingsAttempted = true;
-  updatePhpStatus('PHPキャッシュを確認中…', 'info');
-
-  try {
-    const res = await fetch(PHP_SETTINGS_JSON_URL, { cache: 'no-store' });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    const applied = applySettingsRecord(data);
-    if (!applied) {
-      throw new Error('設定データを適用できませんでした');
-    }
-    phpSettingsSuccess = true;
-    if (data.fetchedAt && !phpSettingsFetchedAt) {
-      phpSettingsFetchedAt = data.fetchedAt;
-    }
-    const displayTime = formatLocalDateTime(phpSettingsFetchedAt) || '取得時刻不明';
-    updatePhpStatus(`PHPキャッシュを利用中：${displayTime}`, 'success');
-    return true;
-  } catch (error) {
-    phpSettingsSuccess = false;
-    const fallbackMessage = 'PHPキャッシュを利用できません。Googleスプレッドシートから直接読み込みます。';
-    const detail = error && error.message ? ` (${error.message})` : '';
-    updatePhpStatus(fallbackMessage + detail, 'warn');
-    return false;
-  }
-}
-
 function ensureSettingsLoaded() {
   if (!cacheApplied) {
     const loaded = loadSettingsFromCache();
     if (loaded) {
       settingsLoaded = true;
-      if (phpSettingsFetchedAt) {
-        const displayTime = formatLocalDateTime(phpSettingsFetchedAt) || '取得時刻不明';
-        updatePhpStatus(`PHPキャッシュを一時適用中：${displayTime}`, 'info');
-      }
     }
     cacheApplied = true;
   }
 
   if (!settingsLoadPromise) {
-    const promise = (async () => {
-      const phpLoaded = await tryLoadPhpSettings();
-      if (phpLoaded) {
-        saveSettingsToCache();
-        return;
-      }
-      const needsFetch = shouldFetchRemoteSettings();
-      if (needsFetch) {
-        await fetchRemoteSettings();
-        saveSettingsToCache();
-      }
-    })();
+    const needsFetch = shouldFetchRemoteSettings();
+    const promise = needsFetch
+      ? fetchRemoteSettings().then(() => {
+          saveSettingsToCache();
+        })
+      : Promise.resolve();
 
     settingsLoadPromise = promise.finally(() => {
       settingsLoadPromise = null;
@@ -2411,14 +2318,6 @@ function extractFileId(url) {
 function toXlsxExportUrl(url) {
   const fileId = extractFileId(url);
   return fileId ? `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx` : null;
-}
-
-function resolvePhpCachedWorkbook(url) {
-  if (!url || !PHP_WORKBOOK_MAP) return null;
-  if (PHP_WORKBOOK_MAP[url]) return PHP_WORKBOOK_MAP[url];
-  const exportUrl = toXlsxExportUrl(url);
-  if (exportUrl && PHP_WORKBOOK_MAP[exportUrl]) return PHP_WORKBOOK_MAP[exportUrl];
-  return null;
 }
 
 function getWorkbookCacheKey(url) {
@@ -2638,20 +2537,6 @@ async function fetchWorkbook(url, sheetIndex = 0, options = {}) {
     throw new Error('Invalid spreadsheet URL');
   }
   let buffer = getCachedWorkbookBuffer(url);
-  if (!buffer) {
-    const phpCached = resolvePhpCachedWorkbook(url);
-    if (phpCached) {
-      try {
-        const phpRes = await fetch(phpCached, { cache: 'no-store' });
-        if (phpRes.ok) {
-          buffer = await phpRes.arrayBuffer();
-          cacheWorkbookBuffer(url, buffer);
-        }
-      } catch (err) {
-        console.warn('PHP cached workbook fetch failed', err);
-      }
-    }
-  }
   if (!buffer) {
     const res = await fetch(exportUrl, { cache: 'no-store' });
     if (!res.ok) {
