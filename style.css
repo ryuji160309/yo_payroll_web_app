@@ -143,6 +143,19 @@ header {
   min-height: 1.5rem;
 }
 
+.php-status {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.php-status[data-tone="success"] {
+  color: var(--color-success);
+}
+
+.php-status[data-tone="warn"] {
+  color: var(--color-danger);
+}
+
 .network-status {
   opacity: 0;
   transition: opacity 0.4s ease;
