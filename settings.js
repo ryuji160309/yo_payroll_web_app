@@ -54,6 +54,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
   await ensureSettingsLoaded();
+  const phpInfo = document.getElementById('php-data-info');
+  const renderPhpInfo = () => {
+    if (!phpInfo || typeof window === 'undefined') {
+      return;
+    }
+    const status = typeof window.getPhpDownloadStatus === 'function'
+      ? window.getPhpDownloadStatus()
+      : null;
+    if (!status) {
+      return;
+    }
+    if (status.used && status.fetchedAt && typeof window.formatPhpFetchedAt === 'function') {
+      phpInfo.textContent = `PHP経由のキャッシュ取得時刻：${window.formatPhpFetchedAt(status.fetchedAt)}`;
+      return;
+    }
+    if (status.attempted && status.fallbackReason) {
+      phpInfo.textContent = `PHPキャッシュ取得に失敗：${status.fallbackReason}\n従来のスプレッドシートから取得しています。`;
+      return;
+    }
+    if (status.attempted && !status.used) {
+      phpInfo.textContent = 'PHPキャッシュを利用できなかったため、従来のダウンロードを使用しています。';
+      return;
+    }
+  };
+  renderPhpInfo();
   if (window.settingsError) {
     const err = document.getElementById('settings-error');
     if (err) {
