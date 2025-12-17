@@ -1824,74 +1824,6 @@ let PASSWORD = '3963';
 window.settingsError = false;
 const SETTINGS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTKnnQY1d5BXnOstLwIhJOn7IX8aqHXC98XzreJoFscTUFPJXhef7jO2-0KKvZ7_fPF0uZwpbdcEpcV/pub?output=xlsx';
 const SETTINGS_SHEET_NAME = '給与計算_設定';
-const PHP_CACHE_BASE = 'php-cache';
-const PHP_SETTINGS_CACHE_URL = `${PHP_CACHE_BASE}/settings.json`;
-const PHP_SHEETS_CACHE_DIR = `${PHP_CACHE_BASE}/sheets`;
-const phpDownloadStatus = {
-  attempted: false,
-  used: false,
-  fetchedAt: null,
-  fallbackReason: null,
-  fallbackNotified: false,
-};
-function markPhpAttempted() {
-  phpDownloadStatus.attempted = true;
-}
-function markPhpSuccess(fetchedAt) {
-  markPhpAttempted();
-  phpDownloadStatus.used = true;
-  const ts = normalizeTimestamp(fetchedAt);
-  if (ts) {
-    phpDownloadStatus.fetchedAt = ts;
-  }
-}
-function markPhpFailure(reason) {
-  markPhpAttempted();
-  if (!phpDownloadStatus.fallbackReason && reason) {
-    phpDownloadStatus.fallbackReason = reason;
-  }
-}
-function notifyPhpFallback(message) {
-  markPhpFailure(message);
-  if (phpDownloadStatus.fallbackNotified) {
-    return;
-  }
-  phpDownloadStatus.fallbackNotified = true;
-  if (typeof window !== 'undefined' && typeof window.showToastWithFeedback === 'function') {
-    const text = message || 'PHPキャッシュにアクセスできません。従来のダウンロードを利用します。';
-    window.showToastWithFeedback(text, { feedbackLevel: 'warning', duration: 4600 });
-  }
-}
-function normalizeTimestamp(value) {
-  if (!value) return null;
-  if (Number.isFinite(value)) {
-    return Number(value);
-  }
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-function formatPhpFetchedAt(value) {
-  const ts = normalizeTimestamp(value);
-  if (!ts) return '';
-  const date = new Date(ts);
-  if (Number.isNaN(date.getTime())) return '';
-  try {
-    return new Intl.DateTimeFormat('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).format(date);
-  } catch (e) {
-    return date.toLocaleString('ja-JP');
-  }
-}
-if (typeof window !== 'undefined') {
-  window.getPhpDownloadStatus = () => ({ ...phpDownloadStatus });
-  window.formatPhpFetchedAt = formatPhpFetchedAt;
-}
 
 // Simple password gate to restrict access
 function initPasswordGate() {
@@ -2074,120 +2006,41 @@ let DEFAULT_STORES = {
   }
 };
 
-function extractPhpBuffer(payload) {
-  if (!payload) return null;
-  const base64 = payload.base64 || payload.data || payload.workbook || payload.xlsx;
-  if (base64 && typeof base64 === 'string') {
-    return base64ToArrayBuffer(base64);
-  }
-  return null;
-}
-
-async function tryFetchPhpWorkbook(url, options = {}) {
-  const { isSettings = false } = options;
-  const fileId = extractFileId(url);
-  const candidates = [];
-  if (isSettings && PHP_SETTINGS_CACHE_URL) {
-    candidates.push(PHP_SETTINGS_CACHE_URL);
-  }
-  if (fileId) {
-    candidates.push(
-      `${PHP_SHEETS_CACHE_DIR}/${fileId}.json`,
-      `${PHP_SHEETS_CACHE_DIR}/${fileId}.xlsx`
-    );
-  }
-  if (!candidates.length) {
-    return null;
-  }
-
-  markPhpAttempted();
-  for (const candidate of candidates) {
-    try {
-      const res = await fetch(candidate, { cache: 'no-store' });
-      if (!res.ok) {
-        continue;
-      }
-      const contentType = res.headers.get('content-type') || '';
-      const headerTime = res.headers.get('x-php-fetched-at') || res.headers.get('last-modified');
-      if (contentType.includes('json')) {
-        const payload = await res.json();
-        const buffer = extractPhpBuffer(payload);
-        if (!buffer) {
-          continue;
-        }
-        const fetchedAt = payload.fetchedAt || payload.updatedAt || payload.cachedAt || headerTime;
-        markPhpSuccess(fetchedAt);
-        return { buffer, fetchedAt, source: candidate };
-      }
-      const buffer = await res.arrayBuffer();
-      markPhpSuccess(headerTime);
-      return { buffer, fetchedAt: headerTime, source: candidate };
-    } catch (error) {
-      // Try next candidate
-    }
-  }
-  markPhpFailure('PHPキャッシュが見つかりませんでした。');
-  return null;
-}
-
 async function fetchRemoteSettings() {
   try {
-    const phpResult = await tryFetchPhpWorkbook(SETTINGS_URL, { isSettings: true });
-    let source = phpResult;
-    let phpUsed = false;
-    if (phpResult && phpResult.buffer) {
-      phpUsed = true;
+    let res;
+    const hasOutput = /[?&]output=/.test(SETTINGS_URL);
+
+    if (hasOutput) {
+      const direct = await fetch(SETTINGS_URL, { cache: 'no-store' });
+      if (direct.ok) {
+        res = direct;
+      }
     }
 
-    if (!source) {
-      let res;
-      const hasOutput = /[?&]output=/.test(SETTINGS_URL);
-
-      if (hasOutput) {
-        const direct = await fetch(SETTINGS_URL, { cache: 'no-store' });
-        if (direct.ok) {
-          res = direct;
-        }
+    if (!res) {
+      const exportUrl = toXlsxExportUrl(SETTINGS_URL);
+      if (!exportUrl) {
+        window.settingsError = true;
+        return;
       }
-
-      if (!res) {
-        const exportUrl = toXlsxExportUrl(SETTINGS_URL);
-        if (!exportUrl) {
+      try {
+        const converted = await fetch(exportUrl, { cache: 'no-store' });
+        if (converted.ok) {
+          res = converted;
+        } else {
           window.settingsError = true;
-          notifyPhpFallback('PHP経由の設定取得に失敗したため、元のダウンロードへ切り替えました。');
           return;
         }
-        try {
-          const converted = await fetch(exportUrl, { cache: 'no-store' });
-          if (converted.ok) {
-            res = converted;
-          } else {
-            window.settingsError = true;
-            notifyPhpFallback('PHP経由の設定取得に失敗したため、元のダウンロードへ切り替えました。');
-            return;
-          }
-        } catch (e) {
-          window.settingsError = true;
-          notifyPhpFallback('PHP経由の設定取得に失敗したため、元のダウンロードへ切り替えました。');
-          return;
-        }
+      } catch (e) {
+        window.settingsError = true;
+        return;
       }
-
-      const buffer = await res.arrayBuffer();
-      source = { buffer };
     }
 
-    if (!source || !source.buffer) {
-      window.settingsError = true;
-      notifyPhpFallback('設定データの取得に失敗しました。');
-      return;
-    }
 
-    if (phpUsed) {
-      markPhpSuccess(source.fetchedAt);
-    }
-
-    const wb = XLSX.read(source.buffer, { type: 'array' });
+    const buffer = await res.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
     const sheet = wb.Sheets[SETTINGS_SHEET_NAME];
     if (!sheet) {
       window.settingsError = true;
@@ -2679,41 +2532,21 @@ async function fetchWorkbook(url, sheetIndex = 0, options = {}) {
     const wb = XLSX.read(offlineBuffer, { type: 'array' });
     return buildWorkbookResult(wb, sheetIndex);
   }
-  let source = null;
-  const cachedBuffer = getCachedWorkbookBuffer(url);
-  if (cachedBuffer) {
-    source = { buffer: cachedBuffer };
-  }
-  let phpUsed = false;
-  if (!source) {
-    const phpResult = await tryFetchPhpWorkbook(url);
-    if (phpResult && phpResult.buffer) {
-      phpUsed = true;
-      source = { buffer: phpResult.buffer, fetchedAt: phpResult.fetchedAt };
-      cacheWorkbookBuffer(url, phpResult.buffer);
-    }
-  }
   const exportUrl = toXlsxExportUrl(url);
   if (!exportUrl) {
     throw new Error('Invalid spreadsheet URL');
   }
-  if (!source) {
-    if (phpDownloadStatus.attempted && !phpDownloadStatus.used) {
-      notifyPhpFallback('PHPキャッシュに接続できませんでした。従来のスプレッドシートを直接取得します。');
-    }
+  let buffer = getCachedWorkbookBuffer(url);
+  if (!buffer) {
     const res = await fetch(exportUrl, { cache: 'no-store' });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
 
-    const buffer = await res.arrayBuffer();
+    buffer = await res.arrayBuffer();
     cacheWorkbookBuffer(url, buffer);
-    source = { buffer };
   }
-  if (phpUsed) {
-    markPhpSuccess(source.fetchedAt);
-  }
-  const wb = XLSX.read(source.buffer, { type: 'array' });
+  const wb = XLSX.read(buffer, { type: 'array' });
   return buildWorkbookResult(wb, sheetIndex);
 }
 
@@ -2724,40 +2557,17 @@ async function fetchSheetList(url, options = {}) {
     const wb = XLSX.read(offlineBuffer, { type: 'array', bookSheets: true });
     return buildSheetMetadata(wb);
   }
-  let source = null;
-  const cachedBuffer = getCachedWorkbookBuffer(url);
-  if (cachedBuffer) {
-    source = { buffer: cachedBuffer };
-  }
-  let phpUsed = false;
-  if (!source) {
-    const phpResult = await tryFetchPhpWorkbook(url);
-    if (phpResult && phpResult.buffer) {
-      phpUsed = true;
-      source = { buffer: phpResult.buffer, fetchedAt: phpResult.fetchedAt };
-      cacheWorkbookBuffer(url, phpResult.buffer);
-    }
-  }
   const exportUrl = toXlsxExportUrl(url);
   if (!exportUrl) {
     throw new Error('Invalid spreadsheet URL');
   }
-  if (!source) {
-    if (phpDownloadStatus.attempted && !phpDownloadStatus.used) {
-      notifyPhpFallback('PHPキャッシュに接続できませんでした。従来のスプレッドシートを直接取得します。');
-    }
-    const res = await fetch(exportUrl, { cache: 'no-store' });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const buffer = await res.arrayBuffer();
-    cacheWorkbookBuffer(url, buffer);
-    source = { buffer };
+  const res = await fetch(exportUrl, { cache: 'no-store' });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
   }
-  if (phpUsed) {
-    markPhpSuccess(source.fetchedAt);
-  }
-  const wb = XLSX.read(source.buffer, { type: 'array', bookSheets: true });
+  const buffer = await res.arrayBuffer();
+  cacheWorkbookBuffer(url, buffer);
+  const wb = XLSX.read(buffer, { type: 'array', bookSheets: true });
   return buildSheetMetadata(wb);
 }
 
