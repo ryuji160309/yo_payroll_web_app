@@ -2369,6 +2369,39 @@ td {
   text-decoration: underline;
 }
 
+.store-column__invalid {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(211, 47, 47, 0.08);
+}
+
+:root[data-theme="dark"] .store-column__invalid {
+  background: rgba(211, 47, 47, 0.15);
+}
+
+.store-column__invalid-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #b71c1c;
+}
+
+:root[data-theme="dark"] .store-column__invalid-title {
+  color: #ff8a80;
+}
+
+.store-column__invalid-list {
+  margin: 0;
+  padding-left: 1.05rem;
+  color: var(--color-body-text);
+  display: grid;
+  gap: 0.1rem;
+  word-break: break-all;
+}
+
 .time-column__body,
 .store-column__body {
   position: relative;
