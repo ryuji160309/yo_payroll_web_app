@@ -16,7 +16,3 @@ npm install
 npm start
 ```
 Then open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Monthly reports
-- From the top page, click **レポートを見る** to open `reports.html`.
-- Choose a store and month, then press **集計** to view total hours, overtime, estimated pay, and working days with a bar chart.

@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offlineButton = document.getElementById('offline-load-button');
   const offlineInfo = document.getElementById('offline-workbook-info');
   const todayAttendanceButton = document.getElementById('today-attendance');
-  const reportsButton = document.getElementById('view-reports');
   const LAST_STORE_STORAGE_KEY = 'lastSelectedStore';
   const IOS_PWA_PROMPT_DISMISSED_KEY = 'iosPwaPromptDismissed';
   let showMultiStoreOverlayForTutorial = () => {
@@ -85,12 +84,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (todayAttendanceButton) {
     todayAttendanceButton.addEventListener('click', () => {
       location.href = 'today.html';
-    });
-  }
-
-  if (reportsButton) {
-    reportsButton.addEventListener('click', () => {
-      location.href = 'reports.html';
     });
   }
 
