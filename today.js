@@ -48,12 +48,18 @@ function minutesToPercent(min) {
 
 function parseRangeText(text) {
   const trimmed = typeof text === 'string' ? text.trim() : '';
-  if (!trimmed) return [];
+  if (!trimmed) return { ranges: [], invalidSegments: [] };
   const segments = trimmed.split(',');
   const results = [];
+  const invalidSegments = [];
   segments.forEach(seg => {
-    const match = seg.trim().match(typeof TIME_RANGE_REGEX !== 'undefined' ? TIME_RANGE_REGEX : /^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/);
-    if (!match) return;
+    const segmentText = seg.trim();
+    if (!segmentText) return;
+    const match = segmentText.match(typeof TIME_RANGE_REGEX !== 'undefined' ? TIME_RANGE_REGEX : /^(\d{1,2})(?::(\d{2}))?-(\d{1,2})(?::(\d{2}))?$/);
+    if (!match) {
+      invalidSegments.push(segmentText);
+      return;
+    }
     const startHour = parseInt(match[1], 10);
     const startMinute = match[2] ? parseInt(match[2], 10) : 0;
     const endHour = parseInt(match[3], 10);
@@ -64,6 +70,7 @@ function parseRangeText(text) {
       startHour < 0 || startHour > 24 || endHour < 0 || endHour > 24 ||
       startMinute < 0 || startMinute >= 60 || endMinute < 0 || endMinute >= 60
     ) {
+      invalidSegments.push(segmentText);
       return;
     }
     const start = startHour * 60 + startMinute;
@@ -76,7 +83,7 @@ function parseRangeText(text) {
     const endLabel = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
     results.push({ start, end, display: `${startLabel}～${endLabel}` });
   });
-  return results;
+  return { ranges: results, invalidSegments };
 }
 
 function overlapsWithDayRange(start, end) {
@@ -125,6 +132,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
   const dayIndex = getScheduleRowIndex(targetDate, period);
   const scheduleRows = data.slice(3, 34);
   const entries = new Map();
+  const invalidTexts = [];
   const excludeWords = Array.isArray(store.excludeWords) ? store.excludeWords : [];
 
   const addSegment = (name, segment, label) => {
@@ -147,7 +155,13 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
       if (!label) return;
       if (excludeWords.some(word => label.includes(word))) return;
       const cell = row[colIndex];
-      const ranges = parseRangeText(cell);
+      const cellText = typeof cell === 'string' ? cell : (cell == null ? '' : String(cell));
+      const { ranges, invalidSegments } = parseRangeText(cellText);
+      if (invalidSegments.length > 0) {
+        invalidSegments.forEach(segment => {
+          invalidTexts.push(`${label}: ${segment}`);
+        });
+      }
       ranges.forEach(range => {
         const absoluteStart = range.start + offset * MINUTES_IN_DAY;
         const absoluteEnd = range.end + offset * MINUTES_IN_DAY;
@@ -184,7 +198,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
       return a.name.localeCompare(b.name, 'ja');
     });
 
-  return employees;
+  return { employees, invalidTexts };
 }
 
 function appendTimeGrid(container, includeLabels, nowMinutes) {
@@ -298,6 +312,27 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
       title.className = 'store-column__link';
     }
     header.appendChild(title);
+
+    if (Array.isArray(section.invalidTexts) && section.invalidTexts.length > 0) {
+      const invalidWrapper = document.createElement('div');
+      invalidWrapper.className = 'store-column__invalid';
+
+      const invalidTitle = document.createElement('p');
+      invalidTitle.className = 'store-column__invalid-title';
+      invalidTitle.textContent = '計算できなかった文字列';
+      invalidWrapper.appendChild(invalidTitle);
+
+      const invalidList = document.createElement('ul');
+      invalidList.className = 'store-column__invalid-list';
+      section.invalidTexts.forEach(text => {
+        const li = document.createElement('li');
+        li.textContent = text;
+        invalidList.appendChild(li);
+      });
+      invalidWrapper.appendChild(invalidList);
+
+      header.appendChild(invalidWrapper);
+    }
     storeColumn.appendChild(header);
 
     const body = document.createElement('div');
@@ -313,6 +348,7 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
       const { items: laidOut, laneCount } = layoutSegments(section.employees);
       const requiredWidth = Math.max(140, laneCount * SHIFT_LANE_WIDTH + 24);
       storeColumn.style.minWidth = `${requiredWidth}px`;
+      storeColumn.style.width = `${requiredWidth}px`;
       storeColumn.style.setProperty('--shift-lane-width', `${SHIFT_LANE_WIDTH}px`);
 
       laidOut.forEach(item => {
@@ -387,10 +423,12 @@ function buildSectionsForDate(targetDate, storeDataList) {
       return;
     }
     try {
+      const { employees, invalidTexts } = collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate);
       sections.push({
         storeName: entry.storeName,
         storeUrl: entry.store && entry.store.url,
-        employees: collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate)
+        employees,
+        invalidTexts
       });
     } catch (error) {
       errors.push(`${entry.storeName} のシフトを表示できませんでした。`);
