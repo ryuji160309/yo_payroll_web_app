@@ -1,4 +1,4 @@
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.9.4';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
 const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
@@ -12,9 +12,9 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   const STORAGE_KEY = THEME_STORAGE_KEY;
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   const THEME_COLORS = {
-    light: '#f5f7fa',
+4    light: '#f5f7fa'
     dark: '#0b1218'
-  };
+   ;4
   const systemPreference = window.matchMedia('(prefers-color-scheme: dark)');
 
   let storedPreference = null;
