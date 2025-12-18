@@ -12,9 +12,9 @@ const THEME_STORAGE_KEY = 'yoPayrollThemePreference';
   const STORAGE_KEY = THEME_STORAGE_KEY;
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   const THEME_COLORS = {
-4    light: '#f5f7fa'
+    light: '#f5f7fa',
     dark: '#0b1218'
-   ;4
+  };
   const systemPreference = window.matchMedia('(prefers-color-scheme: dark)');
 
   let storedPreference = null;
