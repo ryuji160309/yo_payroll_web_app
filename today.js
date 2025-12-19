@@ -3,7 +3,6 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHIFT_LANE_WIDTH = 86;
 const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
 const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
-const UNCALCULATED_CELL_EXCLUDE_WORDS = ['✕', 'x', 'X'];
 
 function createDeferred() {
   let resolved = false;
@@ -126,15 +125,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
   const dayIndex = getScheduleRowIndex(targetDate, period);
   const scheduleRows = data.slice(3, 34);
   const entries = new Map();
-  const uncalculated = new Map();
   const excludeWords = Array.isArray(store.excludeWords) ? store.excludeWords : [];
-
-  const addUncalculated = (name, value) => {
-    if (!name || !value) return;
-    const entry = uncalculated.get(name) || { name, values: new Set() };
-    entry.values.add(value);
-    uncalculated.set(name, entry);
-  };
 
   const addSegment = (name, segment, label) => {
     const entry = entries.get(name) || { name, storeName: store.name, segments: [] };
@@ -156,17 +147,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
       if (!label) return;
       if (excludeWords.some(word => label.includes(word))) return;
       const cell = row[colIndex];
-      const cellText = typeof cell === 'number' ? String(cell) : (typeof cell === 'string' ? cell : '');
-      const ranges = parseRangeText(cellText);
-
-      if (!ranges.length) {
-        const trimmed = cellText.trim();
-        if (trimmed && !UNCALCULATED_CELL_EXCLUDE_WORDS.some(word => trimmed.includes(word))) {
-          addUncalculated(label, trimmed);
-        }
-        return;
-      }
-
+      const ranges = parseRangeText(cell);
       ranges.forEach(range => {
         const absoluteStart = range.start + offset * MINUTES_IN_DAY;
         const absoluteEnd = range.end + offset * MINUTES_IN_DAY;
@@ -203,12 +184,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
       return a.name.localeCompare(b.name, 'ja');
     });
 
-  const uncalculatedCells = Array.from(uncalculated.values()).map(entry => ({
-    name: entry.name,
-    values: Array.from(entry.values)
-  }));
-
-  return { employees, uncalculatedCells };
+  return employees;
 }
 
 function appendTimeGrid(container, includeLabels, nowMinutes) {
@@ -289,18 +265,9 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
     return;
   }
 
-  const sectionLayouts = sections.map(section => {
-    const { items, laneCount } = layoutSegments(section.employees || []);
-    const requiredWidth = Math.max(140, laneCount * SHIFT_LANE_WIDTH + 24);
-    const trackWidth = Math.max(200, requiredWidth);
-    return { ...section, laidOutItems: items, laneCount, trackWidth };
-  });
-
   const grid = document.createElement('div');
   grid.className = 'attendance-grid';
-  grid.style.setProperty('--store-count', sectionLayouts.length);
-  const columnDefinitions = sectionLayouts.map(layout => `minmax(${layout.trackWidth}px, ${layout.trackWidth}px)`).join(' ');
-  grid.style.gridTemplateColumns = `80px ${columnDefinitions}`;
+  grid.style.setProperty('--store-count', sections.length);
 
   const timeColumn = document.createElement('div');
   timeColumn.className = 'time-column';
@@ -316,10 +283,9 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
   timeColumn.appendChild(timeBody);
   grid.appendChild(timeColumn);
 
-  sectionLayouts.forEach(section => {
+  sections.forEach(section => {
     const storeColumn = document.createElement('div');
     storeColumn.className = 'store-column';
-    storeColumn.style.minWidth = `${section.trackWidth}px`;
 
     const header = document.createElement('div');
     header.className = 'store-column__header';
@@ -332,18 +298,6 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
       title.className = 'store-column__link';
     }
     header.appendChild(title);
-
-    if (Array.isArray(section.uncalculatedCells) && section.uncalculatedCells.length > 0) {
-      const uncalculatedList = document.createElement('div');
-      uncalculatedList.className = 'store-column__uncalculated';
-      section.uncalculatedCells.forEach(entry => {
-        const item = document.createElement('div');
-        item.className = 'store-column__uncalculated-item';
-        item.textContent = `${entry.name}: ${entry.values.join(' / ')}`;
-        uncalculatedList.appendChild(item);
-      });
-      header.appendChild(uncalculatedList);
-    }
     storeColumn.appendChild(header);
 
     const body = document.createElement('div');
@@ -356,8 +310,9 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
       empty.textContent = 'この日のシフトが見つかりません。';
       body.appendChild(empty);
     } else {
-      const laidOut = section.laidOutItems;
-      const laneCount = section.laneCount;
+      const { items: laidOut, laneCount } = layoutSegments(section.employees);
+      const requiredWidth = Math.max(140, laneCount * SHIFT_LANE_WIDTH + 24);
+      storeColumn.style.minWidth = `${requiredWidth}px`;
       storeColumn.style.setProperty('--shift-lane-width', `${SHIFT_LANE_WIDTH}px`);
 
       laidOut.forEach(item => {
@@ -432,12 +387,10 @@ function buildSectionsForDate(targetDate, storeDataList) {
       return;
     }
     try {
-      const { employees, uncalculatedCells } = collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate);
       sections.push({
         storeName: entry.storeName,
         storeUrl: entry.store && entry.store.url,
-        employees,
-        uncalculatedCells
+        employees: collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate)
       });
     } catch (error) {
       errors.push(`${entry.storeName} のシフトを表示できませんでした。`);
