@@ -2299,6 +2299,8 @@ td {
   --timeline-height: calc(var(--hour-height) * 24);
   display: grid;
   grid-template-columns: 80px repeat(var(--store-count, 1), minmax(var(--store-min-width, 200px), 1fr));
+  width: max-content;
+  min-width: 100%;
   gap: 0.75rem;
   position: relative;
   min-width: 860px;
