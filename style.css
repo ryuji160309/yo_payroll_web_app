@@ -2391,6 +2391,11 @@ td {
   overflow: hidden;
 }
 
+.store-column__uncalculated-item--spacer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .time-column__body,
 .store-column__body {
   position: relative;

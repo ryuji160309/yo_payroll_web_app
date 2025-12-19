@@ -3,7 +3,7 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHIFT_LANE_WIDTH = 86;
 const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
 const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
-const UNCALCULATED_CELL_EXCLUDE_WORDS = ['✕', 'x', 'X'];
+const UNCALCULATED_CELL_EXCLUDE_WORDS = ['✕', '×', 'x', 'X'];
 
 function createDeferred() {
   let resolved = false;
@@ -276,7 +276,7 @@ function layoutSegments(employees) {
   return { items, laneCount: laneEnds.length };
 }
 
-function renderTimeline(sections, selectedDate, nowMinutes) {
+function renderTimeline(sections, selectedDate, nowMinutes, alignUncalculatedAcrossStores = false) {
   const container = document.getElementById('attendance-content');
   if (!container) return;
   container.textContent = '';
@@ -288,6 +288,13 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
     container.appendChild(empty);
     return;
   }
+
+  const maxUncalculatedCount = alignUncalculatedAcrossStores
+    ? Math.max(
+      0,
+      ...sections.map(entry => (Array.isArray(entry.uncalculatedCells) ? entry.uncalculatedCells.length : 0))
+    )
+    : 0;
 
   const sectionLayouts = sections.map(section => {
     const { items, laneCount } = layoutSegments(section.employees || []);
@@ -333,15 +340,28 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
     }
     header.appendChild(title);
 
-    if (Array.isArray(section.uncalculatedCells) && section.uncalculatedCells.length > 0) {
+    const uncalculatedCells = Array.isArray(section.uncalculatedCells) ? section.uncalculatedCells : [];
+    const shouldRenderUncalculated = uncalculatedCells.length > 0 || (alignUncalculatedAcrossStores && maxUncalculatedCount > 0);
+
+    if (shouldRenderUncalculated) {
       const uncalculatedList = document.createElement('div');
       uncalculatedList.className = 'store-column__uncalculated';
-      section.uncalculatedCells.forEach(entry => {
+      uncalculatedCells.forEach(entry => {
         const item = document.createElement('div');
         item.className = 'store-column__uncalculated-item';
         item.textContent = `${entry.name}: ${entry.values.join(' / ')}`;
         uncalculatedList.appendChild(item);
       });
+
+      if (alignUncalculatedAcrossStores && maxUncalculatedCount > uncalculatedCells.length) {
+        const spacerCount = maxUncalculatedCount - uncalculatedCells.length;
+        for (let i = 0; i < spacerCount; i += 1) {
+          const spacer = document.createElement('div');
+          spacer.className = 'store-column__uncalculated-item store-column__uncalculated-item--spacer';
+          spacer.setAttribute('aria-hidden', 'true');
+          uncalculatedList.appendChild(spacer);
+        }
+      }
       header.appendChild(uncalculatedList);
     }
     storeColumn.appendChild(header);
@@ -625,12 +645,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const renderForDate = () => {
     if (selectedStoreKeys.length === 0) return;
     const { sections, errors } = buildSectionsForDate(currentDate, storeDataList);
+    const isAllStoresView = selectedStoreKeys.length === storeKeys.length;
     const now = new Date();
     const nowMinutes = isSameDate(currentDate, now)
       ? now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60
       : null;
 
-    renderTimeline(sections, currentDate, nowMinutes);
+    renderTimeline(sections, currentDate, nowMinutes, isAllStoresView);
 
     if (status) {
       if (errors.length > 0) {
