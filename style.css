@@ -2351,12 +2351,6 @@ td {
   z-index: 4;
 }
 
-.store-column__header {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-}
-
 .store-column__header h2 {
   margin: 0;
   font-size: 1rem;
@@ -2373,22 +2367,6 @@ td {
 .store-column__link:hover,
 .store-column__link:focus-visible {
   text-decoration: underline;
-}
-
-.store-column__uncalculated {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.85rem;
-  color: var(--color-muted-text);
-  width: 100%;
-}
-
-.store-column__uncalculated-item {
-  width: 100%;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
 }
 
 .time-column__body,
