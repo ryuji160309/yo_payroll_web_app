@@ -4,6 +4,7 @@ const SHIFT_LANE_WIDTH = 86;
 const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
 const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
 const NON_CALCULABLE_EXCLUDE_WORDS = ['✕', 'x', 'X', '×']; // 追加したい除外ワードがあればここへ
+const UNPARSED_CELL_EXCLUDE_WORDS = ['✕', 'x', 'X', '×'];
 const UNPARSED_TITLE_HEIGHT = 20;
 const UNPARSED_LINE_HEIGHT = 22;
 const UNPARSED_SECTION_PADDING = 8;
@@ -155,6 +156,8 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
   const addUnparsedCell = (name, raw) => {
     const value = typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
     if (!value) return;
+    const shouldExclude = UNPARSED_CELL_EXCLUDE_WORDS.some(word => value.includes(word));
+    if (shouldExclude) return;
     unparsedCells.push({ name, value });
   };
 
@@ -368,7 +371,7 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
       if (hasUnparsedCells) {
         const unparsedTitle = document.createElement('div');
         unparsedTitle.className = 'store-column__unparsed-title';
-        unparsedTitle.textContent = '計算できなかったセル';
+        unparsedTitle.textContent = '表に反映されていない項目';
         unparsed.appendChild(unparsedTitle);
 
         section.unparsedCells.forEach(entry => {
