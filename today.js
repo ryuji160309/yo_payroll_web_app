@@ -371,7 +371,7 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
       if (hasUnparsedCells) {
         const unparsedTitle = document.createElement('div');
         unparsedTitle.className = 'store-column__unparsed-title';
-        unparsedTitle.textContent = '表に反映されていない項目';
+        unparsedTitle.textContent = '反映されていない項目';
         unparsed.appendChild(unparsedTitle);
 
         section.unparsedCells.forEach(entry => {
