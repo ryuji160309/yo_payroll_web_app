@@ -3,6 +3,10 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHIFT_LANE_WIDTH = 86;
 const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
 const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
+const NON_CALCULABLE_EXCLUDE_WORDS = ['✕', 'x', 'X', '×']; // 追加したい除外ワードがあればここへ
+const UNPARSED_TITLE_HEIGHT = 20;
+const UNPARSED_LINE_HEIGHT = 22;
+const UNPARSED_SECTION_PADDING = 8;
 
 function createDeferred() {
   let resolved = false;
@@ -39,6 +43,11 @@ function normalizeDate(date) {
   const normalized = new Date(date);
   normalized.setHours(0, 0, 0, 0);
   return normalized;
+}
+
+function computeUnparsedDisplayHeight(lineCount) {
+  if (!lineCount) return 0;
+  return (UNPARSED_SECTION_PADDING * 2) + UNPARSED_TITLE_HEIGHT + (lineCount * UNPARSED_LINE_HEIGHT);
 }
 
 function minutesToPercent(min) {
@@ -125,7 +134,11 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
   const dayIndex = getScheduleRowIndex(targetDate, period);
   const scheduleRows = data.slice(3, 34);
   const entries = new Map();
-  const excludeWords = Array.isArray(store.excludeWords) ? store.excludeWords : [];
+  const excludeWords = [
+    ...NON_CALCULABLE_EXCLUDE_WORDS,
+    ...(Array.isArray(store.excludeWords) ? store.excludeWords : [])
+  ];
+  const unparsedCells = [];
 
   const addSegment = (name, segment, label) => {
     const entry = entries.get(name) || { name, storeName: store.name, segments: [] };
@@ -139,6 +152,12 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
     entries.set(name, entry);
   };
 
+  const addUnparsedCell = (name, raw) => {
+    const value = typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
+    if (!value) return;
+    unparsedCells.push({ name, value });
+  };
+
   const processRow = (row, offset) => {
     if (!Array.isArray(row)) return;
     header.forEach((name, colIndex) => {
@@ -147,7 +166,15 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
       if (!label) return;
       if (excludeWords.some(word => label.includes(word))) return;
       const cell = row[colIndex];
-      const ranges = parseRangeText(cell);
+      const cellText = typeof cell === 'string' || typeof cell === 'number'
+        ? String(cell).trim()
+        : '';
+      if (!cellText) return;
+      const ranges = parseRangeText(cellText);
+      if (!ranges.length) {
+        addUnparsedCell(label, cellText);
+        return;
+      }
       ranges.forEach(range => {
         const absoluteStart = range.start + offset * MINUTES_IN_DAY;
         const absoluteEnd = range.end + offset * MINUTES_IN_DAY;
@@ -184,7 +211,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
       return a.name.localeCompare(b.name, 'ja');
     });
 
-  return employees;
+  return { employees, unparsedCells };
 }
 
 function appendTimeGrid(container, includeLabels, nowMinutes) {
@@ -252,7 +279,7 @@ function layoutSegments(employees) {
   return { items, laneCount: laneEnds.length };
 }
 
-function renderTimeline(sections, selectedDate, nowMinutes) {
+function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeight = false } = {}) {
   const container = document.getElementById('attendance-content');
   if (!container) return;
   container.textContent = '';
@@ -269,6 +296,24 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
   grid.className = 'attendance-grid';
   grid.style.setProperty('--store-count', sections.length);
 
+  const layoutInfo = sections.map(section => {
+    const layout = section.employees && section.employees.length > 0
+      ? layoutSegments(section.employees)
+      : { items: [], laneCount: 0 };
+    const requiredWidth = Math.max(140, layout.laneCount * SHIFT_LANE_WIDTH + 24);
+    return { section, layout, requiredWidth };
+  });
+
+  const maxRequiredWidth = layoutInfo.reduce((acc, info) => Math.max(acc, info.requiredWidth), 200);
+  grid.style.setProperty('--store-min-width', `${maxRequiredWidth}px`);
+
+  const maxUnparsedLines = alignUnparsedHeight
+    ? Math.max(0, ...sections.map(sec => (sec.unparsedCells || []).length))
+    : 0;
+  const normalizedUnparsedHeight = alignUnparsedHeight
+    ? computeUnparsedDisplayHeight(maxUnparsedLines)
+    : null;
+
   const timeColumn = document.createElement('div');
   timeColumn.className = 'time-column';
 
@@ -277,13 +322,21 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
   timeHeader.textContent = '時間';
   timeColumn.appendChild(timeHeader);
 
+  if (normalizedUnparsedHeight !== null) {
+    const spacer = document.createElement('div');
+    spacer.className = 'time-column__spacer';
+    spacer.style.minHeight = `${normalizedUnparsedHeight}px`;
+    timeColumn.appendChild(spacer);
+  }
+
   const timeBody = document.createElement('div');
   timeBody.className = 'time-column__body';
   appendTimeGrid(timeBody, true, nowMinutes);
   timeColumn.appendChild(timeBody);
   grid.appendChild(timeColumn);
 
-  sections.forEach(section => {
+  layoutInfo.forEach(info => {
+    const { section, layout } = info;
     const storeColumn = document.createElement('div');
     storeColumn.className = 'store-column';
 
@@ -300,6 +353,35 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
     header.appendChild(title);
     storeColumn.appendChild(header);
 
+    const hasUnparsedCells = section.unparsedCells && section.unparsedCells.length > 0;
+    const shouldRenderUnparsed = hasUnparsedCells || normalizedUnparsedHeight !== null;
+
+    if (shouldRenderUnparsed) {
+      const unparsed = document.createElement('div');
+      unparsed.className = 'store-column__unparsed';
+      unparsed.style.setProperty('--unparsed-section-padding', `${UNPARSED_SECTION_PADDING}px`);
+
+      if (normalizedUnparsedHeight !== null) {
+        unparsed.style.minHeight = `${normalizedUnparsedHeight}px`;
+      }
+
+      if (hasUnparsedCells) {
+        const unparsedTitle = document.createElement('div');
+        unparsedTitle.className = 'store-column__unparsed-title';
+        unparsedTitle.textContent = '計算できなかったセル';
+        unparsed.appendChild(unparsedTitle);
+
+        section.unparsedCells.forEach(entry => {
+          const line = document.createElement('div');
+          line.className = 'store-column__unparsed-line';
+          line.textContent = `${entry.name}：${entry.value}`;
+          unparsed.appendChild(line);
+        });
+      }
+
+      storeColumn.appendChild(unparsed);
+    }
+
     const body = document.createElement('div');
     body.className = 'store-column__body';
     appendTimeGrid(body, false, nowMinutes);
@@ -310,7 +392,7 @@ function renderTimeline(sections, selectedDate, nowMinutes) {
       empty.textContent = 'この日のシフトが見つかりません。';
       body.appendChild(empty);
     } else {
-      const { items: laidOut, laneCount } = layoutSegments(section.employees);
+      const { items: laidOut, laneCount } = layout;
       const requiredWidth = Math.max(140, laneCount * SHIFT_LANE_WIDTH + 24);
       storeColumn.style.minWidth = `${requiredWidth}px`;
       storeColumn.style.setProperty('--shift-lane-width', `${SHIFT_LANE_WIDTH}px`);
@@ -387,10 +469,12 @@ function buildSectionsForDate(targetDate, storeDataList) {
       return;
     }
     try {
+      const { employees, unparsedCells } = collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate);
       sections.push({
         storeName: entry.storeName,
         storeUrl: entry.store && entry.store.url,
-        employees: collectShiftsForStore(entry.store, matched.workbook, matched.period, normalizedDate)
+        employees,
+        unparsedCells
       });
     } catch (error) {
       errors.push(`${entry.storeName} のシフトを表示できませんでした。`);
@@ -583,7 +667,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       ? now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60
       : null;
 
-    renderTimeline(sections, currentDate, nowMinutes);
+    renderTimeline(sections, currentDate, nowMinutes, {
+      alignUnparsedHeight: selectedStoreKeys.length === storeKeys.length
+    });
 
     if (status) {
       if (errors.length > 0) {
