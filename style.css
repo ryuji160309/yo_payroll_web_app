@@ -2295,7 +2295,7 @@ td {
 }
 
 .attendance-grid {
-  --hour-height: 48px;
+  --hour-height: 24px;
   --timeline-height: calc(var(--hour-height) * 24);
   display: grid;
   grid-template-columns: 80px repeat(var(--store-count, 1), minmax(var(--store-min-width, 200px), 1fr));
@@ -2346,6 +2346,10 @@ td {
   z-index: 2;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
   border-radius: 10px;
+}
+
+.store-column__header {
+  border: 2px solid var(--color-border-strong);
 }
 
 .time-column__header {
