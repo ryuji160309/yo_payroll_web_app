@@ -156,7 +156,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
   const addUnparsedCell = (name, raw) => {
     const value = typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
     if (!value) return;
-    const shouldExclude = UNPARSED_CELL_EXCLUDE_WORDS.some(word => value === word);
+    const shouldExclude = UNPARSED_CELL_EXCLUDE_WORDS.some(word => value.includes(word));
     if (shouldExclude) return;
     unparsedCells.push({ name, value });
   };
