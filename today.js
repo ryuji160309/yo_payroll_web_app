@@ -1,6 +1,6 @@
 const MINUTES_IN_DAY = 24 * 60;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-const SHIFT_LANE_WIDTH = 86;
+const SHIFT_LANE_WIDTH = 43;
 const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
 const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
 const NON_CALCULABLE_EXCLUDE_WORDS = ['✕', 'x', 'X', '×', 'ｘ', '✕‬']; // 追加したい除外ワードがあればここへ
@@ -234,13 +234,11 @@ function appendTimeGrid(container, includeLabels, nowMinutes) {
     }
 
     if (hour < 24) {
-      for (let quarter = 1; quarter < 4; quarter += 1) {
-        const minor = document.createElement('div');
-        minor.className = 'time-row-line time-row-line--minor';
-        const minute = hour * 60 + quarter * 15;
-        minor.style.top = minutesToPercent(minute);
-        fragment.appendChild(minor);
-      }
+      const minute = hour * 60 + 30;
+      const minor = document.createElement('div');
+      minor.className = 'time-row-line time-row-line--minor';
+      minor.style.top = minutesToPercent(minute);
+      fragment.appendChild(minor);
     }
   }
 
@@ -304,7 +302,7 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
     const layout = section.employees && section.employees.length > 0
       ? layoutSegments(section.employees)
       : { items: [], laneCount: 0 };
-    const requiredWidth = Math.max(140, layout.laneCount * SHIFT_LANE_WIDTH + 24);
+    const requiredWidth = Math.max(80, layout.laneCount * SHIFT_LANE_WIDTH + 20);
     return { section, layout, requiredWidth };
   });
 
@@ -401,7 +399,7 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
       body.appendChild(empty);
     } else {
       const { items: laidOut, laneCount } = layout;
-      const requiredWidth = Math.max(140, laneCount * SHIFT_LANE_WIDTH + 24);
+      const requiredWidth = Math.max(80, laneCount * SHIFT_LANE_WIDTH + 20);
       storeColumn.style.minWidth = `${requiredWidth}px`;
       storeColumn.style.setProperty('--shift-lane-width', `${SHIFT_LANE_WIDTH}px`);
 
