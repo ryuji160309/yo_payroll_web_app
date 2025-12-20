@@ -2075,6 +2075,7 @@ td {
   font-weight: 800;
   margin: 0 0 1rem;
   letter-spacing: 0.02em;
+  text-align: center;
 }
 
 .today-warning-overlay__list {
@@ -2097,7 +2098,7 @@ td {
 .today-warning-overlay__actions {
   margin-top: 1.5rem;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .today-warning-overlay__button {

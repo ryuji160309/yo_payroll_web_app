@@ -299,6 +299,7 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
   grid.className = 'attendance-grid';
   grid.style.setProperty('--store-count', sections.length);
 
+  const unparsedSections = [];
   const layoutInfo = sections.map(section => {
     const layout = section.employees && section.employees.length > 0
       ? layoutSegments(section.employees)
@@ -310,10 +311,12 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
   const maxRequiredWidth = layoutInfo.reduce((acc, info) => Math.max(acc, info.requiredWidth), 200);
   grid.style.setProperty('--store-min-width', `${maxRequiredWidth}px`);
 
-  const maxUnparsedLines = alignUnparsedHeight
+  const hasUnparsed = sections.some(sec => (sec.unparsedCells || []).length > 0);
+  const shouldNormalizeUnparsed = alignUnparsedHeight || hasUnparsed;
+  const maxUnparsedLines = shouldNormalizeUnparsed
     ? Math.max(0, ...sections.map(sec => (sec.unparsedCells || []).length))
     : 0;
-  const normalizedUnparsedHeight = alignUnparsedHeight
+  const normalizedUnparsedHeight = shouldNormalizeUnparsed
     ? computeUnparsedDisplayHeight(maxUnparsedLines)
     : null;
 
@@ -325,8 +328,9 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
   timeHeader.textContent = '時間';
   timeColumn.appendChild(timeHeader);
 
+  let spacer = null;
   if (normalizedUnparsedHeight !== null) {
-    const spacer = document.createElement('div');
+    spacer = document.createElement('div');
     spacer.className = 'time-column__spacer';
     spacer.style.minHeight = `${normalizedUnparsedHeight}px`;
     timeColumn.appendChild(spacer);
@@ -383,6 +387,7 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
       }
 
       storeColumn.appendChild(unparsed);
+      unparsedSections.push(unparsed);
     }
 
     const body = document.createElement('div');
@@ -423,6 +428,16 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
   });
 
   container.appendChild(grid);
+
+  if (unparsedSections.length > 0 && spacer) {
+    requestAnimationFrame(() => {
+      const maxUnparsedHeight = Math.max(...unparsedSections.map(section => section.offsetHeight));
+      spacer.style.minHeight = `${maxUnparsedHeight}px`;
+      unparsedSections.forEach(section => {
+        section.style.minHeight = `${maxUnparsedHeight}px`;
+      });
+    });
+  }
 }
 
 async function loadStoreWorkbooks(store) {
@@ -577,7 +592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const reminder = document.createElement('p');
     reminder.className = 'today-warning-overlay__note';
-    reminder.innerHTML = 'また、このページは簡単に当日のシフト者を確認するために作っているため、<strong>正確なシフトはスプレッドシートを確認してください</strong>。';
+    reminder.innerHTML = 'このページは<strong>あくまで</strong>簡単に当日のシフト者を確認するために作っているため、正確なシフトはスプレッドシートを確認してください。';
     contentWrapper.appendChild(reminder);
 
     const responsibility = document.createElement('p');
@@ -587,7 +602,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const testNotice = document.createElement('p');
     testNotice.className = 'today-warning-overlay__note';
-    testNotice.textContent = '出勤表の店舗名部分をタップすると<strong>スプレッドシートが開きます</strong>。';
+    testNotice.innerHTML = '表上の店舗名部分をタップすると<strong>元のスプレッドシートが開きます</strong>。';
     contentWrapper.appendChild(testNotice);
 
     const actions = document.createElement('div');
