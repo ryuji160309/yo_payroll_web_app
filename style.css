@@ -2470,7 +2470,7 @@ td {
 
 .shift-block {
   position: absolute;
-  left: calc(4px + (var(--lane-index, 0) * var(--shift-lane-width, 43px)));
+  left: calc(4px + (var(--lane-index, 0) * (var(--shift-lane-width, 43px) + var(--shift-lane-gap, 0px))));
   border-radius: 10px;
   background-color: var(--color-link);
   color: #fff;

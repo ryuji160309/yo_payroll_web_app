@@ -1,6 +1,7 @@
 const MINUTES_IN_DAY = 24 * 60;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-const SHIFT_LANE_WIDTH = 43;
+const SHIFT_LANE_WIDTH = 54;
+const SHIFT_LANE_GAP = 8;
 const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
 const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
 const NON_CALCULABLE_EXCLUDE_WORDS = ['✕', 'x', 'X', '×', 'ｘ', '✕‬']; // 追加したい除外ワードがあればここへ
@@ -302,7 +303,10 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
     const layout = section.employees && section.employees.length > 0
       ? layoutSegments(section.employees)
       : { items: [], laneCount: 0 };
-    const requiredWidth = Math.max(80, layout.laneCount * SHIFT_LANE_WIDTH + 20);
+    const laneSpace = layout.laneCount > 0
+      ? (layout.laneCount * SHIFT_LANE_WIDTH) + ((layout.laneCount - 1) * SHIFT_LANE_GAP)
+      : 0;
+    const requiredWidth = Math.max(80, laneSpace + 24);
     return { section, layout, requiredWidth };
   });
 
@@ -399,9 +403,13 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
       body.appendChild(empty);
     } else {
       const { items: laidOut, laneCount } = layout;
-      const requiredWidth = Math.max(80, laneCount * SHIFT_LANE_WIDTH + 20);
+      const laneSpace = laneCount > 0
+        ? (laneCount * SHIFT_LANE_WIDTH) + ((laneCount - 1) * SHIFT_LANE_GAP)
+        : 0;
+      const requiredWidth = Math.max(80, laneSpace + 24);
       storeColumn.style.minWidth = `${requiredWidth}px`;
       storeColumn.style.setProperty('--shift-lane-width', `${SHIFT_LANE_WIDTH}px`);
+      storeColumn.style.setProperty('--shift-lane-gap', `${SHIFT_LANE_GAP}px`);
 
       laidOut.forEach(item => {
         const { employee, segment, laneIndex } = item;
