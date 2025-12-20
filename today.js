@@ -10,6 +10,128 @@ const UNPARSED_TITLE_HEIGHT = 20;
 const UNPARSED_LINE_HEIGHT = 22;
 const UNPARSED_SECTION_PADDING = 8;
 
+function createStoreSheetViewer() {
+  let overlay = null;
+  let iframe = null;
+  let title = null;
+  let loading = null;
+  let newTabLink = null;
+
+  const setLoading = (isLoading) => {
+    if (loading) {
+      loading.hidden = !isLoading;
+    }
+  };
+
+  const close = () => {
+    if (!overlay) return;
+    overlay.classList.remove('is-visible');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.removeEventListener('keydown', handleKeydown);
+    if (iframe) {
+      iframe.src = 'about:blank';
+    }
+    setLoading(false);
+  };
+
+  const handleKeydown = (event) => {
+    if (event.key === 'Escape' && overlay && overlay.classList.contains('is-visible')) {
+      event.preventDefault();
+      close();
+    }
+  };
+
+  const ensureOverlay = () => {
+    if (overlay) return;
+
+    overlay = document.createElement('div');
+    overlay.className = 'store-sheet-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const modal = document.createElement('div');
+    modal.className = 'store-sheet-modal';
+
+    const header = document.createElement('div');
+    header.className = 'store-sheet-modal__header';
+
+    title = document.createElement('p');
+    title.className = 'store-sheet-modal__title';
+    title.textContent = '店舗シート';
+    header.appendChild(title);
+
+    const actions = document.createElement('div');
+    actions.className = 'store-sheet-actions';
+
+    newTabLink = document.createElement('a');
+    newTabLink.className = 'store-sheet-button store-sheet-button--ghost';
+    newTabLink.target = '_blank';
+    newTabLink.rel = 'noreferrer noopener';
+    newTabLink.textContent = '別タブで開く';
+    actions.appendChild(newTabLink);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'store-sheet-button';
+    closeBtn.textContent = '閉じる';
+    closeBtn.addEventListener('click', close);
+    actions.appendChild(closeBtn);
+
+    header.appendChild(actions);
+    modal.appendChild(header);
+
+    const frameWrapper = document.createElement('div');
+    frameWrapper.className = 'store-sheet-frame-wrapper';
+
+    iframe = document.createElement('iframe');
+    iframe.className = 'store-sheet-frame';
+    iframe.setAttribute('title', '店舗のスプレッドシート');
+    iframe.setAttribute('allowfullscreen', 'true');
+    iframe.setAttribute('loading', 'lazy');
+    iframe.addEventListener('load', () => setLoading(false));
+    frameWrapper.appendChild(iframe);
+
+    loading = document.createElement('div');
+    loading.className = 'store-sheet-loading';
+    loading.textContent = '読み込み中…';
+    loading.hidden = true;
+    frameWrapper.appendChild(loading);
+
+    modal.appendChild(frameWrapper);
+
+    const note = document.createElement('p');
+    note.className = 'store-sheet-note';
+    note.textContent = '表示されない場合は「別タブで開く」を選択してください。';
+    modal.appendChild(note);
+
+    overlay.appendChild(modal);
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) {
+        close();
+      }
+    });
+
+    document.body.appendChild(overlay);
+  };
+
+  const open = (url, storeName) => {
+    if (!url) return;
+    ensureOverlay();
+    setLoading(true);
+    iframe.src = url;
+    title.textContent = storeName || '店舗シート';
+    newTabLink.href = url;
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.addEventListener('keydown', handleKeydown);
+  };
+
+  return { open, close };
+}
+
+const storeSheetViewer = createStoreSheetViewer();
+
 function createDeferred() {
   let resolved = false;
   let resolveFn = null;
@@ -351,13 +473,18 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
 
     const header = document.createElement('div');
     header.className = 'store-column__header';
-    const title = document.createElement(section.storeUrl ? 'a' : 'h2');
+    const title = document.createElement(section.storeUrl ? 'button' : 'h2');
     title.textContent = section.storeName;
     if (section.storeUrl) {
-      title.href = section.storeUrl;
-      title.target = '_blank';
-      title.rel = 'noreferrer noopener';
-      title.className = 'store-column__link';
+      title.type = 'button';
+      title.className = 'store-column__link store-column__link--button';
+      title.addEventListener('click', () => storeSheetViewer.open(section.storeUrl, section.storeName));
+      title.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          storeSheetViewer.open(section.storeUrl, section.storeName);
+        }
+      });
     }
     header.appendChild(title);
     storeColumn.appendChild(header);
