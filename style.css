@@ -2395,6 +2395,137 @@ td {
   text-decoration: underline;
 }
 
+.store-column__link--button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.store-column__link--button:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 3px;
+}
+
+.store-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  z-index: 11000;
+  box-sizing: border-box;
+}
+
+.store-sheet-overlay.is-visible {
+  display: flex;
+}
+
+.store-sheet-modal {
+  background: var(--color-surface);
+  color: var(--color-body-text);
+  width: min(1100px, 100%);
+  height: min(850px, 90vh);
+  border-radius: 1rem;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.store-sheet-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.store-sheet-modal__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  flex: 1 1 auto;
+}
+
+.store-sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.store-sheet-button {
+  background: var(--color-link);
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+  box-shadow: 0 6px 14px rgba(15, 74, 115, 0.24);
+}
+
+.store-sheet-button:hover {
+  background: #0c3e62;
+}
+
+.store-sheet-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+
+.store-sheet-button--ghost {
+  background: transparent;
+  color: var(--color-link);
+  box-shadow: none;
+  border: 1px solid var(--color-border);
+}
+
+.store-sheet-button--ghost:hover {
+  background: rgba(15, 74, 115, 0.08);
+}
+
+.store-sheet-frame-wrapper {
+  position: relative;
+  flex: 1 1 auto;
+  background: #f3f6fb;
+}
+
+.store-sheet-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: #ffffff;
+}
+
+.store-sheet-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--color-body-text);
+}
+
+.store-sheet-note {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  color: var(--color-muted-text);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
 .time-column__body,
 .store-column__body {
   position: relative;
