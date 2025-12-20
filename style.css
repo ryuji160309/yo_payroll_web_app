@@ -817,10 +817,6 @@ td {
   transform: rotate(60deg);
 }
 
-.loader--small {
-  width: 36px;
-}
-
 @keyframes l23 {
   100% {
     transform: rotate(1turn);
@@ -2392,26 +2388,11 @@ td {
   font-weight: 700;
   color: inherit;
   text-decoration: none;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
 }
 
 .store-column__link:hover,
 .store-column__link:focus-visible {
   text-decoration: underline;
-}
-
-.store-column__link:focus-visible {
-  outline: 2px solid var(--color-link);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-.store-column__link-button {
-  width: 100%;
 }
 
 .time-column__body,
@@ -2434,130 +2415,6 @@ td {
 :root[data-theme="dark"] .store-column__body {
   background: rgba(2, 136, 209, 0.05);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.store-sheet-dialog {
-  border: none;
-  padding: 0;
-  width: 100vw;
-  max-width: none;
-  height: 100vh;
-  background: transparent;
-  display: grid;
-  place-items: center;
-}
-
-.store-sheet-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
-}
-
-.store-sheet-dialog__container {
-  width: min(1200px, 92vw);
-  height: min(90vh, 850px);
-  background: var(--color-surface);
-  color: var(--color-body-text);
-  border-radius: 14px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-}
-
-.store-sheet-dialog__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.9rem 1.1rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-muted-background);
-}
-
-.store-sheet-dialog__title {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.01em;
-}
-
-.store-sheet-dialog__close {
-  border: none;
-  background: var(--color-control-bg);
-  color: var(--color-body-text);
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-}
-
-.store-sheet-dialog__close:hover,
-.store-sheet-dialog__close:focus-visible {
-  background: var(--color-control-hover-bg);
-  outline: 2px solid var(--color-link);
-  outline-offset: 2px;
-}
-
-.store-sheet-dialog__body {
-  position: relative;
-  flex: 1;
-  background: var(--color-surface);
-}
-
-.store-sheet-dialog__frame {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
-  background: #fff;
-}
-
-:root[data-theme="dark"] .store-sheet-dialog__frame {
-  background: #0f1724;
-}
-
-.store-sheet-dialog__frame--hidden {
-  visibility: hidden;
-}
-
-.store-sheet-dialog__loading {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.9));
-  backdrop-filter: blur(1px);
-  gap: 0.65rem;
-}
-
-:root[data-theme="dark"] .store-sheet-dialog__loading {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.75));
-}
-
-.store-sheet-dialog__loading-text {
-  margin: 0;
-  color: var(--color-body-text);
-  font-weight: 600;
-  text-align: center;
-}
-
-body.modal-open {
-  overflow: hidden;
-}
-
-@media (max-width: 640px) {
-  .store-sheet-dialog__container {
-    width: 96vw;
-    height: 80vh;
-    border-radius: 12px;
-  }
-
-  .store-sheet-dialog__title {
-    font-size: 0.95rem;
-  }
 }
 
 .time-label {

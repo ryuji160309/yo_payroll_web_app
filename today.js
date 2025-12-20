@@ -8,7 +8,6 @@ const UNPARSED_CELL_EXCLUDE_WORDS = ['✕', 'x', 'X', '×', 'ｘ', '✕‬'];
 const UNPARSED_TITLE_HEIGHT = 20;
 const UNPARSED_LINE_HEIGHT = 22;
 const UNPARSED_SECTION_PADDING = 8;
-let openStoreSheet = null;
 
 function createDeferred() {
   let resolved = false;
@@ -348,24 +347,15 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
 
     const header = document.createElement('div');
     header.className = 'store-column__header';
+    const title = document.createElement(section.storeUrl ? 'a' : 'h2');
+    title.textContent = section.storeName;
     if (section.storeUrl) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'store-column__link store-column__link-button';
-      button.textContent = section.storeName;
-      button.addEventListener('click', () => {
-        if (typeof openStoreSheet === 'function') {
-          openStoreSheet(section.storeUrl, section.storeName, button);
-        } else {
-          window.location.href = section.storeUrl;
-        }
-      });
-      header.appendChild(button);
-    } else {
-      const title = document.createElement('h2');
-      title.textContent = section.storeName;
-      header.appendChild(title);
+      title.href = section.storeUrl;
+      title.target = '_blank';
+      title.rel = 'noreferrer noopener';
+      title.className = 'store-column__link';
     }
+    header.appendChild(title);
     storeColumn.appendChild(header);
 
     const hasUnparsedCells = section.unparsedCells && section.unparsedCells.length > 0;
@@ -523,106 +513,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const backButton = document.getElementById('today-back');
   const homeButton = document.getElementById('today-home');
   const dateControls = document.querySelector('.attendance-controls');
-  const storeSheetDialog = document.getElementById('store-sheet-dialog');
-  const storeSheetFrame = document.getElementById('store-sheet-frame');
-  const storeSheetCloseButton = document.getElementById('store-sheet-close');
-  const storeSheetLoading = document.getElementById('store-sheet-loading');
-  const storeSheetTitle = document.getElementById('store-sheet-dialog-title');
-  let storeSheetLastTrigger = null;
-
-  const setStoreSheetLoading = isLoading => {
-    if (storeSheetLoading) {
-      storeSheetLoading.hidden = !isLoading;
-    }
-    if (storeSheetFrame) {
-      storeSheetFrame.classList.toggle('store-sheet-dialog__frame--hidden', !!isLoading);
-      storeSheetFrame.toggleAttribute('aria-busy', !!isLoading);
-    }
-  };
-
-  const resetStoreSheetFrame = () => {
-    if (!storeSheetFrame) return;
-    storeSheetFrame.src = 'about:blank';
-    storeSheetFrame.removeAttribute('data-store-name');
-  };
-
-  const closeStoreSheet = () => {
-    if (storeSheetDialog && storeSheetDialog.open) {
-      storeSheetDialog.close();
-    }
-    document.body.classList.remove('modal-open');
-    resetStoreSheetFrame();
-    setStoreSheetLoading(false);
-    if (storeSheetLastTrigger && typeof storeSheetLastTrigger.focus === 'function') {
-      storeSheetLastTrigger.focus();
-    }
-    storeSheetLastTrigger = null;
-  };
-
-  const showStoreSheetDialog = () => {
-    if (!storeSheetDialog) return false;
-    try {
-      storeSheetDialog.showModal();
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
-  openStoreSheet = (storeUrl, storeName, triggerElement) => {
-    if (!storeUrl) return;
-    storeSheetLastTrigger = triggerElement || null;
-    const updatedTitle = storeName ? `${storeName}のシート` : '店舗のシート';
-    if (storeSheetTitle) {
-      storeSheetTitle.textContent = updatedTitle;
-    }
-    if (storeSheetFrame) {
-      storeSheetFrame.setAttribute('title', updatedTitle);
-    }
-    if (!storeSheetDialog || !storeSheetFrame || !showStoreSheetDialog()) {
-      window.location.href = storeUrl;
-      return;
-    }
-    document.body.classList.add('modal-open');
-    setStoreSheetLoading(true);
-    storeSheetFrame.src = storeUrl;
-    requestAnimationFrame(() => {
-      if (storeSheetCloseButton) {
-        storeSheetCloseButton.focus();
-      } else if (storeSheetDialog) {
-        storeSheetDialog.focus();
-      }
-    });
-  };
-
-  if (storeSheetFrame) {
-    storeSheetFrame.addEventListener('load', () => {
-      setStoreSheetLoading(false);
-    });
-  }
-
-  if (storeSheetCloseButton) {
-    storeSheetCloseButton.addEventListener('click', closeStoreSheet);
-  }
-
-  if (storeSheetDialog) {
-    storeSheetDialog.addEventListener('cancel', event => {
-      event.preventDefault();
-      closeStoreSheet();
-    });
-    storeSheetDialog.addEventListener('click', event => {
-      if (event.target === storeSheetDialog) {
-        closeStoreSheet();
-      }
-    });
-  }
-
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && storeSheetDialog && storeSheetDialog.open) {
-      event.preventDefault();
-      closeStoreSheet();
-    }
-  });
 
   const shouldShowNavigationButtons = () => {
     try {
