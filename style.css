@@ -2506,17 +2506,6 @@ td {
   background: #ffffff;
 }
 
-.store-sheet-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--color-body-text);
-}
-
 .store-sheet-note {
   margin: 0;
   padding: 0.65rem 1rem;

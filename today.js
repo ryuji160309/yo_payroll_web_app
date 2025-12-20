@@ -14,46 +14,16 @@ function createStoreSheetViewer() {
   let overlay = null;
   let iframe = null;
   let title = null;
-  let loading = null;
   let newTabLink = null;
-  let loadingTimeoutId = null;
-
-  const setLoading = (isLoading) => {
-    if (loading) {
-      loading.hidden = !isLoading;
-    }
-  };
-
-  const clearLoadingTimeout = () => {
-    if (loadingTimeoutId !== null) {
-      clearTimeout(loadingTimeoutId);
-      loadingTimeoutId = null;
-    }
-  };
-
-  const finishLoading = () => {
-    clearLoadingTimeout();
-    setLoading(false);
-  };
-
-  const startLoadingTimeout = () => {
-    clearLoadingTimeout();
-    loadingTimeoutId = window.setTimeout(() => {
-      loadingTimeoutId = null;
-      setLoading(false);
-    }, 8000);
-  };
 
   const close = () => {
     if (!overlay) return;
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
     document.removeEventListener('keydown', handleKeydown);
-    clearLoadingTimeout();
     if (iframe) {
       iframe.src = 'about:blank';
     }
-    setLoading(false);
   };
 
   const handleKeydown = (event) => {
@@ -111,15 +81,7 @@ function createStoreSheetViewer() {
     iframe.setAttribute('title', '店舗のスプレッドシート');
     iframe.setAttribute('allowfullscreen', 'true');
     iframe.setAttribute('loading', 'lazy');
-    iframe.addEventListener('load', finishLoading);
-    iframe.addEventListener('error', finishLoading);
     frameWrapper.appendChild(iframe);
-
-    loading = document.createElement('div');
-    loading.className = 'store-sheet-loading';
-    loading.textContent = '読み込み中…';
-    loading.hidden = true;
-    frameWrapper.appendChild(loading);
 
     modal.appendChild(frameWrapper);
 
@@ -141,8 +103,6 @@ function createStoreSheetViewer() {
   const open = (url, storeName) => {
     if (!url) return;
     ensureOverlay();
-    setLoading(true);
-    startLoadingTimeout();
     iframe.src = url;
     title.textContent = storeName || '店舗シート';
     newTabLink.href = url;
