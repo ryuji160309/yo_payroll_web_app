@@ -16,6 +16,7 @@ function createStoreSheetViewer() {
   let title = null;
   let loading = null;
   let newTabLink = null;
+  let loadingTimeoutId = null;
 
   const setLoading = (isLoading) => {
     if (loading) {
@@ -23,11 +24,32 @@ function createStoreSheetViewer() {
     }
   };
 
+  const clearLoadingTimeout = () => {
+    if (loadingTimeoutId !== null) {
+      clearTimeout(loadingTimeoutId);
+      loadingTimeoutId = null;
+    }
+  };
+
+  const finishLoading = () => {
+    clearLoadingTimeout();
+    setLoading(false);
+  };
+
+  const startLoadingTimeout = () => {
+    clearLoadingTimeout();
+    loadingTimeoutId = window.setTimeout(() => {
+      loadingTimeoutId = null;
+      setLoading(false);
+    }, 8000);
+  };
+
   const close = () => {
     if (!overlay) return;
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
     document.removeEventListener('keydown', handleKeydown);
+    clearLoadingTimeout();
     if (iframe) {
       iframe.src = 'about:blank';
     }
@@ -89,7 +111,8 @@ function createStoreSheetViewer() {
     iframe.setAttribute('title', '店舗のスプレッドシート');
     iframe.setAttribute('allowfullscreen', 'true');
     iframe.setAttribute('loading', 'lazy');
-    iframe.addEventListener('load', () => setLoading(false));
+    iframe.addEventListener('load', finishLoading);
+    iframe.addEventListener('error', finishLoading);
     frameWrapper.appendChild(iframe);
 
     loading = document.createElement('div');
@@ -119,6 +142,7 @@ function createStoreSheetViewer() {
     if (!url) return;
     ensureOverlay();
     setLoading(true);
+    startLoadingTimeout();
     iframe.src = url;
     title.textContent = storeName || '店舗シート';
     newTabLink.href = url;
