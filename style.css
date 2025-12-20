@@ -2482,10 +2482,11 @@ td {
   gap: 0.25rem;
   min-height: 18px;
   min-width: 4.5ch;
-  max-width: 6.5ch;
-  width: fit-content;
+  width: calc(var(--shift-lane-width, 43px) - 8px);
+  max-width: calc(var(--shift-lane-width, 43px) - 8px);
   z-index: 1;
   pointer-events: none;
+  overflow: hidden;
 }
 
 :root[data-theme="dark"] .shift-block {
@@ -2503,6 +2504,7 @@ td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .page-content {

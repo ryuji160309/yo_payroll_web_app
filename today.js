@@ -1,6 +1,6 @@
 const MINUTES_IN_DAY = 24 * 60;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-const SHIFT_LANE_WIDTH = 43;
+const SHIFT_LANE_WIDTH = 70;
 const TODAY_WARNING_ACK_KEY = 'todayWarningAcknowledgedAt';
 const TODAY_WARNING_INTERVAL_MS = 7 * DAY_IN_MS;
 const NON_CALCULABLE_EXCLUDE_WORDS = ['✕', 'x', 'X', '×', 'ｘ', '✕‬']; // 追加したい除外ワードがあればここへ
