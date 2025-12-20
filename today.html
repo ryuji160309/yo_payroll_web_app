@@ -43,5 +43,17 @@
       <div class="timeline-wrapper" id="attendance-content"></div>
     </section>
   </main>
+  <dialog id="store-sheet-dialog" aria-labelledby="store-sheet-title" aria-modal="true">
+    <div class="store-sheet-dialog__container" role="document">
+      <div class="store-sheet-dialog__header">
+        <h2 id="store-sheet-title" class="store-sheet-dialog__title">スプレッドシート</h2>
+        <button type="button" id="store-sheet-close" class="store-sheet-dialog__close" aria-label="閉じる">×</button>
+      </div>
+      <div class="store-sheet-dialog__body">
+        <div id="store-sheet-loading" class="store-sheet-dialog__loading" role="status" aria-live="polite" hidden>読み込み中…</div>
+        <iframe id="store-sheet-frame" class="store-sheet-dialog__frame" title="店舗のシフト表" loading="lazy" allowfullscreen></iframe>
+      </div>
+    </div>
+  </dialog>
 </body>
 </html>

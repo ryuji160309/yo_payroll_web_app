@@ -281,7 +281,7 @@ function layoutSegments(employees) {
   return { items, laneCount: laneEnds.length };
 }
 
-function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeight = false } = {}) {
+function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeight = false, onStoreHeaderClick } = {}) {
   const container = document.getElementById('attendance-content');
   if (!container) return;
   container.textContent = '';
@@ -351,13 +351,19 @@ function renderTimeline(sections, selectedDate, nowMinutes, { alignUnparsedHeigh
 
     const header = document.createElement('div');
     header.className = 'store-column__header';
-    const title = document.createElement(section.storeUrl ? 'a' : 'h2');
-    title.textContent = section.storeName;
+    const title = document.createElement('h2');
+    title.className = 'store-column__title';
     if (section.storeUrl) {
-      title.href = section.storeUrl;
-      title.target = '_blank';
-      title.rel = 'noreferrer noopener';
-      title.className = 'store-column__link';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'store-column__link-button';
+      button.textContent = section.storeName;
+      if (typeof onStoreHeaderClick === 'function') {
+        button.addEventListener('click', () => onStoreHeaderClick(section.storeUrl, button));
+      }
+      title.appendChild(button);
+    } else {
+      title.textContent = section.storeName;
     }
     header.appendChild(title);
     storeColumn.appendChild(header);
@@ -521,6 +527,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const backButton = document.getElementById('today-back');
   const homeButton = document.getElementById('today-home');
   const dateControls = document.querySelector('.attendance-controls');
+  const storeSheetDialog = document.getElementById('store-sheet-dialog');
+  const storeSheetFrame = document.getElementById('store-sheet-frame');
+  const storeSheetClose = document.getElementById('store-sheet-close');
+  const storeSheetLoading = document.getElementById('store-sheet-loading');
+  let lastFocusedStoreButton = null;
 
   const shouldShowNavigationButtons = () => {
     try {
@@ -639,6 +650,94 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyNavigationVisibility();
   maybeShowWarningOverlay();
 
+  const setStoreSheetLoading = isLoading => {
+    if (storeSheetLoading) {
+      storeSheetLoading.hidden = !isLoading;
+    }
+    if (storeSheetFrame) {
+      storeSheetFrame.classList.toggle('is-loading', Boolean(isLoading));
+      if (isLoading) {
+        storeSheetFrame.setAttribute('aria-busy', 'true');
+      } else {
+        storeSheetFrame.removeAttribute('aria-busy');
+      }
+    }
+  };
+
+  const resetStoreSheetDialogState = () => {
+    setStoreSheetLoading(false);
+    if (storeSheetFrame) {
+      storeSheetFrame.src = '';
+      storeSheetFrame.removeAttribute('aria-busy');
+    }
+    document.body.classList.remove('store-sheet-open');
+    if (lastFocusedStoreButton && typeof lastFocusedStoreButton.focus === 'function') {
+      lastFocusedStoreButton.focus({ preventScroll: true });
+    }
+    lastFocusedStoreButton = null;
+  };
+
+  const closeStoreSheetDialog = () => {
+    if (!storeSheetDialog) return;
+    if (storeSheetDialog.open && typeof storeSheetDialog.close === 'function') {
+      storeSheetDialog.close();
+    } else {
+      storeSheetDialog.removeAttribute('open');
+      resetStoreSheetDialogState();
+    }
+  };
+
+  const openStoreSheetDialog = (url, triggerButton) => {
+    if (!storeSheetDialog || !storeSheetFrame || !url) return;
+    lastFocusedStoreButton = triggerButton || null;
+    setStoreSheetLoading(true);
+    storeSheetFrame.src = url;
+    storeSheetFrame.addEventListener('load', () => setStoreSheetLoading(false), { once: true });
+    try {
+      if (typeof storeSheetDialog.showModal === 'function' && !storeSheetDialog.open) {
+        storeSheetDialog.showModal();
+      } else {
+        storeSheetDialog.setAttribute('open', 'true');
+      }
+    } catch (error) {
+      storeSheetDialog.setAttribute('open', 'true');
+    }
+    document.body.classList.add('store-sheet-open');
+    window.setTimeout(() => {
+      if (storeSheetClose && typeof storeSheetClose.focus === 'function') {
+        storeSheetClose.focus({ preventScroll: true });
+      } else if (typeof storeSheetDialog.focus === 'function') {
+        storeSheetDialog.focus({ preventScroll: true });
+      }
+    }, 0);
+  };
+
+  if (storeSheetClose) {
+    storeSheetClose.addEventListener('click', () => {
+      closeStoreSheetDialog();
+    });
+  }
+
+  if (storeSheetDialog) {
+    storeSheetDialog.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeStoreSheetDialog();
+    });
+    storeSheetDialog.addEventListener('close', resetStoreSheetDialogState);
+    storeSheetDialog.addEventListener('click', event => {
+      if (event.target === storeSheetDialog) {
+        closeStoreSheetDialog();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.body.classList.contains('store-sheet-open')) {
+      event.preventDefault();
+      closeStoreSheetDialog();
+    }
+  });
+
   const tutorialReady = createDeferred();
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -683,6 +782,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     return names.length > 0 ? names.join(' / ') : '選択した店舗';
   };
 
+  const handleStoreHeaderClick = (url, triggerButton) => {
+    openStoreSheetDialog(url, triggerButton);
+  };
+
   const renderForDate = () => {
     if (selectedStoreKeys.length === 0) return;
     const { sections, errors } = buildSectionsForDate(currentDate, storeDataList);
@@ -692,7 +795,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       : null;
 
     renderTimeline(sections, currentDate, nowMinutes, {
-      alignUnparsedHeight: selectedStoreKeys.length === storeKeys.length
+      alignUnparsedHeight: selectedStoreKeys.length === storeKeys.length,
+      onStoreHeaderClick: handleStoreHeaderClick
     });
 
     if (status) {
