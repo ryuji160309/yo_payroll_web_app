@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const li = document.createElement('li');
         li.append('Safariの');
         const icon = document.createElement('img');
-        icon.src = 'icons/share_icon.png';
+        icon.src = 'icon/share_icon.png';
         icon.alt = '共有アイコン';
         icon.className = 'ios-pwa-step-icon';
         li.appendChild(icon);
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const li = document.createElement('li');
         li.append('表示されたメニューの下の');
         const icon = document.createElement('img');
-        icon.src = 'icons/3point_icon.png';
+        icon.src = 'icon/3point_icon.png';
         icon.alt = 'その他アイコン';
         icon.className = 'ios-pwa-step-icon';
         li.appendChild(icon);
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const li = document.createElement('li');
         li.append('広がったメニューの中に');
         const icon = document.createElement('img');
-        icon.src = 'icons/plus_icon.png';
+        icon.src = 'icon/plus_icon.png';
         icon.alt = 'ホーム画面に追加アイコン';
         icon.className = 'ios-pwa-step-icon';
         li.appendChild(icon);
