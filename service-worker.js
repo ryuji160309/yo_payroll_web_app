@@ -21,7 +21,7 @@ const STATIC_ASSETS = [
   '/help/sheets.txt'
 ];
 
-const OPTIONAL_ASSETS = ['/icons/icon-192.png', '/icons/icon-512.png'];
+const OPTIONAL_ASSETS = ['/icon/icon-192.png', '/icon/icon-512.png'];
 const NETWORK_ONLY_PATHS = new Set(['/version.json', '/announcements.txt']);
 const SPREADSHEET_HOST_SUFFIXES = ['googleusercontent.com'];
 const SPREADSHEET_HOSTS = new Set(['docs.google.com']);
