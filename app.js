@@ -1,4 +1,4 @@
-const APP_VERSION = '1.9.5';
+const APP_VERSION = '1.9.6';
 const SETTINGS_CACHE_KEY = 'remoteSettingsCache';
 const VERSION_CHECK_URL = 'version.json';
 const UPDATE_DISMISS_KEY = 'updateNoticeDismissedVersion';
