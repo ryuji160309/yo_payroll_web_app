@@ -268,7 +268,7 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
     unparsedCells.push({ name, value });
   };
 
-  const processRow = (row, offset) => {
+  const processRow = (row, offset, { collectUnparsed } = { collectUnparsed: true }) => {
     if (!Array.isArray(row)) return;
     header.forEach((name, colIndex) => {
       if (colIndex < 3) return;
@@ -282,7 +282,9 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
       if (!cellText) return;
       const ranges = parseRangeText(cellText);
       if (!ranges.length) {
-        addUnparsedCell(label, cellText);
+        if (collectUnparsed) {
+          addUnparsedCell(label, cellText);
+        }
         return;
       }
       ranges.forEach(range => {
@@ -303,10 +305,10 @@ function collectShiftsForStore(store, workbook, period, targetDate) {
   const previousDayIndex = getScheduleRowIndex(new Date(targetDate.getTime() - DAY_IN_MS), period);
 
   if (dayIndex >= 0 && dayIndex < scheduleRows.length) {
-    processRow(scheduleRows[dayIndex], 0);
+    processRow(scheduleRows[dayIndex], 0, { collectUnparsed: true });
   }
   if (previousDayIndex >= 0 && previousDayIndex < scheduleRows.length) {
-    processRow(scheduleRows[previousDayIndex], -1);
+    processRow(scheduleRows[previousDayIndex], -1, { collectUnparsed: false });
   }
 
   const employees = Array.from(entries.values())
