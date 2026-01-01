@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.9.6';
+const CACHE_VERSION = 'v1.9.6b';
 const CACHE_NAME = `yo-payroll-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
