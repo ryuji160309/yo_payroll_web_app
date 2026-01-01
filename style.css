@@ -2278,6 +2278,8 @@ td {
   display: flex;
   justify-content: center;
   width: 100%;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .attendance-status {
@@ -2406,6 +2408,120 @@ td {
 .store-column__link--button:focus-visible {
   outline: 2px solid var(--color-link);
   outline-offset: 3px;
+}
+
+.date-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  z-index: 10500;
+  box-sizing: border-box;
+}
+
+.date-picker-overlay.is-visible {
+  display: flex;
+}
+
+.date-picker-modal {
+  width: min(440px, 100%);
+  background: var(--color-surface);
+  color: var(--color-body-text);
+  border-radius: 12px;
+  padding: 1rem 1rem 1.1rem;
+  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--color-border);
+}
+
+.date-picker-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.date-picker-description {
+  margin: 0 0 0.85rem;
+  color: var(--color-muted-text);
+}
+
+.date-picker-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.date-picker-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.date-picker-input {
+  width: 100%;
+  padding: 0.6rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-body-text);
+  font-size: 1rem;
+}
+
+.date-picker-input:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.date-picker-error {
+  margin: -0.25rem 0 0;
+  min-height: 1.2em;
+  color: var(--color-danger);
+  font-size: 0.9rem;
+}
+
+.date-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.date-picker-button {
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-body-text);
+  padding: 0.45rem 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.date-picker-button:hover {
+  background: var(--color-control-hover-bg);
+  border-color: var(--color-control-hover-border);
+}
+
+.date-picker-button:active {
+  background: var(--color-control-active-bg);
+  border-color: var(--color-control-active-border);
+  transform: translateY(1px);
+}
+
+.date-picker-button--primary {
+  background: var(--color-link);
+  color: #ffffff;
+  border-color: var(--color-link);
+}
+
+.date-picker-button--primary:hover {
+  background: var(--color-link-hover);
+}
+
+.date-picker-button--primary:active {
+  background: var(--color-link-active);
 }
 
 .store-sheet-overlay {
