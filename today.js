@@ -116,6 +116,142 @@ function createStoreSheetViewer() {
 
 const storeSheetViewer = createStoreSheetViewer();
 
+function createDatePickerDialog(onConfirm) {
+  let overlay = null;
+  let input = null;
+  let errorMessage = null;
+
+  const close = () => {
+    if (!overlay) return;
+    overlay.classList.remove('is-visible');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.removeEventListener('keydown', handleKeydown);
+  };
+
+  const handleKeydown = event => {
+    if (event.key === 'Escape' && overlay && overlay.classList.contains('is-visible')) {
+      event.preventDefault();
+      close();
+    }
+  };
+
+  const handleSubmit = event => {
+    event.preventDefault();
+    if (!input) return;
+    const selectedDate = parseDateInputValue(input.value);
+    if (!selectedDate) {
+      if (errorMessage) {
+        errorMessage.textContent = '有効な日付を選択してください。';
+      }
+      input.focus();
+      return;
+    }
+    if (typeof onConfirm === 'function') {
+      onConfirm(selectedDate);
+    }
+    close();
+  };
+
+  const ensureOverlay = () => {
+    if (overlay) return;
+
+    overlay = document.createElement('div');
+    overlay.className = 'date-picker-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const modal = document.createElement('div');
+    modal.className = 'date-picker-modal';
+
+    const title = document.createElement('h2');
+    title.className = 'date-picker-title';
+    title.textContent = '日付を指定';
+    modal.appendChild(title);
+
+    const description = document.createElement('p');
+    description.className = 'date-picker-description';
+    description.textContent = '表示したい日付を選択してください。';
+    modal.appendChild(description);
+
+    const form = document.createElement('form');
+    form.className = 'date-picker-form';
+    form.setAttribute('novalidate', 'novalidate');
+    form.addEventListener('submit', handleSubmit);
+
+    const label = document.createElement('label');
+    label.className = 'date-picker-label';
+    label.setAttribute('for', 'date-picker-input');
+    label.textContent = '日付';
+
+    input = document.createElement('input');
+    input.type = 'date';
+    input.id = 'date-picker-input';
+    input.className = 'date-picker-input';
+    input.name = 'date';
+
+    const fieldWrapper = document.createElement('div');
+    fieldWrapper.appendChild(label);
+    fieldWrapper.appendChild(input);
+    form.appendChild(fieldWrapper);
+
+    errorMessage = document.createElement('p');
+    errorMessage.className = 'date-picker-error';
+    errorMessage.setAttribute('aria-live', 'polite');
+    errorMessage.textContent = '';
+    form.appendChild(errorMessage);
+
+    const actions = document.createElement('div');
+    actions.className = 'date-picker-actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'date-picker-button';
+    cancelBtn.textContent = 'キャンセル';
+    cancelBtn.addEventListener('click', close);
+    actions.appendChild(cancelBtn);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'date-picker-button date-picker-button--primary';
+    submitBtn.textContent = '移動';
+    actions.appendChild(submitBtn);
+
+    form.appendChild(actions);
+    modal.appendChild(form);
+    overlay.appendChild(modal);
+
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) {
+        close();
+      }
+    });
+
+    document.body.appendChild(overlay);
+  };
+
+  const open = initialDate => {
+    ensureOverlay();
+    if (errorMessage) {
+      errorMessage.textContent = '';
+    }
+    const baseDate = normalizeDate(initialDate instanceof Date ? initialDate : new Date());
+    if (input) {
+      input.value = formatDateInputValue(baseDate);
+    }
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    window.setTimeout(() => {
+      if (input) {
+        input.focus();
+      }
+    }, 0);
+    document.addEventListener('keydown', handleKeydown);
+  };
+
+  return { open, close };
+}
+
 function createDeferred() {
   let resolved = false;
   let resolveFn = null;
@@ -145,6 +281,31 @@ function formatDateLabel(date) {
   const day = date.getDate();
   const weekday = days[date.getDay()] || '';
   return `${year}年${month}月${day}日 (${weekday})`;
+}
+
+function formatDateInputValue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateInputValue(value) {
+  if (!value || typeof value !== 'string') return null;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+  return normalizeDate(parsed);
 }
 
 function normalizeDate(date) {
@@ -634,6 +795,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const backButton = document.getElementById('today-back');
   const homeButton = document.getElementById('today-home');
   const dateControls = document.querySelector('.attendance-controls');
+  const datePickerBtn = document.getElementById('date-picker-button');
 
   const shouldShowNavigationButtons = () => {
     try {
@@ -764,9 +926,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const selectedStoreKeys = [];
   let liveNowTimer = null;
   let shouldAutoScrollToControls = false;
+  const datePickerDialog = createDatePickerDialog(selectedDate => {
+    currentDate = selectedDate;
+    updateDateLabel();
+    stopLiveNowTimer();
+    renderForDateWithLiveSync();
+  });
 
   const setNavigationDisabled = disabled => {
-    [prevBtn, nextBtn, todayBtn].forEach(btn => {
+    [prevBtn, nextBtn, todayBtn, datePickerBtn].forEach(btn => {
       if (btn) {
         btn.disabled = disabled;
       }
@@ -982,6 +1150,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateDateLabel();
       stopLiveNowTimer();
       renderForDateWithLiveSync();
+    });
+  }
+
+  if (datePickerBtn) {
+    datePickerBtn.addEventListener('click', () => {
+      datePickerDialog.open(currentDate);
     });
   }
 
