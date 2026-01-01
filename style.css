@@ -2468,6 +2468,7 @@ td {
   background: var(--color-surface-muted);
   color: var(--color-body-text);
   font-size: 1rem;
+  box-sizing: border-box;
 }
 
 .date-picker-input:focus-visible {
